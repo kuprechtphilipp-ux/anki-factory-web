@@ -181,64 +181,66 @@ export default function KursePage() {
         <div className="mt-10">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-4">Lernstand</p>
           <div className="rounded-xl border border-border/60 bg-card shadow-card overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/50 bg-muted/30">
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Thema</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">Neu</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider w-20">Lernen</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">Fällig</th>
-                  <th className="px-4 py-3 w-20"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {tableStats.map((row, i) => (
-                  <tr
-                    key={row.thema.id}
-                    className={`border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors ${i % 2 === 1 ? 'bg-muted/10' : ''}`}
-                  >
-                    <td className="px-5 py-3">
-                      <div>
-                        <Link
-                          href={`/${encodeURIComponent(row.kursName)}/${encodeURIComponent(row.thema.name)}`}
-                          className="font-medium text-foreground hover:text-primary transition-colors"
-                        >
-                          {row.thema.name}
-                        </Link>
-                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">{row.kursName}</p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                      <ZeroOrNum n={row.neu} />
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-primary font-medium">
-                      <ZeroOrNum n={row.lernen} />
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      <FaelligNum n={row.faellig} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Link
-                          href={`/${encodeURIComponent(row.kursName)}/${encodeURIComponent(row.thema.name)}/lernen`}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                          title="SRS Lernen"
-                        >
-                          <BookOpen className="h-3.5 w-3.5" />
-                        </Link>
-                        <Link
-                          href={`/${encodeURIComponent(row.kursName)}/${encodeURIComponent(row.thema.name)}/drill`}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
-                          title="Drill"
-                        >
-                          <Zap className="h-3.5 w-3.5" />
-                        </Link>
-                      </div>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[400px]">
+                <thead>
+                  <tr className="border-b border-border/50 bg-muted/30">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Thema</th>
+                    <th className="hidden sm:table-cell px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">Neu</th>
+                    <th className="hidden sm:table-cell px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider w-20">Lernen</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">Fällig</th>
+                    <th className="px-4 py-3 w-20"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {tableStats.map((row, i) => (
+                    <tr
+                      key={row.thema.id}
+                      className={`border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors ${i % 2 === 1 ? 'bg-muted/10' : ''}`}
+                    >
+                      <td className="px-4 py-3">
+                        <div>
+                          <Link
+                            href={`/${encodeURIComponent(row.kursName)}/${encodeURIComponent(row.thema.name)}`}
+                            className="font-medium text-foreground hover:text-primary transition-colors"
+                          >
+                            {row.thema.name}
+                          </Link>
+                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">{row.kursName}</p>
+                        </div>
+                      </td>
+                      <td className="hidden sm:table-cell px-4 py-3 text-right tabular-nums text-muted-foreground">
+                        <ZeroOrNum n={row.neu} />
+                      </td>
+                      <td className="hidden sm:table-cell px-4 py-3 text-right tabular-nums text-primary font-medium">
+                        <ZeroOrNum n={row.lernen} />
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        <FaelligNum n={row.faellig} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Link
+                            href={`/${encodeURIComponent(row.kursName)}/${encodeURIComponent(row.thema.name)}/lernen`}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                            title="SRS Lernen"
+                          >
+                            <BookOpen className="h-4 w-4" />
+                          </Link>
+                          <Link
+                            href={`/${encodeURIComponent(row.kursName)}/${encodeURIComponent(row.thema.name)}/drill`}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                            title="Drill"
+                          >
+                            <Zap className="h-4 w-4" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

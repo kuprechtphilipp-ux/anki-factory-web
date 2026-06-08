@@ -369,8 +369,10 @@ export default function ThemaPage({ params }: Props) {
                     <Upload className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">PDF hier ablegen</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">oder klicken zum Auswählen</p>
+                    <p className="text-sm font-medium hidden sm:block">PDF hier ablegen</p>
+                    <p className="text-sm font-medium sm:hidden">PDF auswählen</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">oder klicken zum Auswählen</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 sm:hidden">Antippen zum Auswählen</p>
                   </div>
                 </div>
               )}

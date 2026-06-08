@@ -85,6 +85,10 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
   const [returningCard, setReturningCard] = useState(false)
   const [ratingLoading, setRatingLoading] = useState(false)
 
+  // Touch swipe
+  const touchStartX = useRef<number | null>(null)
+  const touchStartY = useRef<number | null>(null)
+
   const sessionStartRef = useRef(Date.now())
   const [donePermanent, setDonePermanent] = useState(0)
   const [newLearned, setNewLearned] = useState(0)
@@ -214,6 +218,23 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
 
   // Keep ref current every render
   handleRateRef.current = handleRate
+
+  function onTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null || touchStartY.current === null) return
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current)
+    touchStartX.current = null
+    touchStartY.current = null
+    if (Math.abs(dx) < 60 || dy > 100) return // too small or mostly vertical
+    if (!revealedRef.current) { setRevealed(true); return }
+    if (dx > 0) handleRateRef.current(3)  // swipe right = Gut
+    else handleRateRef.current(1)          // swipe left = Nochmal
+  }
 
   // Keyboard shortcuts — registered once, reads via refs
   useEffect(() => {
@@ -353,6 +374,8 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
       {/* Card + Buttons */}
       <div
         key={cardKey}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
         className={`transition-all duration-300 ${exiting ? 'opacity-0 translate-y-1' : 'animate-fade-in'}`}
       >
         {/* Main card */}
@@ -369,7 +392,7 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
           )}
 
           {/* Content */}
-          <div className="p-10 flex flex-col flex-1">
+          <div className="p-5 sm:p-10 flex flex-col flex-1">
             {/* Returning badge */}
             {returningCard && (
               <div className="absolute top-4 right-4 rounded-full px-2.5 py-1 text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 animate-pulse">
@@ -419,19 +442,19 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
             >
               Antwort zeigen
             </Button>
-            <div className="flex items-center justify-center rounded-xl border border-border/60 bg-muted/40 px-4 text-xs text-muted-foreground font-mono select-none">
+            <div className="hidden sm:flex items-center justify-center rounded-xl border border-border/60 bg-muted/40 px-4 text-xs text-muted-foreground font-mono select-none">
               Leertaste
             </div>
           </div>
         ) : (
-          <div className="mt-5 animate-fade-in">
-            <div className="grid grid-cols-4 gap-2.5">
+          <div className="mt-5 animate-fade-in space-y-2">
+            <div className="grid grid-cols-4 gap-2">
               {RATINGS.map(({ r, label, border, hover }) => (
                 <button
                   key={r}
                   onClick={() => handleRate(r)}
                   disabled={ratingLoading || exiting}
-                  className={`flex flex-col items-center gap-1 rounded-xl border-2 py-3 px-2 text-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${border} ${hover}`}
+                  className={`flex flex-col items-center gap-1 rounded-xl border-2 py-3.5 px-1 sm:px-2 text-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${border} ${hover}`}
                 >
                   <span className="text-[10px] text-muted-foreground/60 leading-none">
                     {intervals?.[r] ?? '—'}
@@ -441,12 +464,15 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
                   ) : (
                     <>
                       <span className="text-sm font-semibold leading-none">{label}</span>
-                      <span className="text-[10px] text-muted-foreground/40 leading-none">[{r}]</span>
+                      <span className="hidden sm:block text-[10px] text-muted-foreground/40 leading-none">[{r}]</span>
                     </>
                   )}
                 </button>
               ))}
             </div>
+            <p className="sm:hidden text-center text-[10px] text-muted-foreground/40">
+              ← wischen = Nochmal &nbsp;·&nbsp; wischen = Gut →
+            </p>
           </div>
         )}
       </div>

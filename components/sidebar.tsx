@@ -24,6 +24,11 @@ interface KursWithThemen extends Kurs {
   dueByThema?: Record<number, number>
 }
 
+interface SidebarProps {
+  open?: boolean
+  onClose?: () => void
+}
+
 const KURS_COLORS = [
   'bg-violet-500',
   'bg-blue-500',
@@ -39,9 +44,12 @@ function hashColor(name: string): string {
   return KURS_COLORS[hash % KURS_COLORS.length]
 }
 
-export function Sidebar() {
+export function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+
+  // Close mobile sidebar on navigation
+  useEffect(() => { onClose?.() }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
   const [kurse, setKurse] = useState<KursWithThemen[]>([])
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [dueMap, setDueMap] = useState<Record<number, number>>({})
@@ -155,7 +163,13 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-border/50 bg-card shadow-sm">
+    <aside className={cn(
+      "flex h-screen w-64 shrink-0 flex-col border-r border-border/50 bg-card shadow-sm",
+      // Mobile: fixed overlay that slides in; Desktop: static in flow
+      "fixed lg:static inset-y-0 left-0 z-50",
+      "transition-transform duration-300 ease-in-out",
+      !open && "-translate-x-full lg:translate-x-0"
+    )}>
       {/* Logo */}
       <div className="flex h-14 items-center gap-2.5 border-b border-border/50 px-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">

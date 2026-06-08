@@ -51,6 +51,10 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
   const handleGewusstRef = useRef<() => void>(() => {})
   const handleNichtGewusstRef = useRef<() => void>(() => {})
 
+  // Touch swipe
+  const touchStartX = useRef<number | null>(null)
+  const touchStartY = useRef<number | null>(null)
+
   useEffect(() => {
     async function init() {
       const { data: kursRow } = await supabase.from('kurs').select('id').eq('name', kursName).single()
@@ -139,6 +143,23 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
 
   handleGewusstRef.current = handleGewusst
   handleNichtGewusstRef.current = handleNichtGewusst
+
+  function onTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null || touchStartY.current === null) return
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current)
+    touchStartX.current = null
+    touchStartY.current = null
+    if (Math.abs(dx) < 60 || dy > 100) return
+    if (!revealedRef.current) { setRevealed(true); return }
+    if (dx > 0) handleGewusstRef.current()     // swipe right = Gewusst
+    else handleNichtGewusstRef.current()         // swipe left = Nicht gewusst
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -270,6 +291,8 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
       {/* Card + Buttons */}
       <div
         key={cardKey}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
         className={`transition-all duration-300 ${exiting ? 'opacity-0 translate-y-1' : 'animate-fade-in'}`}
       >
         <div className="relative bg-card rounded-2xl border border-border/50 shadow-card overflow-hidden flex flex-col min-h-[320px]">
@@ -283,7 +306,7 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
             </div>
           )}
 
-          <div className="p-10 flex flex-col flex-1">
+          <div className="p-5 sm:p-10 flex flex-col flex-1">
             <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/50 mb-5">
               {isCloze ? 'Lückentext' : 'Frage'}
             </p>
@@ -321,36 +344,41 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
             >
               Antwort zeigen
             </Button>
-            <div className="flex items-center justify-center rounded-xl border border-border/60 bg-muted/40 px-4 text-xs text-muted-foreground font-mono select-none">
+            <div className="hidden sm:flex items-center justify-center rounded-xl border border-border/60 bg-muted/40 px-4 text-xs text-muted-foreground font-mono select-none">
               Leertaste
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 mt-5 animate-fade-in">
-            <button
-              onClick={handleNichtGewusst}
-              disabled={actionLoading || exiting}
-              className="flex flex-col items-center gap-1 rounded-xl border-2 py-4 px-4 text-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-rose-200 text-rose-600 hover:bg-rose-500 hover:border-rose-500 hover:text-white dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:border-rose-600"
-            >
-              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-                <>
-                  <span className="text-sm font-semibold leading-none">Nicht gewusst</span>
-                  <span className="text-[10px] text-current/60 leading-none mt-0.5">[1]</span>
-                </>
-              )}
-            </button>
-            <button
-              onClick={handleGewusst}
-              disabled={actionLoading || exiting}
-              className="flex flex-col items-center gap-1 rounded-xl border-2 py-4 px-4 text-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-emerald-200 text-emerald-600 hover:bg-emerald-500 hover:border-emerald-500 hover:text-white dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:border-emerald-600"
-            >
-              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-                <>
-                  <span className="text-sm font-semibold leading-none">Gewusst</span>
-                  <span className="text-[10px] text-current/60 leading-none mt-0.5">[4]</span>
-                </>
-              )}
-            </button>
+          <div className="mt-5 animate-fade-in space-y-2">
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={handleNichtGewusst}
+                disabled={actionLoading || exiting}
+                className="flex flex-col items-center gap-1 rounded-xl border-2 py-4 px-4 text-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-rose-200 text-rose-600 hover:bg-rose-500 hover:border-rose-500 hover:text-white dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:border-rose-600"
+              >
+                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+                  <>
+                    <span className="text-base font-semibold leading-none">Nicht gewusst</span>
+                    <span className="hidden sm:block text-[10px] text-current/60 leading-none mt-0.5">[1]</span>
+                  </>
+                )}
+              </button>
+              <button
+                onClick={handleGewusst}
+                disabled={actionLoading || exiting}
+                className="flex flex-col items-center gap-1 rounded-xl border-2 py-4 px-4 text-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-emerald-200 text-emerald-600 hover:bg-emerald-500 hover:border-emerald-500 hover:text-white dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:border-emerald-600"
+              >
+                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+                  <>
+                    <span className="text-base font-semibold leading-none">Gewusst</span>
+                    <span className="hidden sm:block text-[10px] text-current/60 leading-none mt-0.5">[4]</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <p className="sm:hidden text-center text-[10px] text-muted-foreground/40">
+              ← wischen = Nicht gewusst &nbsp;·&nbsp; wischen = Gewusst →
+            </p>
           </div>
         )}
       </div>

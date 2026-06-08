@@ -247,6 +247,33 @@ ANTHROPIC_API_KEY=                # Aus bestehendem .env der Streamlit-App
 - .env.local nie committed (.gitignore: .env*.local)
 - Build auf Vercel: ✅ sauber (nur img-Warnungen, keine Errors)
 
+### ✅ Phase 6 — Lernsystem-Verbesserungen (abgeschlossen)
+- app/api/karte/[id]/review/route.ts — Learning Steps + mode=srs|drill:
+  - State 0/1: Rating 1→+1Min, 2→+6Min, 3→+10Min+Graduate, 4→FSRS Easy
+  - State 2: Rating 1→+10Min+Relearning, 2/3/4→FSRS normal
+  - State 3: Rating 1→+10Min stay, 3/4→FSRS normal
+  - Drill-Mode: Gewusst=FSRS ohne Verkürzung, NichtGewusst=+1h
+  - Response enthält nextIntervals für UI-Hints über Buttons
+- app/api/karten/route.ts — mode=srs: strukturierte Queue {learning, reviews, neue, total}, mode=drill: alle reviewed Karten
+- app/(app)/[kurs]/[thema]/lernen/page.tsx — Kompletter Umbau:
+  - ts-fsrs client-seitig für Intervall-Vorschau ohne API-Round-Trip
+  - 3 Pills (Lernen/Reviews/Neu) mit aktuellen Counts
+  - Anki-style Card: 9px Label, text-xl Frage, text-lg Antwort in text-primary, Kontext mit linker Border, Foliennummer
+  - Reveal-Animation (animate-fade-in), "Kommt zurück"-Badge, fade-out/in Transition
+  - Tastatur: Leertaste=Reveal, 1-4=Rating
+  - Session-Ende mit Metriken (neu gelernt, Reviews, Min. gelernt)
+- app/(app)/[kurs]/[thema]/drill/page.tsx — NEU:
+  - Alle reviewed Karten, zufällige Reihenfolge, kein FSRS-Stress
+  - Binär: Gewusst [4] / Nicht gewusst [1], falsche ans Ende der Queue
+  - Score: Prozentzahl + "X / Y gewusst", "Nochmal (nur falsche)" Option
+  - Kreis-Progress, "X zum Wiederholen"-Badge
+- app/(app)/[kurs]/[thema]/page.tsx — Banner: zwei Buttons "Lernen" + "Drill"
+- app/(app)/kurse/page.tsx — Lernstand-Tabelle unter Kurs-Cards:
+  - Thema | Neu | Lernen | Fällig | Icon-Buttons
+  - Farbkodierung: 0=gedimmt, >0 Fällig=emerald, >50=rose
+  - Async-Loading nach Haupt-Inhalt
+- Build: ✅ sauber (nur img-Warnungen wie zuvor)
+
 ---
 
 ## Wichtige Hinweise für Claude Code
