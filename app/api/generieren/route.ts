@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { PDFParse } from 'pdf-parse'
 
 const SYSTEM_PROMPT = `Du bist ein Elite-Tutor und Didaktik-Experte.
 Regeln:
@@ -12,10 +11,11 @@ Regeln:
 - WICHTIG: Erkenne die Sprache des Folientexts und erstelle alle Karten (frage, antwort, kontext_erklaerung) konsequent in genau dieser Sprache. Wechsle die Sprache nicht, auch wenn du auf Deutsch angesprochen wirst.
 - Vergib für jede Karte 1-3 passende, kurze Anki-Tags (z.B. "definition", "formel", "beispiel", "klausurrelevant"). Ohne "#" Symbol.
 
+Du siehst das vollständige PDF mit allen Folien — Text UND Grafiken/Bilder. Nutze beides:
 Entscheide für jede Information selbst den besten Kartentyp:
 - 'basic': Klassische Frage/Antwort Karte.
 - 'cloze': Lückentext. Nutze dies für wichtige Definitionen oder Aufzählungen. Syntax: "Die Hauptstadt von {{c1::Frankreich}} ist {{c2::Paris}}."
-Entscheide ebenfalls, ob das Bild der Folie zum Verständnis der Karte WICHTIG ist oder einen starken visuellen Eindruck vermittelt (z.B. ein Foto einer Favela bei Urban Marginalization). Wenn ja, setze medien_sinnvoll: true und beziehe das Bild aktiv in die Frage mit ein (z.B. "Welches Phänomen zeigt dieses Bild?").
+Entscheide ebenfalls, ob das Bild/Diagramm einer Folie zum Verständnis der Karte WICHTIG ist oder einen starken visuellen Eindruck vermittelt (z.B. ein Foto einer Favela bei Urban Marginalization, ein Diagramm eines Prozesses). Wenn ja, setze medien_sinnvoll: true und beziehe das Bild aktiv in die Frage mit ein (z.B. "Welches Phänomen zeigt dieses Bild?" oder "Was zeigt das Diagramm auf dieser Folie?").
 
 Gib ausschließlich ein JSON-Array zurück, kein Markdown, kein Kommentar:
 [
@@ -86,38 +86,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'thema_id fehlt' }, { status: 400 })
     }
 
-    const batchSize = Math.min(10, Math.max(1, Number(formData.get('batch_size')) || 5))
-
     const pdfBuffer = Buffer.from(await file.arrayBuffer())
-
-    let pages: { page_nr: number; text: string }[]
-    try {
-      const parser = new PDFParse({ data: pdfBuffer })
-      const parsed = await parser.getText()
-
-      if (parsed.pages && Array.isArray(parsed.pages)) {
-        pages = parsed.pages.map((p: { num: number; text: string }) => ({
-          page_nr: p.num,
-          text: p.text.trim(),
-        }))
-      } else {
-        const rawText: string = parsed.text ?? ''
-        const pageTexts = rawText.split('\f')
-        pages = pageTexts.map((text, i) => ({ page_nr: i + 1, text: text.trim() }))
-      }
-    } catch (pdfError) {
-      console.error('[generieren] PDF-Parse-Fehler:', pdfError)
-      return NextResponse.json(
-        { error: `PDF konnte nicht gelesen werden: ${pdfError instanceof Error ? pdfError.message : String(pdfError)}` },
-        { status: 400 }
-      )
-    }
-
-    pages = pages.filter((p) => p.text.length > 0)
-
-    if (pages.length === 0) {
-      return NextResponse.json({ error: 'PDF enthält keinen lesbaren Text.' }, { status: 400 })
-    }
+    const pdfBase64 = pdfBuffer.toString('base64')
 
     const dynamicSystemPrompt =
       SYSTEM_PROMPT +
@@ -125,43 +95,51 @@ export async function POST(req: Request) {
       (LOD_INSTRUCTIONS[lod] ?? LOD_INSTRUCTIONS['Mittel'])
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-    const allCards: RawCard[] = []
 
-    for (let start = 0; start < pages.length; start += batchSize) {
-      const batch = pages.slice(start, start + batchSize)
+    let allCards: RawCard[] = []
 
-      let textCombined = ''
-      for (const p of batch) {
-        textCombined += `=== Seite ${p.page_nr} ===\n${p.text}\n\n`
-      }
+    try {
+      const message = await client.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 8192,
+        system: dynamicSystemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'document',
+                source: {
+                  type: 'base64',
+                  media_type: 'application/pdf',
+                  data: pdfBase64,
+                },
+              } as Anthropic.DocumentBlockParam,
+              {
+                type: 'text',
+                text: 'Analysiere alle Folien in diesem PDF und erstelle Flashcards. Berücksichtige dabei sowohl den Text als auch alle Grafiken, Diagramme und Bilder.',
+              },
+            ],
+          },
+        ],
+      })
 
+      const raw = (message.content[0] as { type: 'text'; text: string }).text
       try {
-        const message = await client.messages.create({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 4096,
-          system: dynamicSystemPrompt,
-          messages: [
-            {
-              role: 'user',
-              content: `Erstelle Flashcards für diese Folien. Nutze den Text der Folien als Kontext:\n\n${textCombined}`,
-            },
-          ],
-        })
-
-        const raw = (message.content[0] as { type: 'text'; text: string }).text
-        try {
-          const cards = parseJson(raw)
-          allCards.push(...cards)
-        } catch {
-          console.error('[generieren] JSON-Parse-Fehler für Batch', start)
-        }
-      } catch (claudeError) {
-        console.error('[generieren] Claude API Fehler:', claudeError)
+        allCards = parseJson(raw)
+      } catch {
+        console.error('[generieren] JSON-Parse-Fehler:', raw.slice(0, 200))
         return NextResponse.json(
-          { error: `Claude API Fehler: ${claudeError instanceof Error ? claudeError.message : String(claudeError)}` },
+          { error: 'Claude hat kein gültiges JSON zurückgegeben. Bitte erneut versuchen.' },
           { status: 500 }
         )
       }
+    } catch (claudeError) {
+      console.error('[generieren] Claude API Fehler:', claudeError)
+      return NextResponse.json(
+        { error: `Claude API Fehler: ${claudeError instanceof Error ? claudeError.message : String(claudeError)}` },
+        { status: 500 }
+      )
     }
 
     const kartenInsert = allCards.map((card) => ({
