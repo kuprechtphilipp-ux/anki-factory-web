@@ -4,13 +4,14 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import { ReviewCard } from '@/components/review-card'
 import { KarteListItem } from '@/components/karte-list-item'
 import { toast } from 'sonner'
-import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen } from 'lucide-react'
+import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, X } from 'lucide-react'
 import Link from 'next/link'
 import type { Karte } from '@/lib/types'
 
@@ -35,14 +36,19 @@ export default function ThemaPage({ params }: Props) {
   const [lastGenCount, setLastGenCount] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const [pageFrom, setPageFrom] = useState('')
+  const [pageTo, setPageTo] = useState('')
+
   const [reviewKarten, setReviewKarten] = useState<Karte[]>([])
   const [reviewIdx, setReviewIdx] = useState(0)
   const [reviewLoading, setReviewLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [bulkLoading, setBulkLoading] = useState(false)
 
   const [alleKarten, setAlleKarten] = useState<Karte[]>([])
   const [alleLoading, setAlleLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('alle')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const [dueCount, setDueCount] = useState<number | null>(null)
 
@@ -101,6 +107,12 @@ export default function ThemaPage({ params }: Props) {
 
   async function handleGenerieren() {
     if (!pdfFile || themaId == null) return
+    if (pageFrom && parseInt(pageFrom) < 1) { toast.error('"Von Seite" muss ≥ 1 sein'); return }
+    if (pageTo && parseInt(pageTo) < 1) { toast.error('"Bis Seite" muss ≥ 1 sein'); return }
+    if (pageFrom && pageTo && parseInt(pageFrom) > parseInt(pageTo)) {
+      toast.error('"Von Seite" muss ≤ "Bis Seite" sein')
+      return
+    }
     setGenerating(true)
     setLastGenCount(null)
     try {
@@ -109,6 +121,8 @@ export default function ThemaPage({ params }: Props) {
       form.append('thema_id', String(themaId))
       form.append('lod', lod)
       form.append('batch_size', String(batchSize))
+      if (pageFrom) form.append('page_from', pageFrom)
+      if (pageTo) form.append('page_to', pageTo)
 
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 90_000)
@@ -178,6 +192,46 @@ export default function ThemaPage({ params }: Props) {
       setReviewIdx(Math.max(0, Math.min(reviewIdx, next.length - 1)))
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  async function handleBulkAccept() {
+    setBulkLoading(true)
+    try {
+      await Promise.all(
+        reviewKarten.map((k) =>
+          fetch(`/api/karte/${k.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'reviewed' }),
+          })
+        )
+      )
+      toast.success(`${reviewKarten.length} Karten übernommen`)
+      setReviewKarten([])
+      setReviewIdx(0)
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
+  async function handleBulkReject() {
+    setBulkLoading(true)
+    try {
+      await Promise.all(
+        reviewKarten.map((k) =>
+          fetch(`/api/karte/${k.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'verworfen' }),
+          })
+        )
+      )
+      toast.success(`${reviewKarten.length} Karten verworfen`)
+      setReviewKarten([])
+      setReviewIdx(0)
+    } finally {
+      setBulkLoading(false)
     }
   }
 
@@ -339,7 +393,7 @@ export default function ThemaPage({ params }: Props) {
           </div>
 
           {/* Settings row */}
-          <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/50 border border-border/50">
+          <div className={`grid gap-4 p-4 rounded-xl bg-muted/50 border border-border/50 ${pdfFile ? 'grid-cols-2' : 'grid-cols-2'}`}>
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detailgrad</Label>
               <Select value={lod} onValueChange={setLod} disabled={generating}>
@@ -385,6 +439,35 @@ export default function ThemaPage({ params }: Props) {
               </div>
               <p className="text-[10px] text-muted-foreground">Folien pro API-Call</p>
             </div>
+
+            {pdfFile && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Von Seite</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="1"
+                    value={pageFrom}
+                    onChange={(e) => setPageFrom(e.target.value)}
+                    disabled={generating}
+                    className="h-9 bg-card"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bis Seite</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="Ende"
+                    value={pageTo}
+                    onChange={(e) => setPageTo(e.target.value)}
+                    disabled={generating}
+                    className="h-9 bg-card"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Progress */}
@@ -453,16 +536,42 @@ export default function ThemaPage({ params }: Props) {
               </p>
             </div>
           ) : (
-            <ReviewCard
-              karte={reviewKarten[reviewIdx]}
-              current={reviewIdx + 1}
-              total={reviewKarten.length}
-              onPrev={() => setReviewIdx((i) => Math.max(0, i - 1))}
-              onNext={() => setReviewIdx((i) => Math.min(reviewKarten.length - 1, i + 1))}
-              onAccept={handleAccept}
-              onReject={handleReject}
-              loading={actionLoading}
-            />
+            <div className="space-y-3">
+              {reviewKarten.length > 1 && (
+                <div className="flex items-center gap-2 justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 h-8 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                    onClick={handleBulkAccept}
+                    disabled={bulkLoading || actionLoading}
+                  >
+                    {bulkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCheck className="h-3.5 w-3.5" />}
+                    Alle annehmen ({reviewKarten.length})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 h-8 text-destructive border-destructive/30 hover:bg-destructive/5"
+                    onClick={handleBulkReject}
+                    disabled={bulkLoading || actionLoading}
+                  >
+                    {bulkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                    Alle verwerfen
+                  </Button>
+                </div>
+              )}
+              <ReviewCard
+                karte={reviewKarten[reviewIdx]}
+                current={reviewIdx + 1}
+                total={reviewKarten.length}
+                onPrev={() => setReviewIdx((i) => Math.max(0, i - 1))}
+                onNext={() => setReviewIdx((i) => Math.min(reviewKarten.length - 1, i + 1))}
+                onAccept={handleAccept}
+                onReject={handleReject}
+                loading={actionLoading || bulkLoading}
+              />
+            </div>
           )}
         </TabsContent>
 
@@ -481,11 +590,33 @@ export default function ThemaPage({ params }: Props) {
                 <SelectItem value="exportiert">Exportiert</SelectItem>
               </SelectContent>
             </Select>
-            {!alleLoading && (
-              <span className="text-sm text-muted-foreground">
-                {alleKarten.length} Karte{alleKarten.length !== 1 ? 'n' : ''}
-              </span>
-            )}
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Karten durchsuchen…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-9 pl-8"
+              />
+            </div>
+            {!alleLoading && (() => {
+              const count = searchQuery
+                ? alleKarten.filter((k) => {
+                    const q = searchQuery.toLowerCase()
+                    return (
+                      k.frage?.toLowerCase().includes(q) ||
+                      k.antwort?.toLowerCase().includes(q) ||
+                      k.cloze_text?.toLowerCase().includes(q) ||
+                      k.kontext?.toLowerCase().includes(q)
+                    )
+                  }).length
+                : alleKarten.length
+              return (
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {count} Karte{count !== 1 ? 'n' : ''}
+                </span>
+              )
+            })()}
           </div>
 
           {alleLoading ? (
@@ -493,17 +624,30 @@ export default function ThemaPage({ params }: Props) {
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm">Lade Karten...</span>
             </div>
-          ) : alleKarten.length === 0 ? (
-            <div className="py-12 text-center">
-              <p className="text-sm text-muted-foreground">Keine Karten gefunden.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {alleKarten.map((karte) => (
-                <KarteListItem key={karte.id} karte={karte} />
-              ))}
-            </div>
-          )}
+          ) : (() => {
+            const filtered = searchQuery
+              ? alleKarten.filter((k) => {
+                  const q = searchQuery.toLowerCase()
+                  return (
+                    k.frage?.toLowerCase().includes(q) ||
+                    k.antwort?.toLowerCase().includes(q) ||
+                    k.cloze_text?.toLowerCase().includes(q) ||
+                    k.kontext?.toLowerCase().includes(q)
+                  )
+                })
+              : alleKarten
+            return filtered.length === 0 ? (
+              <div className="py-12 text-center">
+                <p className="text-sm text-muted-foreground">Keine Karten gefunden.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filtered.map((karte) => (
+                  <KarteListItem key={karte.id} karte={karte} />
+                ))}
+              </div>
+            )
+          })()}
         </TabsContent>
       </Tabs>
     </div>

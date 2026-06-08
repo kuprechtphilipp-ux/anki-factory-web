@@ -88,6 +88,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'thema_id fehlt' }, { status: 400 })
     }
 
+    const pageFrom = (formData.get('page_from') as string | null) || null
+    const pageTo = (formData.get('page_to') as string | null) || null
+
     const pdfBuffer = Buffer.from(await file.arrayBuffer())
     const pdfBase64 = pdfBuffer.toString('base64')
 
@@ -95,6 +98,15 @@ export async function POST(req: Request) {
       SYSTEM_PROMPT +
       '\n\nDETAILGRAD-ANWEISUNG:\n' +
       (LOD_INSTRUCTIONS[lod] ?? LOD_INSTRUCTIONS['Mittel'])
+
+    let userText = 'Analysiere alle Folien in diesem PDF und erstelle Flashcards. Berücksichtige dabei sowohl den Text als auch alle Grafiken, Diagramme und Bilder.'
+    if (pageFrom && pageTo) {
+      userText += ` Analysiere NUR die Seiten ${pageFrom} bis ${pageTo}. Ignoriere alle anderen Seiten.`
+    } else if (pageFrom) {
+      userText += ` Beginne ab Seite ${pageFrom}. Ignoriere alle vorherigen Seiten.`
+    } else if (pageTo) {
+      userText += ` Analysiere nur bis einschließlich Seite ${pageTo}. Ignoriere alle nachfolgenden Seiten.`
+    }
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -119,7 +131,7 @@ export async function POST(req: Request) {
               } as Anthropic.DocumentBlockParam,
               {
                 type: 'text',
-                text: 'Analysiere alle Folien in diesem PDF und erstelle Flashcards. Berücksichtige dabei sowohl den Text als auch alle Grafiken, Diagramme und Bilder.',
+                text: userText,
               },
             ],
           },
