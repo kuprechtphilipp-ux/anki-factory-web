@@ -236,11 +236,16 @@ ANTHROPIC_API_KEY=                # Aus bestehendem .env der Streamlit-App
   - Direkter "Lernen"-Button zum Lern-Modus
 - Build: ✅ sauber (nur img-Warnungen wie zuvor, keine Errors)
 
-### ⏳ Phase 5 — Deployment
-- GitHub Repo anlegen + Code pushen
-- Vercel Projekt anlegen + mit GitHub verbinden
-- Umgebungsvariablen in Vercel setzen
-- Produktions-Test
+### ✅ Phase 5 — Deployment (abgeschlossen)
+- GitHub Repo: https://github.com/kuprechtphilipp-ux/anki-factory-web
+- Vercel Projekt: https://anki-factory-web.vercel.app
+- Vercel mit GitHub verknüpft (auto-deploy bei Push auf main)
+- Umgebungsvariablen in Vercel gesetzt (production):
+  - NEXT_PUBLIC_SUPABASE_URL
+  - NEXT_PUBLIC_SUPABASE_ANON_KEY
+  - ANTHROPIC_API_KEY (server-only, nicht NEXT_PUBLIC_)
+- .env.local nie committed (.gitignore: .env*.local)
+- Build auf Vercel: ✅ sauber (nur img-Warnungen, keine Errors)
 
 ---
 

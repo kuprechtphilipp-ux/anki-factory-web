@@ -7,7 +7,6 @@ import { supabase } from '@/lib/supabase'
 import type { Kurs, Thema } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import {
-  BookOpen,
   ChevronDown,
   ChevronRight,
   GraduationCap,
@@ -22,6 +21,22 @@ import { toast } from 'sonner'
 
 interface KursWithThemen extends Kurs {
   themen: Thema[]
+  dueByThema?: Record<number, number>
+}
+
+const KURS_COLORS = [
+  'bg-violet-500',
+  'bg-blue-500',
+  'bg-emerald-500',
+  'bg-amber-500',
+  'bg-rose-500',
+  'bg-cyan-500',
+]
+
+function hashColor(name: string): string {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) & 0xffff
+  return KURS_COLORS[hash % KURS_COLORS.length]
 }
 
 export function Sidebar() {
@@ -29,13 +44,12 @@ export function Sidebar() {
   const router = useRouter()
   const [kurse, setKurse] = useState<KursWithThemen[]>([])
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
+  const [dueMap, setDueMap] = useState<Record<number, number>>({})
 
-  // New Kurs
   const [showNewKurs, setShowNewKurs] = useState(false)
   const [newKursName, setNewKursName] = useState('')
   const [savingKurs, setSavingKurs] = useState(false)
 
-  // New Thema per Kurs
   const [showNewThema, setShowNewThema] = useState<number | null>(null)
   const [newThemaName, setNewThemaName] = useState('')
   const [savingThema, setSavingThema] = useState(false)
@@ -45,12 +59,25 @@ export function Sidebar() {
     if (!kursData) return
     const { data: themenData } = await supabase.from('thema').select('*').order('name')
     const themen = (themenData ?? []) as Thema[]
-    setKurse(
-      (kursData as Kurs[]).map((k) => ({
-        ...k,
-        themen: themen.filter((t) => t.kurs_id === k.id),
-      }))
+    const loaded = (kursData as Kurs[]).map((k) => ({
+      ...k,
+      themen: themen.filter((t) => t.kurs_id === k.id),
+    }))
+    setKurse(loaded)
+
+    // Load due counts per thema
+    const allThemenIds = themen.map((t) => t.id)
+    const newDueMap: Record<number, number> = {}
+    await Promise.all(
+      allThemenIds.map(async (tid) => {
+        try {
+          const res = await fetch(`/api/karten?thema_id=${tid}&status=reviewed&due=true`)
+          const data = await res.json()
+          if (Array.isArray(data) && data.length > 0) newDueMap[tid] = data.length
+        } catch { /* ignore */ }
+      })
     )
+    setDueMap(newDueMap)
   }
 
   useEffect(() => { load() }, [])
@@ -128,40 +155,46 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r bg-background">
-      <div className="flex h-14 items-center gap-2 border-b px-4">
-        <GraduationCap className="h-5 w-5 text-primary" />
-        <span className="font-semibold">Anki Factory</span>
+    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-border/50 bg-card shadow-sm">
+      {/* Logo */}
+      <div className="flex h-14 items-center gap-2.5 border-b border-border/50 px-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+          <GraduationCap className="h-4.5 w-4.5 h-[18px] w-[18px] text-primary-foreground" />
+        </div>
+        <span className="font-semibold gradient-text tracking-tight">Anki Factory</span>
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-2">
+      <nav className="flex-1 overflow-y-auto py-3 px-2">
+        {/* Dashboard link */}
         <Link
           href="/kurse"
           className={cn(
-            'flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent',
-            pathname === '/kurse' && 'bg-accent font-medium'
+            'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground',
+            pathname === '/kurse'
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground'
           )}
         >
-          <LayoutDashboard className="h-4 w-4" />
+          <LayoutDashboard className="h-4 w-4 shrink-0" />
           Alle Kurse
         </Link>
 
-        <div className="mt-3">
-          <div className="flex items-center justify-between px-3 py-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <div className="mt-4">
+          <div className="flex items-center justify-between px-3 py-1 mb-1">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
               Kurse
             </p>
             <button
               onClick={() => { setShowNewKurs((v) => !v); setNewKursName('') }}
-              className="rounded p-0.5 hover:bg-accent text-muted-foreground"
+              className="flex h-5 w-5 items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
               title="Neuen Kurs anlegen"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-3 w-3" />
             </button>
           </div>
 
           {showNewKurs && (
-            <div className="px-2 pb-2 flex gap-1">
+            <div className="px-2 pb-2 flex gap-1 animate-fade-in">
               <Input
                 autoFocus
                 placeholder="Kursname"
@@ -183,24 +216,37 @@ export function Sidebar() {
 
           {kurse.map((kurs) => {
             const isOpen = expanded.has(kurs.id)
+            const colorClass = hashColor(kurs.name)
+            const kursActive = pathname.startsWith(`/${encodeURIComponent(kurs.name)}`)
+
             return (
               <div key={kurs.id}>
-                <div className="group flex items-center">
+                <div className="group relative flex items-center">
+                  {/* Active indicator */}
+                  {kursActive && (
+                    <div className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-primary" />
+                  )}
                   <button
                     onClick={() => toggleKurs(kurs.id)}
-                    className="flex flex-1 items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent min-w-0"
-                  >
-                    {isOpen ? (
-                      <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    className={cn(
+                      'flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent min-w-0',
+                      kursActive ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'
                     )}
-                    <BookOpen className="h-4 w-4 shrink-0" />
+                  >
+                    <div className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white', colorClass)}>
+                      {kurs.name.charAt(0).toUpperCase()}
+                    </div>
                     <span className="truncate">{kurs.name}</span>
+                    <span className="ml-auto shrink-0 text-muted-foreground">
+                      {isOpen
+                        ? <ChevronDown className="h-3 w-3" />
+                        : <ChevronRight className="h-3 w-3" />
+                      }
+                    </span>
                   </button>
                   <button
                     onClick={() => handleDeleteKurs(kurs)}
-                    className="mr-1 shrink-0 rounded p-1 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-opacity"
+                    className="mr-1 shrink-0 rounded p-1 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
                     title="Kurs löschen"
                   >
                     <Trash2 className="h-3 w-3" />
@@ -208,24 +254,35 @@ export function Sidebar() {
                 </div>
 
                 {isOpen && (
-                  <div className="ml-6 mt-0.5 space-y-0.5">
+                  <div className="ml-4 mt-0.5 mb-1 pl-3 border-l border-border/60 space-y-0.5">
                     {kurs.themen.map((thema) => {
                       const href = `/${encodeURIComponent(kurs.name)}/${encodeURIComponent(thema.name)}`
                       const isActive = pathname.startsWith(href)
+                      const dueCount = dueMap[thema.id]
+
                       return (
-                        <div key={thema.id} className="group flex items-center">
+                        <div key={thema.id} className="group flex items-center gap-1">
                           <Link
                             href={href}
                             className={cn(
-                              'flex-1 truncate rounded-md px-3 py-1.5 text-sm transition-colors hover:bg-accent',
-                              isActive && 'bg-accent font-medium'
+                              'flex-1 truncate rounded-md px-2.5 py-1.5 text-sm transition-all',
+                              isActive
+                                ? 'bg-primary/10 text-primary font-medium'
+                                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                             )}
                           >
-                            {thema.name}
+                            <span className="flex items-center gap-1.5">
+                              <span className="truncate">{thema.name}</span>
+                              {dueCount && dueCount > 0 && (
+                                <span className="ml-auto shrink-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                                  {dueCount > 9 ? '9+' : dueCount}
+                                </span>
+                              )}
+                            </span>
                           </Link>
                           <button
                             onClick={() => handleDeleteThema(kurs, thema)}
-                            className="mr-1 shrink-0 rounded p-1 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-opacity"
+                            className="shrink-0 rounded p-1 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
                             title="Thema löschen"
                           >
                             <Trash2 className="h-3 w-3" />
@@ -235,7 +292,7 @@ export function Sidebar() {
                     })}
 
                     {showNewThema === kurs.id ? (
-                      <div className="px-1 pb-1 flex gap-1">
+                      <div className="px-1 pb-1 flex gap-1 animate-fade-in">
                         <Input
                           autoFocus
                           placeholder="Themaname"
@@ -256,7 +313,7 @@ export function Sidebar() {
                     ) : (
                       <button
                         onClick={() => { setShowNewThema(kurs.id); setNewThemaName('') }}
-                        className="flex w-full items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                        className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground/60 hover:bg-accent hover:text-muted-foreground transition-all"
                       >
                         <Plus className="h-3 w-3" />
                         Thema anlegen
@@ -269,7 +326,7 @@ export function Sidebar() {
           })}
 
           {kurse.length === 0 && !showNewKurs && (
-            <p className="px-3 py-2 text-xs text-muted-foreground">
+            <p className="px-3 py-3 text-xs text-muted-foreground/60 leading-relaxed">
               Noch keine Kurse. Klicke auf + um einen anzulegen.
             </p>
           )}

@@ -7,12 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
-import { Progress } from '@/components/ui/progress'
-import { Badge } from '@/components/ui/badge'
 import { ReviewCard } from '@/components/review-card'
 import { KarteListItem } from '@/components/karte-list-item'
 import { toast } from 'sonner'
-import { Loader2, Upload, FileText, ArrowRight, Brain } from 'lucide-react'
+import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap } from 'lucide-react'
 import Link from 'next/link'
 import type { Karte } from '@/lib/types'
 
@@ -28,8 +26,8 @@ export default function ThemaPage({ params }: Props) {
   const [loadingThema, setLoadingThema] = useState(true)
   const [activeTab, setActiveTab] = useState('generieren')
 
-  // ── Generieren ──
   const [pdfFile, setPdfFile] = useState<File | null>(null)
+  const [dragOver, setDragOver] = useState(false)
   const [batchSize, setBatchSize] = useState(5)
   const [lod, setLod] = useState('Mittel')
   const [generating, setGenerating] = useState(false)
@@ -37,40 +35,28 @@ export default function ThemaPage({ params }: Props) {
   const [lastGenCount, setLastGenCount] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // ── Review ──
   const [reviewKarten, setReviewKarten] = useState<Karte[]>([])
   const [reviewIdx, setReviewIdx] = useState(0)
   const [reviewLoading, setReviewLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
 
-  // ── Alle Karten ──
   const [alleKarten, setAlleKarten] = useState<Karte[]>([])
   const [alleLoading, setAlleLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('alle')
 
-  // ── Statistik ──
   const [dueCount, setDueCount] = useState<number | null>(null)
 
-  // Load thema_id on mount
   useEffect(() => {
     async function load() {
       const { data: kursRow } = await supabase
-        .from('kurs')
-        .select('id')
-        .eq('name', kursName)
-        .single()
+        .from('kurs').select('id').eq('name', kursName).single()
       if (!kursRow) { setLoadingThema(false); return }
 
       const { data: themaRow } = await supabase
-        .from('thema')
-        .select('id')
-        .eq('kurs_id', kursRow.id)
-        .eq('name', themaName)
-        .single()
+        .from('thema').select('id').eq('kurs_id', kursRow.id).eq('name', themaName).single()
 
       if (themaRow) {
         setThemaId(themaRow.id)
-        // Load due count
         fetch(`/api/karten?thema_id=${themaRow.id}&status=reviewed&due=true`)
           .then((r) => r.json())
           .then((data: Karte[]) => setDueCount(data.length))
@@ -81,40 +67,29 @@ export default function ThemaPage({ params }: Props) {
     load()
   }, [kursName, themaName])
 
-  // Load review karten when tab is active
   useEffect(() => {
     if (activeTab === 'review' && themaId != null) {
       setReviewLoading(true)
       fetch(`/api/karten?thema_id=${themaId}&status=neu`)
         .then((r) => r.json())
-        .then((data: Karte[]) => {
-          setReviewKarten(data)
-          setReviewIdx(0)
-          setReviewLoading(false)
-        })
+        .then((data: Karte[]) => { setReviewKarten(data); setReviewIdx(0); setReviewLoading(false) })
         .catch(() => setReviewLoading(false))
     }
   }, [activeTab, themaId])
 
-  // Load alle karten when tab is active or filter changes
   useEffect(() => {
     if (activeTab === 'alle' && themaId != null) {
       setAlleLoading(true)
-      const url =
-        statusFilter === 'alle'
-          ? `/api/karten?thema_id=${themaId}`
-          : `/api/karten?thema_id=${themaId}&status=${statusFilter}`
+      const url = statusFilter === 'alle'
+        ? `/api/karten?thema_id=${themaId}`
+        : `/api/karten?thema_id=${themaId}&status=${statusFilter}`
       fetch(url)
         .then((r) => r.json())
-        .then((data: Karte[]) => {
-          setAlleKarten(data)
-          setAlleLoading(false)
-        })
+        .then((data: Karte[]) => { setAlleKarten(data); setAlleLoading(false) })
         .catch(() => setAlleLoading(false))
     }
   }, [activeTab, themaId, statusFilter])
 
-  // Fake progress animation during generation
   useEffect(() => {
     if (!generating) { setGenProgress(0); return }
     setGenProgress(5)
@@ -124,13 +99,10 @@ export default function ThemaPage({ params }: Props) {
     return () => clearInterval(interval)
   }, [generating])
 
-  // ── Handlers ──
-
   async function handleGenerieren() {
     if (!pdfFile || themaId == null) return
     setGenerating(true)
     setLastGenCount(null)
-
     try {
       const form = new FormData()
       form.append('pdf', pdfFile)
@@ -140,29 +112,17 @@ export default function ThemaPage({ params }: Props) {
 
       const res = await fetch('/api/generieren', { method: 'POST', body: form })
       const json = await res.json()
-
-      if (!res.ok || json.error) {
-        toast.error(json.error ?? 'Fehler bei der Generierung')
-        return
-      }
+      if (!res.ok || json.error) { toast.error(json.error ?? 'Fehler bei der Generierung'); return }
 
       const { karten, count } = json as { karten: Partial<Karte>[]; count: number }
-
-      if (count === 0) {
-        toast.warning('Keine Karten generiert – PDF möglicherweise leer.')
-        return
-      }
+      if (count === 0) { toast.warning('Keine Karten generiert – PDF möglicherweise leer.'); return }
 
       const saveRes = await fetch('/api/karten', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(karten),
       })
-
-      if (!saveRes.ok) {
-        toast.error('Karten generiert, aber Speichern fehlgeschlagen.')
-        return
-      }
+      if (!saveRes.ok) { toast.error('Karten generiert, aber Speichern fehlgeschlagen.'); return }
 
       setGenProgress(100)
       setLastGenCount(count)
@@ -214,84 +174,129 @@ export default function ThemaPage({ params }: Props) {
     }
   }
 
-  // ── Render ──
-
   if (loadingThema) {
     return (
-      <div className="flex items-center gap-2 text-muted-foreground">
+      <div className="flex items-center gap-2.5 text-muted-foreground py-12">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span>Lade Thema...</span>
+        <span className="text-sm">Lade Thema...</span>
       </div>
     )
   }
 
   if (!themaId) {
     return (
-      <div className="text-destructive">
+      <div className="py-12 text-destructive text-sm">
         Thema &quot;{themaName}&quot; wurde nicht gefunden.
       </div>
     )
   }
 
   return (
-    <div>
-      <p className="text-sm text-muted-foreground mb-1">{kursName}</p>
-      <h1 className="text-2xl font-bold mb-6">{themaName}</h1>
+    <div className="max-w-3xl">
+      {/* Breadcrumb + Title */}
+      <div className="mb-7">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">{kursName}</p>
+        <h1 className="text-[1.75rem] font-semibold tracking-tight">{themaName}</h1>
+      </div>
 
-      {/* Statistik-Widget */}
+      {/* Due-Karten Banner */}
       {dueCount != null && dueCount > 0 && (
-        <div className="mb-6 flex items-center justify-between rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 px-4 py-3">
-          <div className="flex items-center gap-2 text-sm">
-            <Brain className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <span className="font-medium text-blue-900 dark:text-blue-100">
-              {dueCount} {dueCount === 1 ? 'Karte fällig' : 'Karten fällig'}
-            </span>
-            <span className="text-blue-600 dark:text-blue-400 text-xs">heute</span>
+        <div className="mb-7 relative overflow-hidden rounded-xl border border-primary/20 bg-primary/5 px-5 py-4">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-violet-500/5 to-transparent pointer-events-none" />
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15">
+                <Brain className="h-4.5 w-4.5 h-[18px] w-[18px] text-primary animate-pulse" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {dueCount} {dueCount === 1 ? 'Karte fällig' : 'Karten fällig'}
+                </p>
+                <p className="text-xs text-muted-foreground">Heute wiederholen</p>
+              </div>
+            </div>
+            <Button asChild size="sm" className="gap-1.5 h-8 shadow-sm">
+              <Link href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}>
+                <Zap className="h-3.5 w-3.5" />
+                Lernen
+              </Link>
+            </Button>
           </div>
-          <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 text-white h-8">
-            <Link href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}>
-              <Brain className="mr-1.5 h-3.5 w-3.5" />
-              Lernen
-            </Link>
-          </Button>
         </div>
       )}
 
+      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="generieren">Generieren</TabsTrigger>
-          <TabsTrigger value="review" className="gap-1.5">
+        <TabsList className="h-9 rounded-lg bg-muted p-1 gap-0.5">
+          <TabsTrigger
+            value="generieren"
+            className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
+            Generieren
+          </TabsTrigger>
+          <TabsTrigger
+            value="review"
+            className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm gap-1.5"
+          >
             Review
             {reviewKarten.length > 0 && (
-              <Badge className="h-4 px-1 text-[10px]">{reviewKarten.length}</Badge>
+              <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-bold">
+                {reviewKarten.length}
+              </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="alle">Alle Karten</TabsTrigger>
+          <TabsTrigger
+            value="alle"
+            className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
+            Alle Karten
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Tab: Generieren ── */}
-        <TabsContent value="generieren" className="mt-6 max-w-lg space-y-6">
+        <TabsContent value="generieren" className="mt-6 max-w-lg space-y-5">
           {/* PDF Upload */}
           <div className="space-y-2">
-            <Label>PDF hochladen</Label>
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">PDF hochladen</Label>
             <div
-              className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+              className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                dragOver
+                  ? 'border-primary bg-gradient-to-b from-primary/10 to-transparent'
+                  : pdfFile
+                  ? 'border-primary/50 bg-primary/5'
+                  : 'border-border hover:border-primary/40 hover:bg-gradient-to-b hover:from-primary/5 hover:to-transparent'
+              }`}
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault()
+                setDragOver(false)
+                const file = e.dataTransfer.files[0]
+                if (file?.type === 'application/pdf') setPdfFile(file)
+              }}
             >
               {pdfFile ? (
-                <div className="flex items-center justify-center gap-2 text-sm">
-                  <FileText className="h-4 w-4 text-primary" />
-                  <span className="font-medium">{pdfFile.name}</span>
-                  <span className="text-muted-foreground">
-                    ({(pdfFile.size / 1024 / 1024).toFixed(1)} MB)
-                  </span>
+                <div className="flex items-center justify-center gap-2.5 text-sm">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
+                    <FileText className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-sm">{pdfFile.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(pdfFile.size / 1024 / 1024).toFixed(1)} MB
+                    </p>
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-1">
-                  <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    Klicken oder PDF hierher ziehen
-                  </p>
+                <div className="space-y-2">
+                  <div className="flex h-10 w-10 mx-auto items-center justify-center rounded-xl bg-muted">
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">PDF hier ablegen</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">oder klicken zum Auswählen</p>
+                  </div>
                 </div>
               )}
               <input
@@ -304,85 +309,78 @@ export default function ThemaPage({ params }: Props) {
             </div>
           </div>
 
-          {/* Detailgrad */}
-          <div className="space-y-2">
-            <Label>Detailgrad</Label>
-            <Select value={lod} onValueChange={setLod} disabled={generating}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Gering">
-                  <div>
-                    <div className="font-medium">Gering</div>
-                    <div className="text-xs text-muted-foreground">
-                      Pareto 80/20 – nur die wichtigsten Konzepte
+          {/* Settings row */}
+          <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/50 border border-border/50">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detailgrad</Label>
+              <Select value={lod} onValueChange={setLod} disabled={generating}>
+                <SelectTrigger className="h-9 bg-card">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Gering">
+                    <div className="py-0.5">
+                      <div className="font-medium">Gering</div>
+                      <div className="text-xs text-muted-foreground">Pareto 80/20</div>
                     </div>
-                  </div>
-                </SelectItem>
-                <SelectItem value="Mittel">
-                  <div>
-                    <div className="font-medium">Mittel</div>
-                    <div className="text-xs text-muted-foreground">
-                      Gute Balance aus Details und Übersicht
+                  </SelectItem>
+                  <SelectItem value="Mittel">
+                    <div className="py-0.5">
+                      <div className="font-medium">Mittel</div>
+                      <div className="text-xs text-muted-foreground">Balance</div>
                     </div>
-                  </div>
-                </SelectItem>
-                <SelectItem value="Hoch">
-                  <div>
-                    <div className="font-medium">Hoch</div>
-                    <div className="text-xs text-muted-foreground">
-                      Jedes Detail – maximale Kartenanzahl
+                  </SelectItem>
+                  <SelectItem value="Hoch">
+                    <div className="py-0.5">
+                      <div className="font-medium">Hoch</div>
+                      <div className="text-xs text-muted-foreground">Alles</div>
                     </div>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Batch Size */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Folien pro Batch</Label>
-              <span className="text-sm font-medium tabular-nums">{batchSize}</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Slider
-              value={[batchSize]}
-              onValueChange={([v]) => setBatchSize(v)}
-              min={1}
-              max={10}
-              step={1}
-              disabled={generating}
-              className="w-full"
-            />
-            <p className="text-xs text-muted-foreground">
-              Weniger Folien pro Batch = genauere Karten, mehr API-Calls.
-            </p>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Batch-Größe</Label>
+                <span className="text-sm font-semibold tabular-nums text-primary">{batchSize}</span>
+              </div>
+              <div className="pt-2">
+                <Slider
+                  value={[batchSize]}
+                  onValueChange={([v]) => setBatchSize(v)}
+                  min={1} max={10} step={1}
+                  disabled={generating}
+                  className="w-full"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground">Folien pro API-Call</p>
+            </div>
           </div>
 
           {/* Progress */}
           {generating && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span>Generiere Flashcards mit Claude...</span>
+            <div className="space-y-2 rounded-xl bg-primary/5 border border-primary/20 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-primary">
+                <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+                <span>Generiere Flashcards mit Claude AI...</span>
               </div>
-              <Progress value={genProgress} className="h-1.5" />
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-primary/20">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-violet-400 transition-all duration-700"
+                  style={{ width: `${genProgress}%` }}
+                />
+              </div>
             </div>
           )}
 
-          {/* Success state */}
+          {/* Success */}
           {lastGenCount != null && !generating && (
-            <div className="flex items-center justify-between rounded-lg bg-muted px-4 py-3 text-sm">
-              <span>
-                <span className="font-medium">{lastGenCount}</span> Karten gespeichert
+            <div className="flex items-center justify-between rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-4 py-3 text-sm animate-fade-in">
+              <span className="text-emerald-800 dark:text-emerald-200">
+                <span className="font-semibold">{lastGenCount}</span> Karten gespeichert
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1"
-                onClick={() => setActiveTab('review')}
-              >
+              <Button variant="ghost" size="sm" className="gap-1 text-emerald-700 dark:text-emerald-300 hover:text-emerald-800" onClick={() => setActiveTab('review')}>
                 Zum Review
                 <ArrowRight className="h-3.5 w-3.5" />
               </Button>
@@ -392,15 +390,18 @@ export default function ThemaPage({ params }: Props) {
           <Button
             onClick={handleGenerieren}
             disabled={!pdfFile || generating}
-            className="w-full"
+            className="w-full h-10 gap-2 shadow-sm"
           >
             {generating ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Generiere...
               </>
             ) : (
-              'Flashcards generieren'
+              <>
+                <Sparkles className="h-4 w-4" />
+                Flashcards generieren
+              </>
             )}
           </Button>
         </TabsContent>
@@ -408,14 +409,17 @@ export default function ThemaPage({ params }: Props) {
         {/* ── Tab: Review ── */}
         <TabsContent value="review" className="mt-6 max-w-2xl">
           {reviewLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground py-8">
+            <div className="flex items-center gap-2.5 text-muted-foreground py-12">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Lade Karten...</span>
+              <span className="text-sm">Lade Karten...</span>
             </div>
           ) : reviewKarten.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground space-y-2">
-              <p className="text-lg font-medium">Keine Karten zu reviewen</p>
-              <p className="text-sm">
+            <div className="py-16 text-center space-y-2">
+              <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-2xl bg-muted">
+                <FileText className="h-6 w-6 text-muted-foreground/50" />
+              </div>
+              <p className="text-base font-medium mt-4">Keine Karten zu reviewen</p>
+              <p className="text-sm text-muted-foreground">
                 Generiere zuerst Karten oder alle neuen Karten wurden bereits überprüft.
               </p>
             </div>
@@ -435,15 +439,13 @@ export default function ThemaPage({ params }: Props) {
 
         {/* ── Tab: Alle Karten ── */}
         <TabsContent value="alle" className="mt-6 max-w-2xl space-y-4">
-          {/* Filter */}
           <div className="flex items-center gap-3">
-            <Label className="shrink-0">Status</Label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="w-44 h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="alle">Alle</SelectItem>
+                <SelectItem value="alle">Alle Status</SelectItem>
                 <SelectItem value="neu">Neu</SelectItem>
                 <SelectItem value="reviewed">Überprüft</SelectItem>
                 <SelectItem value="verworfen">Verworfen</SelectItem>
@@ -457,15 +459,14 @@ export default function ThemaPage({ params }: Props) {
             )}
           </div>
 
-          {/* List */}
           {alleLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground py-8">
+            <div className="flex items-center gap-2.5 text-muted-foreground py-12">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Lade Karten...</span>
+              <span className="text-sm">Lade Karten...</span>
             </div>
           ) : alleKarten.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground">
-              <p className="text-sm">Keine Karten gefunden.</p>
+            <div className="py-12 text-center">
+              <p className="text-sm text-muted-foreground">Keine Karten gefunden.</p>
             </div>
           ) : (
             <div className="space-y-2">
