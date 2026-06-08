@@ -17,7 +17,7 @@ Du siehst das vollständige PDF mit allen Folien — Text UND Grafiken/Bilder. N
 Entscheide für jede Information selbst den besten Kartentyp:
 - 'basic': Klassische Frage/Antwort Karte.
 - 'cloze': Lückentext. Nutze dies für wichtige Definitionen oder Aufzählungen. Syntax: "Die Hauptstadt von {{c1::Frankreich}} ist {{c2::Paris}}."
-Entscheide ebenfalls, ob das Bild/Diagramm einer Folie zum Verständnis der Karte WICHTIG ist oder einen starken visuellen Eindruck vermittelt (z.B. ein Foto einer Favela bei Urban Marginalization, ein Diagramm eines Prozesses). Wenn ja, setze medien_sinnvoll: true und beziehe das Bild aktiv in die Frage mit ein (z.B. "Welches Phänomen zeigt dieses Bild?" oder "Was zeigt das Diagramm auf dieser Folie?").
+Beschreibe Diagramme und Grafiken textlich in der Frage oder Antwort, wenn sie für das Verständnis wichtig sind.
 
 Gib ausschließlich ein JSON-Array zurück, kein Markdown, kein Kommentar:
 [
@@ -28,8 +28,7 @@ Gib ausschließlich ein JSON-Array zurück, kein Markdown, kein Kommentar:
     "cloze_text": "",
     "kontext_erklaerung": "...",
     "slide_nummer": <int>,
-    "tags": ["tag1"],
-    "medien_sinnvoll": true
+    "tags": ["tag1"]
   },
   {
     "typ": "cloze",
@@ -38,8 +37,7 @@ Gib ausschließlich ein JSON-Array zurück, kein Markdown, kein Kommentar:
     "cloze_text": "...",
     "kontext_erklaerung": "...",
     "slide_nummer": <int>,
-    "tags": ["tag1"],
-    "medien_sinnvoll": false
+    "tags": ["tag1"]
   }
 ]`
 
@@ -59,7 +57,6 @@ interface RawCard {
   kontext_erklaerung: string
   slide_nummer: number
   tags: string[]
-  medien_sinnvoll: boolean
 }
 
 function parseJson(raw: string): RawCard[] {
