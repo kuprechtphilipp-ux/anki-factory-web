@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 
-export const maxDuration = 300 // 5 Minuten — Claude PDF-Analyse kann bei großen Decks lange dauern
+export const maxDuration = 60 // Vercel Hobby max; Pro würde 300s erlauben
 
 const SYSTEM_PROMPT = `Du bist ein Elite-Tutor und Didaktik-Experte.
 Regeln:

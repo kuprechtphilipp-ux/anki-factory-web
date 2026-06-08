@@ -110,7 +110,14 @@ export default function ThemaPage({ params }: Props) {
       form.append('lod', lod)
       form.append('batch_size', String(batchSize))
 
-      const res = await fetch('/api/generieren', { method: 'POST', body: form })
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 90_000)
+      let res: Response
+      try {
+        res = await fetch('/api/generieren', { method: 'POST', body: form, signal: controller.signal })
+      } finally {
+        clearTimeout(timeout)
+      }
       const json = await res.json()
       if (!res.ok || json.error) { toast.error(json.error ?? 'Fehler bei der Generierung'); return }
 
@@ -281,7 +288,13 @@ export default function ThemaPage({ params }: Props) {
                 e.preventDefault()
                 setDragOver(false)
                 const file = e.dataTransfer.files[0]
-                if (file?.type === 'application/pdf') setPdfFile(file)
+                if (file?.type === 'application/pdf') {
+                  if (file.size > 20 * 1024 * 1024) {
+                    toast.error('PDF zu groß (max. 20 MB). Bitte in kleinere Abschnitte aufteilen.')
+                    return
+                  }
+                  setPdfFile(file)
+                }
               }}
             >
               {pdfFile ? (
@@ -312,7 +325,15 @@ export default function ThemaPage({ params }: Props) {
                 type="file"
                 accept="application/pdf"
                 className="hidden"
-                onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null
+                  if (file && file.size > 20 * 1024 * 1024) {
+                    toast.error('PDF zu groß (max. 20 MB). Bitte in kleinere Abschnitte aufteilen.')
+                    e.target.value = ''
+                    return
+                  }
+                  setPdfFile(file)
+                }}
               />
             </div>
           </div>
