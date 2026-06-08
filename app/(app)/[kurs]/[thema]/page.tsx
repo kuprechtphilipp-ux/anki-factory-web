@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider'
 import { ReviewCard } from '@/components/review-card'
 import { KarteListItem } from '@/components/karte-list-item'
 import { toast } from 'sonner'
-import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap } from 'lucide-react'
+import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen } from 'lucide-react'
 import Link from 'next/link'
 import type { Karte } from '@/lib/types'
 
@@ -129,8 +129,8 @@ export default function ThemaPage({ params }: Props) {
       setPdfFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
       toast.success(`${count} Karten generiert und gespeichert`)
-    } catch {
-      toast.error('Unbekannter Fehler')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unbekannter Fehler')
     } finally {
       setGenerating(false)
     }
@@ -215,12 +215,20 @@ export default function ThemaPage({ params }: Props) {
                 <p className="text-xs text-muted-foreground">Heute wiederholen</p>
               </div>
             </div>
-            <Button asChild size="sm" className="gap-1.5 h-8 shadow-sm">
-              <Link href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}>
-                <Zap className="h-3.5 w-3.5" />
-                Lernen
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button asChild size="sm" className="gap-1.5 h-8 shadow-sm">
+                <Link href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}>
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Lernen
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="outline" className="gap-1.5 h-8">
+                <Link href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/drill`}>
+                  <Zap className="h-3.5 w-3.5" />
+                  Drill
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       )}

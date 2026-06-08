@@ -4,10 +4,18 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import type { Kurs, Thema } from '@/lib/types'
-import { GraduationCap } from 'lucide-react'
+import { GraduationCap, BookOpen, Zap } from 'lucide-react'
 
 interface KursWithThemen extends Kurs {
   themen: Thema[]
+}
+
+interface ThemaStats {
+  thema: Thema
+  kursName: string
+  neu: number
+  lernen: number
+  faellig: number
 }
 
 const KURS_COLORS = [
@@ -25,9 +33,22 @@ function hashColorIdx(name: string): number {
   return hash % KURS_COLORS.length
 }
 
+function FaelligNum({ n }: { n: number }) {
+  if (n === 0) return <span className="text-muted-foreground/30">0</span>
+  if (n > 50) return <span className="text-rose-600 font-medium">{n}</span>
+  return <span className="text-emerald-600 font-medium">{n}</span>
+}
+
+function ZeroOrNum({ n }: { n: number }) {
+  if (n === 0) return <span className="text-muted-foreground/30">0</span>
+  return <span>{n}</span>
+}
+
 export default function KursePage() {
   const [kurse, setKurse] = useState<KursWithThemen[]>([])
   const [loading, setLoading] = useState(true)
+  const [tableStats, setTableStats] = useState<ThemaStats[]>([])
+  const [tableLoading, setTableLoading] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -35,13 +56,38 @@ export default function KursePage() {
       if (!kursData) { setLoading(false); return }
       const { data: themenData } = await supabase.from('thema').select('*').order('name')
       const themen = (themenData ?? []) as Thema[]
-      setKurse(
-        (kursData as Kurs[]).map((k) => ({
-          ...k,
-          themen: themen.filter((t) => t.kurs_id === k.id),
-        }))
-      )
+      const withThemen = (kursData as Kurs[]).map((k) => ({
+        ...k,
+        themen: themen.filter((t) => t.kurs_id === k.id),
+      }))
+      setKurse(withThemen)
       setLoading(false)
+
+      // Load SRS stats for table
+      const allThemen = themen
+      if (allThemen.length === 0) return
+      setTableLoading(true)
+      const results = await Promise.all(
+        allThemen.map(async (t) => {
+          const kursName = (kursData as Kurs[]).find(k => k.id === t.kurs_id)?.name ?? ''
+          try {
+            const res = await fetch(`/api/karten?thema_id=${t.id}&mode=srs`)
+            const data = await res.json() as { learning: unknown[]; reviews: unknown[]; neue: unknown[]; total: number }
+            return {
+              thema: t,
+              kursName,
+              neu: data.neue?.length ?? 0,
+              lernen: data.learning?.length ?? 0,
+              faellig: data.reviews?.length ?? 0,
+              total: data.total ?? 0,
+            }
+          } catch {
+            return { thema: t, kursName, neu: 0, lernen: 0, faellig: 0, total: 0 }
+          }
+        })
+      )
+      setTableStats(results.filter(r => r.total > 0) as ThemaStats[])
+      setTableLoading(false)
     }
     load()
   }, [])
@@ -84,17 +130,17 @@ export default function KursePage() {
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">Übersicht</p>
         <h1 className="text-[1.75rem] font-semibold tracking-tight">Meine Kurse</h1>
       </div>
+
+      {/* Kurs cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {kurse.map((kurs) => {
           const colorIdx = hashColorIdx(kurs.name)
           const color = KURS_COLORS[colorIdx]
-
           return (
             <div
               key={kurs.id}
               className="group rounded-xl bg-card shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
             >
-              {/* Card header with colored accent */}
               <div className={`px-5 pt-5 pb-4 ${color.light}`}>
                 <div className="flex items-start gap-3">
                   <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-bold text-white ${color.bg}`}>
@@ -108,8 +154,6 @@ export default function KursePage() {
                   </div>
                 </div>
               </div>
-
-              {/* Themen pills */}
               <div className="px-5 py-4">
                 {kurs.themen.length === 0 ? (
                   <p className="text-xs text-muted-foreground/60">Keine Themen</p>
@@ -131,6 +175,80 @@ export default function KursePage() {
           )
         })}
       </div>
+
+      {/* SRS Overview table */}
+      {!tableLoading && tableStats.length > 0 && (
+        <div className="mt-10">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-4">Lernstand</p>
+          <div className="rounded-xl border border-border/60 bg-card shadow-card overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/30">
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Thema</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">Neu</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider w-20">Lernen</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">Fällig</th>
+                  <th className="px-4 py-3 w-20"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tableStats.map((row, i) => (
+                  <tr
+                    key={row.thema.id}
+                    className={`border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors ${i % 2 === 1 ? 'bg-muted/10' : ''}`}
+                  >
+                    <td className="px-5 py-3">
+                      <div>
+                        <Link
+                          href={`/${encodeURIComponent(row.kursName)}/${encodeURIComponent(row.thema.name)}`}
+                          className="font-medium text-foreground hover:text-primary transition-colors"
+                        >
+                          {row.thema.name}
+                        </Link>
+                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">{row.kursName}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                      <ZeroOrNum n={row.neu} />
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-primary font-medium">
+                      <ZeroOrNum n={row.lernen} />
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      <FaelligNum n={row.faellig} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Link
+                          href={`/${encodeURIComponent(row.kursName)}/${encodeURIComponent(row.thema.name)}/lernen`}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                          title="SRS Lernen"
+                        >
+                          <BookOpen className="h-3.5 w-3.5" />
+                        </Link>
+                        <Link
+                          href={`/${encodeURIComponent(row.kursName)}/${encodeURIComponent(row.thema.name)}/drill`}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                          title="Drill"
+                        >
+                          <Zap className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tableLoading && (
+        <div className="mt-10">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-4">Lernstand</p>
+          <div className="h-32 rounded-xl bg-muted/40 animate-pulse" />
+        </div>
+      )}
     </div>
   )
 }

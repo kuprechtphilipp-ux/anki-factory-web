@@ -69,91 +69,119 @@ function parseJson(raw: string): RawCard[] {
 }
 
 export async function POST(req: Request) {
-  const formData = await req.formData()
-  const file = formData.get('pdf') as File | null
-  const lod = (formData.get('lod') as string) ?? 'Mittel'
-  const themaId = formData.get('thema_id')
-
-  if (!file) {
-    return NextResponse.json({ error: 'Kein PDF hochgeladen (field: pdf)' }, { status: 400 })
-  }
-  if (!themaId) {
-    return NextResponse.json({ error: 'thema_id fehlt' }, { status: 400 })
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: 'ANTHROPIC_API_KEY nicht gesetzt' }, { status: 500 })
   }
 
-  const batchSize = Math.min(10, Math.max(1, Number(formData.get('batch_size')) || 5))
+  try {
+    const formData = await req.formData()
+    const file = formData.get('pdf') as File | null
+    const lod = (formData.get('lod') as string) ?? 'Mittel'
+    const themaId = formData.get('thema_id')
 
-  const pdfBuffer = Buffer.from(await file.arrayBuffer())
-
-  const parser = new PDFParse({ data: pdfBuffer })
-  const parsed = await parser.getText()
-
-  // pdf-parse v2 getText() returns { text, pages } where pages is an array
-  // Split by page if pages array is available, otherwise split on form-feed
-  let pages: { page_nr: number; text: string }[]
-
-  if (parsed.pages && Array.isArray(parsed.pages)) {
-    pages = parsed.pages.map((p: { num: number; text: string }) => ({
-      page_nr: p.num,
-      text: p.text.trim(),
-    }))
-  } else {
-    const rawText: string = parsed.text ?? ''
-    const pageTexts = rawText.split('\f')
-    pages = pageTexts.map((text, i) => ({ page_nr: i + 1, text: text.trim() }))
-  }
-
-  // Filter out empty pages
-  pages = pages.filter((p) => p.text.length > 0)
-
-  const dynamicSystemPrompt =
-    SYSTEM_PROMPT +
-    '\n\nDETAILGRAD-ANWEISUNG:\n' +
-    (LOD_INSTRUCTIONS[lod] ?? LOD_INSTRUCTIONS['Mittel'])
-
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  const allCards: RawCard[] = []
-
-  for (let start = 0; start < pages.length; start += batchSize) {
-    const batch = pages.slice(start, start + batchSize)
-
-    let textCombined = ''
-    for (const p of batch) {
-      textCombined += `=== Seite ${p.page_nr} ===\n${p.text}\n\n`
+    if (!file) {
+      return NextResponse.json({ error: 'Kein PDF hochgeladen (field: pdf)' }, { status: 400 })
+    }
+    if (!themaId) {
+      return NextResponse.json({ error: 'thema_id fehlt' }, { status: 400 })
     }
 
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      system: dynamicSystemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: `Erstelle Flashcards für diese Folien. Nutze den Text der Folien als Kontext:\n\n${textCombined}`,
-        },
-      ],
-    })
+    const batchSize = Math.min(10, Math.max(1, Number(formData.get('batch_size')) || 5))
 
-    const raw = (message.content[0] as { type: 'text'; text: string }).text
+    const pdfBuffer = Buffer.from(await file.arrayBuffer())
+
+    let pages: { page_nr: number; text: string }[]
     try {
-      const cards = parseJson(raw)
-      allCards.push(...cards)
-    } catch {
-      // skip malformed batch silently
+      const parser = new PDFParse({ data: pdfBuffer })
+      const parsed = await parser.getText()
+
+      if (parsed.pages && Array.isArray(parsed.pages)) {
+        pages = parsed.pages.map((p: { num: number; text: string }) => ({
+          page_nr: p.num,
+          text: p.text.trim(),
+        }))
+      } else {
+        const rawText: string = parsed.text ?? ''
+        const pageTexts = rawText.split('\f')
+        pages = pageTexts.map((text, i) => ({ page_nr: i + 1, text: text.trim() }))
+      }
+    } catch (pdfError) {
+      console.error('[generieren] PDF-Parse-Fehler:', pdfError)
+      return NextResponse.json(
+        { error: `PDF konnte nicht gelesen werden: ${pdfError instanceof Error ? pdfError.message : String(pdfError)}` },
+        { status: 400 }
+      )
     }
+
+    pages = pages.filter((p) => p.text.length > 0)
+
+    if (pages.length === 0) {
+      return NextResponse.json({ error: 'PDF enthält keinen lesbaren Text.' }, { status: 400 })
+    }
+
+    const dynamicSystemPrompt =
+      SYSTEM_PROMPT +
+      '\n\nDETAILGRAD-ANWEISUNG:\n' +
+      (LOD_INSTRUCTIONS[lod] ?? LOD_INSTRUCTIONS['Mittel'])
+
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const allCards: RawCard[] = []
+
+    for (let start = 0; start < pages.length; start += batchSize) {
+      const batch = pages.slice(start, start + batchSize)
+
+      let textCombined = ''
+      for (const p of batch) {
+        textCombined += `=== Seite ${p.page_nr} ===\n${p.text}\n\n`
+      }
+
+      try {
+        const message = await client.messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 4096,
+          system: dynamicSystemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: `Erstelle Flashcards für diese Folien. Nutze den Text der Folien als Kontext:\n\n${textCombined}`,
+            },
+          ],
+        })
+
+        const raw = (message.content[0] as { type: 'text'; text: string }).text
+        try {
+          const cards = parseJson(raw)
+          allCards.push(...cards)
+        } catch {
+          console.error('[generieren] JSON-Parse-Fehler für Batch', start)
+        }
+      } catch (claudeError) {
+        console.error('[generieren] Claude API Fehler:', claudeError)
+        return NextResponse.json(
+          { error: `Claude API Fehler: ${claudeError instanceof Error ? claudeError.message : String(claudeError)}` },
+          { status: 500 }
+        )
+      }
+    }
+
+    const kartenInsert = allCards.map((card) => ({
+      thema_id: Number(themaId),
+      typ: card.typ === 'cloze' ? 'cloze' : 'basic',
+      frage: card.frage ?? '',
+      antwort: card.antwort ?? '',
+      cloze_text: card.cloze_text || null,
+      kontext: card.kontext_erklaerung || null,
+      slide_nr: card.slide_nummer ?? null,
+      tags: card.tags ?? [],
+      status: 'neu',
+    }))
+
+    return NextResponse.json({ karten: kartenInsert, count: kartenInsert.length })
+  } catch (error) {
+    console.error('[generieren] Unerwarteter Fehler:', error)
+    return NextResponse.json(
+      { error: `Serverfehler: ${error instanceof Error ? error.message : String(error)}` },
+      { status: 500 }
+    )
   }
-
-  const kartenInsert = allCards.map((card) => ({
-    thema_id: Number(themaId),
-    typ: card.typ === 'cloze' ? 'cloze' : 'basic',
-    frage: card.frage ?? '',
-    antwort: card.antwort ?? '',
-    cloze_text: card.cloze_text || null,
-    kontext: card.kontext_erklaerung || null,
-    slide_nr: card.slide_nummer ?? null,
-    tags: card.tags ?? [],
-    status: 'neu',
-  }))
-
-  return NextResponse.json({ karten: kartenInsert, count: kartenInsert.length })
 }
