@@ -347,9 +347,18 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
   // ── Active session ──
   return (
     <div className="flex flex-col max-w-2xl mx-auto">
-      {/* Progress bar */}
-      <div className="h-0.5 w-full bg-muted/30 mb-7 rounded-full overflow-hidden">
-        <div className="h-full bg-primary transition-all duration-500 ease-out" style={{ width: `${progressPct}%` }} />
+      {/* Back + progress row */}
+      <div className="flex items-center gap-3 mb-7">
+        <Link
+          href={backHref}
+          className="shrink-0 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">{themaName}</span>
+        </Link>
+        <div className="flex-1 h-0.5 bg-muted/30 rounded-full overflow-hidden">
+          <div className="h-full bg-primary transition-all duration-500 ease-out" style={{ width: `${progressPct}%` }} />
+        </div>
       </div>
 
       {/* Pills */}

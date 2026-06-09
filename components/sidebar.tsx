@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Kurs, Thema } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -30,6 +30,8 @@ interface KursWithThemen extends Kurs {
 interface SidebarProps {
   open?: boolean
   onClose?: () => void
+  width?: number
+  onWidthChange?: (w: number) => void
 }
 
 const KURS_COLORS = [
@@ -47,11 +49,40 @@ function hashColor(name: string): string {
   return KURS_COLORS[hash % KURS_COLORS.length]
 }
 
-export function Sidebar({ open = false, onClose }: SidebarProps) {
+const MIN_WIDTH = 180
+const MAX_WIDTH = 400
+
+export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
 
   useEffect(() => { onClose?.() }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragRef.current = { startX: e.clientX, startWidth: width }
+
+    function onMouseMove(ev: MouseEvent) {
+      if (!dragRef.current) return
+      const delta = ev.clientX - dragRef.current.startX
+      const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, dragRef.current.startWidth + delta))
+      onWidthChange?.(next)
+    }
+
+    function onMouseUp() {
+      dragRef.current = null
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  }, [width, onWidthChange])
 
   const [kurse, setKurse] = useState<KursWithThemen[]>([])
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
@@ -203,12 +234,15 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   }
 
   return (
-    <aside className={cn(
-      "flex h-screen w-64 shrink-0 flex-col border-r border-border/50 bg-card shadow-sm",
-      "fixed lg:static inset-y-0 left-0 z-50",
-      "transition-transform duration-300 ease-in-out",
-      !open && "-translate-x-full lg:translate-x-0"
-    )}>
+    <aside
+      className={cn(
+        "relative flex h-screen shrink-0 flex-col border-r border-border/50 bg-card shadow-sm",
+        "fixed lg:static inset-y-0 left-0 z-50",
+        "transition-transform duration-300 ease-in-out",
+        !open && "-translate-x-full lg:translate-x-0"
+      )}
+      style={{ width: `${width}px` }}
+    >
       {/* Logo */}
       <div className="flex h-14 items-center gap-2.5 border-b border-border/50 px-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
@@ -462,6 +496,13 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           )}
         </div>
       </nav>
+
+      {/* Drag handle — desktop only */}
+      <div
+        onMouseDown={handleDragStart}
+        className="absolute right-0 inset-y-0 hidden lg:block w-1 cursor-col-resize group/drag hover:bg-primary/30 transition-colors"
+        aria-hidden
+      />
     </aside>
   )
 }

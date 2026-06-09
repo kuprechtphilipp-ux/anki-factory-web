@@ -12,7 +12,7 @@ import { ReviewCard } from '@/components/review-card'
 import { KarteListItem } from '@/components/karte-list-item'
 import { toast } from 'sonner'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, X, Plus, PenLine, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, X, Plus, PenLine, ChevronLeft, ChevronRight, ArrowLeft, List } from 'lucide-react'
 import Link from 'next/link'
 import type { Karte, KartTyp } from '@/lib/types'
 
@@ -28,7 +28,7 @@ export default function ThemaPage({ params }: Props) {
 
   const [themaId, setThemaId] = useState<number | null>(null)
   const [loadingThema, setLoadingThema] = useState(true)
-  const [activeTab, setActiveTab] = useState('generieren')
+  const [activeTab, setActiveTab] = useState('uebersicht')
 
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -64,6 +64,8 @@ export default function ThemaPage({ params }: Props) {
   const [creatingKarte, setCreatingKarte] = useState(false)
 
   const [dueCount, setDueCount] = useState<number | null>(null)
+  const [neuCount, setNeuCount] = useState<number | null>(null)
+  const [reviewedCount, setReviewedCount] = useState<number | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -76,10 +78,16 @@ export default function ThemaPage({ params }: Props) {
 
       if (themaRow) {
         setThemaId(themaRow.id)
-        fetch(`/api/karten?thema_id=${themaRow.id}&status=reviewed&due=true`)
-          .then((r) => r.json())
-          .then((data: Karte[]) => setDueCount(data.length))
-          .catch(() => {})
+        const tid = themaRow.id
+        Promise.all([
+          fetch(`/api/karten?thema_id=${tid}&status=reviewed&due=true`).then(r => r.json()),
+          fetch(`/api/karten?thema_id=${tid}&status=neu`).then(r => r.json()),
+          fetch(`/api/karten?thema_id=${tid}&status=reviewed`).then(r => r.json()),
+        ]).then(([due, neu, reviewed]: [Karte[], Karte[], Karte[]]) => {
+          setDueCount(due.length)
+          setNeuCount(neu.length)
+          setReviewedCount(reviewed.length)
+        }).catch(() => {})
       }
       setLoadingThema(false)
     }
@@ -303,43 +311,15 @@ export default function ThemaPage({ params }: Props) {
         <h1 className="text-[1.75rem] font-semibold tracking-tight">{themaName}</h1>
       </div>
 
-      {/* Due-Karten Banner */}
-      {dueCount != null && dueCount > 0 && (
-        <div className="mb-7 relative overflow-hidden rounded-xl border border-primary/20 bg-primary/5 px-5 py-4">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-violet-500/5 to-transparent pointer-events-none" />
-          <div className="relative flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15">
-                <Brain className="h-4.5 w-4.5 h-[18px] w-[18px] text-primary animate-pulse" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  {dueCount} {dueCount === 1 ? 'Karte fällig' : 'Karten fällig'}
-                </p>
-                <p className="text-xs text-muted-foreground">Heute wiederholen</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button asChild size="sm" className="gap-1.5 h-8 shadow-sm">
-                <Link href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}>
-                  <BookOpen className="h-3.5 w-3.5" />
-                  Lernen
-                </Link>
-              </Button>
-              <Button asChild size="sm" variant="outline" className="gap-1.5 h-8">
-                <Link href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/drill`}>
-                  <Zap className="h-3.5 w-3.5" />
-                  Drill
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="h-9 rounded-lg bg-muted p-1 gap-0.5">
+        <TabsList className="h-9 rounded-lg bg-muted p-1 gap-0.5 mb-0">
+          <TabsTrigger
+            value="uebersicht"
+            className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
+            Übersicht
+          </TabsTrigger>
           <TabsTrigger
             value="generieren"
             className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
@@ -351,9 +331,9 @@ export default function ThemaPage({ params }: Props) {
             className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm gap-1.5"
           >
             Review
-            {reviewKarten.length > 0 && (
+            {neuCount != null && neuCount > 0 && (
               <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-bold">
-                {reviewKarten.length}
+                {neuCount}
               </span>
             )}
           </TabsTrigger>
@@ -361,19 +341,136 @@ export default function ThemaPage({ params }: Props) {
             value="alle"
             className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
           >
-            Alle Karten
+            Karten
           </TabsTrigger>
           <TabsTrigger
             value="erstellen"
             className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm gap-1.5"
           >
             <PenLine className="h-3.5 w-3.5" />
-            Erstellen
+            <span className="hidden sm:inline">Erstellen</span>
           </TabsTrigger>
         </TabsList>
 
+        {/* ── Tab: Übersicht ── */}
+        <TabsContent value="uebersicht" className="mt-6 max-w-2xl space-y-5">
+          {/* Stat row */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl border border-border/50 bg-card p-4 shadow-card">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1">Fällig heute</p>
+              <p className={`text-2xl font-bold tabular-nums ${dueCount && dueCount > 0 ? 'text-primary' : 'text-muted-foreground/40'}`}>
+                {dueCount ?? '–'}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-card p-4 shadow-card">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1">Im Review</p>
+              <p className={`text-2xl font-bold tabular-nums ${neuCount && neuCount > 0 ? 'text-amber-500' : 'text-muted-foreground/40'}`}>
+                {neuCount ?? '–'}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-card p-4 shadow-card">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1">Im Deck</p>
+              <p className="text-2xl font-bold tabular-nums text-muted-foreground">
+                {reviewedCount ?? '–'}
+              </p>
+            </div>
+          </div>
+
+          {/* Primary actions */}
+          <div className="grid grid-cols-2 gap-3">
+            <Link
+              href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}
+              className="group relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 hover:border-primary/40 hover:from-primary/15 transition-all shadow-card hover:shadow-card-hover hover:-translate-y-0.5"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 group-hover:bg-primary/25 transition-colors">
+                  <Brain className="h-5 w-5 text-primary" />
+                </div>
+                {dueCount != null && dueCount > 0 && (
+                  <span className="rounded-full bg-primary text-primary-foreground px-2.5 py-0.5 text-xs font-bold">
+                    {dueCount} fällig
+                  </span>
+                )}
+              </div>
+              <p className="font-semibold text-foreground">Lernen</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Spaced Repetition</p>
+            </Link>
+
+            <Link
+              href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/drill`}
+              className="group relative overflow-hidden rounded-2xl border border-amber-200/50 dark:border-amber-700/30 bg-gradient-to-br from-amber-50/80 via-amber-50/30 to-transparent dark:from-amber-950/20 p-5 hover:border-amber-300/60 transition-all shadow-card hover:shadow-card-hover hover:-translate-y-0.5"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                  <Zap className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                {reviewedCount != null && reviewedCount > 0 && (
+                  <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2.5 py-0.5 text-xs font-medium">
+                    {reviewedCount} Karten
+                  </span>
+                )}
+              </div>
+              <p className="font-semibold text-foreground">Drill</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Ohne Zeitdruck üben</p>
+            </Link>
+          </div>
+
+          {/* Secondary actions */}
+          <div className="grid grid-cols-3 gap-3">
+            <button
+              onClick={() => setActiveTab('review')}
+              className="group rounded-xl border border-border/50 bg-card p-4 text-left hover:border-primary/30 hover:bg-primary/5 transition-all shadow-card hover:-translate-y-0.5"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted mb-3 group-hover:bg-primary/10 transition-colors">
+                <BookOpen className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+              <p className="text-sm font-medium">Review</p>
+              {neuCount != null && (
+                <p className="text-xs text-muted-foreground mt-0.5">{neuCount} neu</p>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('generieren')}
+              className="group rounded-xl border border-border/50 bg-card p-4 text-left hover:border-violet-300/50 hover:bg-violet-50/50 dark:hover:bg-violet-950/20 transition-all shadow-card hover:-translate-y-0.5"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted mb-3 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30 transition-colors">
+                <Sparkles className="h-4 w-4 text-muted-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors" />
+              </div>
+              <p className="text-sm font-medium">Generieren</p>
+              <p className="text-xs text-muted-foreground mt-0.5">PDF → Karten</p>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('erstellen')}
+              className="group rounded-xl border border-border/50 bg-card p-4 text-left hover:border-emerald-300/50 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-all shadow-card hover:-translate-y-0.5"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted mb-3 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/30 transition-colors">
+                <PenLine className="h-4 w-4 text-muted-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
+              </div>
+              <p className="text-sm font-medium">Erstellen</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Manuell</p>
+            </button>
+          </div>
+
+          {/* Alle Karten link */}
+          <button
+            onClick={() => setActiveTab('alle')}
+            className="group flex w-full items-center justify-between rounded-xl border border-border/50 bg-card px-4 py-3 hover:border-primary/20 hover:bg-muted/30 transition-all shadow-card"
+          >
+            <div className="flex items-center gap-3">
+              <List className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Alle Karten durchsuchen</span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
+          </button>
+        </TabsContent>
+
         {/* ── Tab: Generieren ── */}
         <TabsContent value="generieren" className="mt-6 max-w-lg space-y-5">
+          <button onClick={() => setActiveTab('uebersicht')} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-1">
+            <ArrowLeft className="h-3 w-3" />Übersicht
+          </button>
           {/* PDF Upload */}
           <div className="space-y-2">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">PDF hochladen</Label>
@@ -571,7 +668,10 @@ export default function ThemaPage({ params }: Props) {
         </TabsContent>
 
         {/* ── Tab: Review ── */}
-        <TabsContent value="review" className="mt-6 max-w-2xl">
+        <TabsContent value="review" className="mt-6 max-w-2xl space-y-4">
+          <button onClick={() => setActiveTab('uebersicht')} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="h-3 w-3" />Übersicht
+          </button>
           {reviewLoading ? (
             <div className="flex items-center gap-2.5 text-muted-foreground py-12">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -629,6 +729,9 @@ export default function ThemaPage({ params }: Props) {
 
         {/* ── Tab: Alle Karten ── */}
         <TabsContent value="alle" className="mt-6 max-w-2xl space-y-4">
+          <button onClick={() => setActiveTab('uebersicht')} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="h-3 w-3" />Übersicht
+          </button>
           <div className="flex items-center gap-3">
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setAlleKartenPage(1) }}>
               <SelectTrigger className="w-44 h-9">
@@ -728,6 +831,9 @@ export default function ThemaPage({ params }: Props) {
 
         {/* ── Tab: Erstellen ── */}
         <TabsContent value="erstellen" className="mt-6 max-w-lg space-y-5">
+          <button onClick={() => setActiveTab('uebersicht')} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="h-3 w-3" />Übersicht
+          </button>
           <div className="space-y-1">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Karte manuell erstellen</p>
             <p className="text-sm text-muted-foreground">Karte wird direkt als &bdquo;Überprüft&ldquo; ins Deck übernommen.</p>

@@ -1,13 +1,32 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Sidebar } from '@/components/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Menu } from 'lucide-react'
 
+const DEFAULT_WIDTH = 256
+const MIN_WIDTH = 180
+const MAX_WIDTH = 400
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_WIDTH)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('sidebar-width')
+    if (saved) {
+      const w = Number(saved)
+      if (w >= MIN_WIDTH && w <= MAX_WIDTH) setSidebarWidth(w)
+    }
+  }, [])
+
+  function handleWidthChange(w: number) {
+    const clamped = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, w))
+    setSidebarWidth(clamped)
+    localStorage.setItem('sidebar-width', String(clamped))
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -19,7 +38,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        width={sidebarWidth}
+        onWidthChange={handleWidthChange}
+      />
 
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <header className="flex h-14 shrink-0 items-center border-b border-border/50 bg-card/60 px-4 backdrop-blur-sm">
