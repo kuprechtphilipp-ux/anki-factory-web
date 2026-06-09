@@ -135,7 +135,7 @@ Berücksichtige diese Präferenzen — aber überschreibe sie nicht wenn der Inh
 
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
+      max_tokens: 3500,
       system: systemPrompt,
       messages: [
         {
@@ -156,7 +156,11 @@ Berücksichtige diese Präferenzen — aber überschreibe sie nicht wenn der Inh
 
     const raw = (message.content[0] as { type: 'text'; text: string }).text
     const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
-    const result = JSON.parse(cleaned)
+    // Find the outermost JSON object to handle trailing text or truncation artifacts
+    const jsonStart = cleaned.indexOf('{')
+    const jsonEnd = cleaned.lastIndexOf('}')
+    if (jsonStart === -1 || jsonEnd === -1) throw new Error('Kein JSON-Objekt in der Antwort gefunden')
+    const result = JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1))
 
     return NextResponse.json({
       ...result,

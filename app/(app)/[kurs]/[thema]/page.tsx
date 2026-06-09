@@ -1388,94 +1388,99 @@ export default function ThemaPage({ params }: Props) {
             </div>
           )}
 
-          {/* ── Default state: Settings + action buttons ── */}
+          {/* ── Default state: Primary action + optional settings ── */}
           {scanStep === 'idle' && !generating && (
             <>
-              {/* Settings */}
-              <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/50 border border-border/50">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kartentyp-Mix</Label>
-                    <span className="text-xs font-semibold tabular-nums text-primary">{clozeMix}% Cloze</span>
-                  </div>
-                  <div className="pt-2">
-                    <Slider value={[clozeMix]} onValueChange={([v]) => setClozeMix(v)} min={10} max={90} step={10} className="w-full" />
-                  </div>
-                  <div className="flex justify-between text-[10px] text-muted-foreground/50 font-medium">
-                    <span>Lückentext</span>
-                    <span>Frage/Antwort</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Max. Karten</Label>
-                    <span className="text-sm font-semibold tabular-nums text-primary">{batchSize}</span>
-                  </div>
-                  <div className="pt-2">
-                    <Slider value={[batchSize]} onValueChange={([v]) => setBatchSize(v)} min={5} max={50} step={5} className="w-full" />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">Zielanzahl Flashcards</p>
-                </div>
-                {pdfFile && (
-                  <>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Von Seite</Label>
-                      <Input type="number" min={1} placeholder="1" value={pageFrom} onChange={(e) => setPageFrom(e.target.value)} className="h-9 bg-card" />
+              {/* Primary CTA: Analysieren */}
+              <Button
+                onClick={handlePrescan}
+                disabled={!pdfFile}
+                className="w-full h-11 gap-2 bg-violet-600 hover:bg-violet-700 text-white shadow-sm disabled:opacity-40"
+              >
+                <ScanSearch className="h-4 w-4" />
+                Analysieren &amp; Strategie erstellen
+              </Button>
+
+              {/* Secondary: Direkt starten with hidden settings */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => setSettingsExpanded(v => !v)}
+                  disabled={!pdfFile}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {settingsExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  Direkt starten ohne Analyse
+                </button>
+
+                {settingsExpanded && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/50 border border-border/50">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kartentyp-Mix</Label>
+                          <span className="text-xs font-semibold tabular-nums text-primary">{clozeMix}% Cloze</span>
+                        </div>
+                        <div className="pt-2">
+                          <Slider value={[clozeMix]} onValueChange={([v]) => setClozeMix(v)} min={10} max={90} step={10} className="w-full" />
+                        </div>
+                        <div className="flex justify-between text-[10px] text-muted-foreground/50 font-medium">
+                          <span>Lückentext</span>
+                          <span>Frage/Antwort</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Max. Karten</Label>
+                          <span className="text-sm font-semibold tabular-nums text-primary">{batchSize}</span>
+                        </div>
+                        <div className="pt-2">
+                          <Slider value={[batchSize]} onValueChange={([v]) => setBatchSize(v)} min={5} max={50} step={5} className="w-full" />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">Zielanzahl Flashcards</p>
+                      </div>
+                      {pdfFile && (
+                        <>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Von Seite</Label>
+                            <Input type="number" min={1} placeholder="1" value={pageFrom} onChange={(e) => setPageFrom(e.target.value)} className="h-9 bg-card" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bis Seite</Label>
+                            <Input type="number" min={1} placeholder="Ende" value={pageTo} onChange={(e) => setPageTo(e.target.value)} className="h-9 bg-card" />
+                          </div>
+                        </>
+                      )}
+                      <div className="col-span-2 flex items-center justify-between pt-1">
+                        <div className="flex items-center gap-2">
+                          <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Vision-Modus</span>
+                        </div>
+                        <button
+                          onClick={() => setVisionMode(v => !v)}
+                          className={`relative h-5 w-9 rounded-full transition-colors ${visionMode ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                          aria-label="Vision-Modus umschalten"
+                        >
+                          <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${visionMode ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
+                      {visionMode && (
+                        <div className="col-span-2 flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 px-3 py-2">
+                          <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                          <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">Analysiert auch Grafiken & Diagramme. Bei komplexen Abbildungen können Batches mit mehr als 20 Seiten das 60-Sekunden-Limit überschreiten.</p>
+                        </div>
+                      )}
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bis Seite</Label>
-                      <Input type="number" min={1} placeholder="Ende" value={pageTo} onChange={(e) => setPageTo(e.target.value)} className="h-9 bg-card" />
-                    </div>
-                  </>
+                    <Button
+                      onClick={() => handleGenerieren()}
+                      disabled={!pdfFile}
+                      className="w-full h-10 gap-2 shadow-sm"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      Direkt starten
+                    </Button>
+                  </div>
                 )}
               </div>
-
-              {/* Vision mode toggle */}
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Vision-Modus</span>
-                </div>
-                <button
-                  onClick={() => setVisionMode(v => !v)}
-                  className={`relative h-5 w-9 rounded-full transition-colors ${visionMode ? 'bg-primary' : 'bg-muted-foreground/30'}`}
-                  aria-label="Vision-Modus umschalten"
-                >
-                  <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${visionMode ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                </button>
-              </div>
-              {visionMode && (
-                <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 px-3 py-2.5">
-                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                  <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">Analysiert auch Grafiken & Diagramme. Bei komplexen Abbildungen können Batches mit mehr als 20 Seiten das 60-Sekunden-Limit überschreiten.</p>
-                </div>
-              )}
-
-              {/* Action buttons */}
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  onClick={handlePrescan}
-                  disabled={!pdfFile}
-                  variant="outline"
-                  className="h-10 gap-2 border-violet-200/70 dark:border-violet-800/40 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/20 hover:border-violet-300 dark:hover:border-violet-700 disabled:opacity-40"
-                >
-                  <ScanSearch className="h-4 w-4" />
-                  Analysieren
-                </Button>
-                <Button
-                  onClick={() => handleGenerieren()}
-                  disabled={!pdfFile}
-                  className="h-10 gap-2 shadow-sm"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Direkt starten
-                </Button>
-              </div>
-              {pdfFile && (
-                <p className="text-[11px] text-center text-muted-foreground -mt-2">
-                  Analysieren empfiehlt optimale Einstellungen · Direkt starten nutzt aktuelle Einstellungen
-                </p>
-              )}
             </>
           )}
 
