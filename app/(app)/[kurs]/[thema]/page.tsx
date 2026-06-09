@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, X, Plus, PenLine, ChevronLeft, ChevronRight, ArrowLeft, List, ScanSearch, Wand2, ChevronDown, ChevronUp, Layers, AlertTriangle, Eye } from 'lucide-react'
 import Link from 'next/link'
 import { FeedbackModal } from '@/components/feedback-modal'
+import { FactoryLoader } from '@/components/factory-loader'
 import type { Karte, KartTyp, PrescanResult, PrescanBatch } from '@/lib/types'
 
 const PAGE_SIZE = 20
@@ -72,7 +73,6 @@ export default function ThemaPage({ params }: Props) {
   const [autoBatchRunning, setAutoBatchRunning] = useState(false)
   const [autoBatchCurrent, setAutoBatchCurrent] = useState(0)
   const [autoBatchTotal, setAutoBatchTotal] = useState(0)
-  const [autoBatchTotalCount, setAutoBatchTotalCount] = useState(0)
 
   const [visionMode, setVisionMode] = useState(false)
   const [completedBatches, setCompletedBatches] = useState<Set<number>>(() => new Set<number>())
@@ -207,7 +207,6 @@ export default function ThemaPage({ params }: Props) {
     const batches = scanResult.batches
     setAutoBatchRunning(true)
     setAutoBatchTotal(batches.length)
-    setAutoBatchTotalCount(0)
     let totalCount = 0
     try {
       const prescanTotal = scanResult.empfehlung.kartenmenge
@@ -230,7 +229,6 @@ export default function ThemaPage({ params }: Props) {
         const count = await runGenerieren(String(batch.von), String(batch.bis), adjustedBatchCards, activeConcepts)
         if (count === null) return
         totalCount += count
-        setAutoBatchTotalCount(totalCount)
         if (batches.length > 1) toast.success(`Batch ${i + 1}/${batches.length}: ${count} Karten gespeichert`)
       }
       setLastGenCount(totalCount)
@@ -947,59 +945,16 @@ export default function ThemaPage({ params }: Props) {
               {/* Batch CTA buttons or single generate */}
               <div className="px-5 pb-5 space-y-2">
                 {scanResult.batches.length > 0 ? (
-                  <>
-                    {/* Individual batch progress */}
-                    {generating && !autoBatchRunning && activeBatchIdx !== null && (
-                      <div className="rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-violet-50/60 dark:bg-violet-950/20 px-4 py-3 space-y-2 animate-fade-in">
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2 text-violet-700 dark:text-violet-300 font-medium">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            {scanResult.batches[activeBatchIdx]?.label ?? `Batch ${activeBatchIdx + 1}`}
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            S.{scanResult.batches[activeBatchIdx]?.von}–{scanResult.batches[activeBatchIdx]?.bis}
-                          </span>
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-violet-200/50 dark:bg-violet-900/30">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-violet-500 to-violet-400 transition-all duration-700"
-                            style={{ width: `${genProgress}%` }}
-                          />
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">
-                          {(() => {
-                            const batch = scanResult.batches[activeBatchIdx]
-                            const prescanTotal = scanResult.empfehlung.kartenmenge
-                            const ratio = prescanTotal > 0 ? batch.karten / prescanTotal : 1 / scanResult.batches.length
-                            return `Ziel: ~${Math.max(1, Math.round(batchSize * ratio))} Karten für diesen Abschnitt`
-                          })()}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Auto-run progress */}
-                    {autoBatchRunning && (
-                      <div className="rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-violet-50/60 dark:bg-violet-950/20 px-4 py-3 space-y-2 animate-fade-in">
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2 text-violet-700 dark:text-violet-300 font-medium">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            Batch {autoBatchCurrent} / {autoBatchTotal}
-                          </div>
-                          {autoBatchTotalCount > 0 && (
-                            <span className="text-xs text-muted-foreground">{autoBatchTotalCount} Karten bisher</span>
-                          )}
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-violet-200/50 dark:bg-violet-900/30">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-violet-500 to-violet-400 transition-all duration-500"
-                            style={{ width: `${((autoBatchCurrent - 1) / autoBatchTotal) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* All-at-once button */}
-                    {!autoBatchRunning && !generating && (
+                  (generating || autoBatchRunning) ? (
+                    <FactoryLoader
+                      progress={genProgress}
+                      isAutoBatch={autoBatchRunning}
+                      currentBatch={autoBatchRunning ? autoBatchCurrent : (activeBatchIdx !== null ? activeBatchIdx + 1 : 1)}
+                      totalBatches={autoBatchTotal}
+                    />
+                  ) : (
+                    <>
+                      {/* All-at-once button */}
                       <Button
                         onClick={handleAlleGenerieren}
                         className="w-full h-10 gap-2 bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
@@ -1007,104 +962,104 @@ export default function ThemaPage({ params }: Props) {
                         <Sparkles className="h-4 w-4" />
                         Ausgewählte Batches generieren
                       </Button>
-                    )}
 
-                    {/* Divider */}
-                    <div className="flex items-center gap-2 py-1">
-                      <div className="flex-1 h-px bg-border/50" />
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">oder einzeln</span>
-                      <div className="flex-1 h-px bg-border/50" />
-                    </div>
+                      {/* Divider */}
+                      <div className="flex items-center gap-2 py-1">
+                        <div className="flex-1 h-px bg-border/50" />
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">oder einzeln</span>
+                        <div className="flex-1 h-px bg-border/50" />
+                      </div>
 
-                    {/* Individual batch cards with key concepts checklist */}
-                    <div className="space-y-3 pt-1">
-                      {scanResult.batches.map((batch, idx) => {
-                        const isActive = activeBatchIdx === idx
-                        const isDone = completedBatches.has(idx) || (autoBatchRunning && idx < autoBatchCurrent - 1)
-                        const isRunning = (generating || autoBatchRunning) && isActive
-                        
-                        const concepts = batch.schluesselkonzepte ?? []
-                        const activeConcepts = concepts.filter((_, cIdx) => selectedConcepts[`${idx}_${cIdx}`] !== false)
-                        const isBatchSelected = activeConcepts.length > 0
+                      {/* Individual batch cards with key concepts checklist */}
+                      <div className="space-y-3 pt-1">
+                        {scanResult.batches.map((batch, idx) => {
+                          const isActive = activeBatchIdx === idx
+                          const isDone = completedBatches.has(idx) || (autoBatchRunning && idx < autoBatchCurrent - 1)
+                          const isRunning = (generating || autoBatchRunning) && isActive
+                          
+                          const concepts = batch.schluesselkonzepte ?? []
+                          const activeConcepts = concepts.filter((_, cIdx) => selectedConcepts[`${idx}_${cIdx}`] !== false)
+                          const isBatchSelected = activeConcepts.length > 0
 
-                        // Calculate adjusted count
-                        const prescanTotal = scanResult.empfehlung.kartenmenge
-                        const baseRatio = prescanTotal > 0 ? batch.karten / prescanTotal : 1 / scanResult.batches.length
-                        const baseBatchCards = Math.max(1, Math.round(batchSize * baseRatio))
-                        const adjustedBatchCards = activeConcepts.length === 0 ? 0 : Math.max(1, Math.round(baseBatchCards * (activeConcepts.length / concepts.length)))
+                          // Calculate adjusted count
+                          const prescanTotal = scanResult.empfehlung.kartenmenge
+                          const baseRatio = prescanTotal > 0 ? batch.karten / prescanTotal : 1 / scanResult.batches.length
+                          const baseBatchCards = Math.max(1, Math.round(batchSize * baseRatio))
+                          const adjustedBatchCards = activeConcepts.length === 0 ? 0 : Math.max(1, Math.round(baseBatchCards * (activeConcepts.length / concepts.length)))
 
-                        return (
-                          <div
-                            key={idx}
-                            className={`rounded-xl border border-violet-100 dark:border-violet-900/50 bg-card/60 p-4 transition-all ${
-                              isBatchSelected ? 'opacity-100 shadow-sm' : 'opacity-50 bg-muted/20'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-3 mb-2.5">
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                {isRunning ? (
-                                  <Loader2 className="h-4 w-4 animate-spin text-violet-600 shrink-0" />
-                                ) : isDone ? (
-                                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0">✓</span>
-                                ) : (
-                                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-[10px] font-bold text-violet-700 dark:text-violet-300 shrink-0">{idx + 1}</span>
-                                )}
-                                <div className="text-left min-w-0">
-                                  <p className="text-sm font-semibold truncate text-foreground">{batch.label}</p>
-                                  <p className="text-xs text-muted-foreground">Seiten {batch.von}–{batch.bis}</p>
+                          return (
+                            <div
+                              key={idx}
+                              className={`rounded-xl border border-violet-100 dark:border-violet-900/50 bg-card/60 p-4 transition-all ${
+                                isBatchSelected ? 'opacity-100 shadow-sm' : 'opacity-50 bg-muted/20'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-3 mb-2.5">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  {isRunning ? (
+                                    <Loader2 className="h-4 w-4 animate-spin text-violet-600 shrink-0" />
+                                  ) : isDone ? (
+                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0">✓</span>
+                                  ) : (
+                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-[10px] font-bold text-violet-700 dark:text-violet-300 shrink-0">{idx + 1}</span>
+                                  )}
+                                  <div className="text-left min-w-0">
+                                    <p className="text-sm font-semibold truncate text-foreground">{batch.label}</p>
+                                    <p className="text-xs text-muted-foreground">Seiten {batch.von}–{batch.bis}</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-semibold tabular-nums px-2.5 py-0.5 rounded-full bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-100/50 dark:border-violet-900/50">
+                                    {adjustedBatchCards} {adjustedBatchCards === 1 ? 'Karte' : 'Karten'}
+                                  </span>
+
+                                  {!autoBatchRunning && !generating && !isDone && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handlePrescanBatchStart(batch, idx)}
+                                      disabled={!isBatchSelected}
+                                      variant="ghost"
+                                      className="h-7 px-2.5 text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/20"
+                                    >
+                                      Generieren
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-semibold tabular-nums px-2.5 py-0.5 rounded-full bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-100/50 dark:border-violet-900/50">
-                                  {adjustedBatchCards} {adjustedBatchCards === 1 ? 'Karte' : 'Karten'}
-                                </span>
-
-                                {!autoBatchRunning && !generating && !isDone && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handlePrescanBatchStart(batch, idx)}
-                                    disabled={!isBatchSelected}
-                                    variant="ghost"
-                                    className="h-7 px-2.5 text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/20"
-                                  >
-                                    Generieren
-                                  </Button>
-                                )}
-                              </div>
+                              {/* Checklist of key concepts */}
+                              {concepts.length > 0 && (
+                                <div className="pl-6 space-y-1.5 border-l border-violet-100/50 dark:border-violet-900/30 ml-2.5">
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50 mb-1">Schlüsselkonzepte:</p>
+                                  {concepts.map((concept, cIdx) => {
+                                    const isChecked = selectedConcepts[`${idx}_${cIdx}`] !== false
+                                    return (
+                                      <label
+                                        key={cIdx}
+                                        className="flex items-start gap-2 text-xs cursor-pointer select-none py-0.5 hover:text-foreground transition-colors text-muted-foreground"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={() => !autoBatchRunning && !generating && !isDone && toggleConcept(idx, cIdx)}
+                                          disabled={autoBatchRunning || generating || isDone}
+                                          className="mt-0.5 rounded border-violet-200 dark:border-violet-800 text-violet-600 focus:ring-violet-500 h-3.5 w-3.5 accent-violet-600 cursor-pointer disabled:cursor-not-allowed"
+                                        />
+                                        <span className={isChecked ? 'text-foreground font-medium' : 'line-through text-muted-foreground/40'}>
+                                          {concept}
+                                        </span>
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              )}
                             </div>
-
-                            {/* Checklist of key concepts */}
-                            {concepts.length > 0 && (
-                              <div className="pl-6 space-y-1.5 border-l border-violet-100/50 dark:border-violet-900/30 ml-2.5">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50 mb-1">Schlüsselkonzepte:</p>
-                                {concepts.map((concept, cIdx) => {
-                                  const isChecked = selectedConcepts[`${idx}_${cIdx}`] !== false
-                                  return (
-                                    <label
-                                      key={cIdx}
-                                      className="flex items-start gap-2 text-xs cursor-pointer select-none py-0.5 hover:text-foreground transition-colors text-muted-foreground"
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={isChecked}
-                                        onChange={() => !autoBatchRunning && !generating && !isDone && toggleConcept(idx, cIdx)}
-                                        disabled={autoBatchRunning || generating || isDone}
-                                        className="mt-0.5 rounded border-violet-200 dark:border-violet-800 text-violet-600 focus:ring-violet-500 h-3.5 w-3.5 accent-violet-600 cursor-pointer disabled:cursor-not-allowed"
-                                      />
-                                      <span className={isChecked ? 'text-foreground font-medium' : 'line-through text-muted-foreground/40'}>
-                                        {concept}
-                                      </span>
-                                    </label>
-                                  )
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )
                 ) : (
                   <Button
                     onClick={() => handleGenerieren()}
@@ -1112,7 +1067,7 @@ export default function ThemaPage({ params }: Props) {
                     className="w-full h-10 gap-2 bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
                   >
                     {generating ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" />Generiere...</>
+                      <><Loader2 className="h-4 w-4 animate-spin text-white" />Generiere...</>
                     ) : (
                       <><Sparkles className="h-4 w-4" />Jetzt generieren</>
                     )}
@@ -1215,18 +1170,7 @@ export default function ThemaPage({ params }: Props) {
 
           {/* ── Progress bar (during generation, only when no prescan UI is shown) ── */}
           {generating && scanStep !== 'result' && (
-            <div className="space-y-2 rounded-xl bg-primary/5 border border-primary/20 px-4 py-3 animate-fade-in">
-              <div className="flex items-center gap-2 text-sm text-primary">
-                <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-                <span>Generiere Flashcards mit Claude AI...</span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-primary/20">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-primary to-violet-400 transition-all duration-700"
-                  style={{ width: `${genProgress}%` }}
-                />
-              </div>
-            </div>
+            <FactoryLoader progress={genProgress} />
           )}
 
           {/* ── Success ── */}
@@ -1360,7 +1304,7 @@ export default function ThemaPage({ params }: Props) {
                 <SelectItem value="exportiert">Exportiert</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={priorityFilter} onValueChange={(v: any) => { setPriorityFilter(v); setAlleKartenPage(1) }}>
+            <Select value={priorityFilter} onValueChange={(v) => { setPriorityFilter(v as 'alle' | 'core' | 'detail' | 'fokus'); setAlleKartenPage(1) }}>
               <SelectTrigger className="w-36 h-9 shrink-0">
                 <SelectValue />
               </SelectTrigger>
