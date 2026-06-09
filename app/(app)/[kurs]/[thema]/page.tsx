@@ -12,7 +12,7 @@ import { ReviewCard } from '@/components/review-card'
 import { KarteListItem } from '@/components/karte-list-item'
 import { toast } from 'sonner'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, X, Plus, PenLine, ChevronLeft, ChevronRight, ArrowLeft, List, ScanSearch, Wand2, ChevronDown, ChevronUp, Layers, AlertTriangle } from 'lucide-react'
+import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, X, Plus, PenLine, ChevronLeft, ChevronRight, ArrowLeft, List, ScanSearch, Wand2, ChevronDown, ChevronUp, Layers, AlertTriangle, Eye } from 'lucide-react'
 import Link from 'next/link'
 import { FeedbackModal } from '@/components/feedback-modal'
 import type { Karte, KartTyp, PrescanResult, PrescanBatch } from '@/lib/types'
@@ -74,6 +74,9 @@ export default function ThemaPage({ params }: Props) {
   const [autoBatchCurrent, setAutoBatchCurrent] = useState(0)
   const [autoBatchTotal, setAutoBatchTotal] = useState(0)
   const [autoBatchTotalCount, setAutoBatchTotalCount] = useState(0)
+
+  const [visionMode, setVisionMode] = useState(false)
+  const [completedBatches, setCompletedBatches] = useState<Set<number>>(() => new Set<number>())
 
   // Feedback modal state
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -168,10 +171,9 @@ export default function ThemaPage({ params }: Props) {
     }
   }
 
-  function handlePrescanBatchStart(batch: PrescanBatch) {
-    const idx = scanResult?.batches.findIndex(b => b.von === batch.von) ?? null
+  function handlePrescanBatchStart(batch: PrescanBatch, idx: number) {
     setActiveBatchIdx(idx)
-    handleGenerieren(String(batch.von), String(batch.bis))
+    handleGenerieren(String(batch.von), String(batch.bis), true, idx)
   }
 
   async function handleAlleGenerieren() {
@@ -215,6 +217,7 @@ export default function ThemaPage({ params }: Props) {
     setAutoBatchRunning(false)
     setAutoBatchCurrent(0)
     setAutoBatchTotal(0)
+    setCompletedBatches(new Set<number>())
   }
 
   // Core generation logic — returns card count or null on error, throws on network/timeout
@@ -227,6 +230,7 @@ export default function ThemaPage({ params }: Props) {
     form.append('thema_id', String(themaId))
     form.append('lod', lod)
     form.append('batch_size', String(batchSize))
+    form.append('vision', visionMode ? 'true' : 'false')
     if (from) form.append('page_from', from)
     if (to) form.append('page_to', to)
 
@@ -262,7 +266,7 @@ export default function ThemaPage({ params }: Props) {
     return count
   }
 
-  async function handleGenerieren(overrideFrom?: string, overrideTo?: string) {
+  async function handleGenerieren(overrideFrom?: string, overrideTo?: string, isPrescanBatch = false, batchIdx?: number) {
     if (!pdfFile || themaId == null) return
     const from = overrideFrom ?? pageFrom
     const to = overrideTo ?? pageTo
@@ -278,10 +282,20 @@ export default function ThemaPage({ params }: Props) {
       setGenProgress(100)
       setLastGenCount(count)
       setLastGenLod(lod)
-      setPdfFile(null)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-      resetPrescan()
-      toast.success(`${count} Karten generiert und gespeichert`)
+
+      if (isPrescanBatch) {
+        // Keep PDF + scan result alive for remaining batches
+        if (batchIdx !== undefined) {
+          setCompletedBatches(prev => { const next = new Set(prev); next.add(batchIdx!); return next })
+        }
+        setActiveBatchIdx(null)
+        toast.success(`${count} Karten gespeichert`)
+      } else {
+        setPdfFile(null)
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        resetPrescan()
+        toast.success(`${count} Karten generiert und gespeichert`)
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unbekannter Fehler')
     } finally {
@@ -718,7 +732,7 @@ export default function ThemaPage({ params }: Props) {
           )}
 
           {/* ── Pre-Scan Result ── */}
-          {scanStep === 'result' && scanResult && !generating && (
+          {scanStep === 'result' && scanResult && (
             <div className="rounded-2xl border border-violet-200/70 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/60 to-transparent dark:from-violet-950/15 overflow-hidden animate-fade-in">
               {/* Result header */}
               <div className="px-5 pt-4 pb-3 border-b border-violet-200/40 dark:border-violet-800/30">
@@ -823,6 +837,26 @@ export default function ThemaPage({ params }: Props) {
                       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bis Seite</Label>
                       <Input type="number" min={1} placeholder="Ende" value={pageTo} onChange={(e) => setPageTo(e.target.value)} disabled={generating} className="h-9 bg-card" />
                     </div>
+                    <div className="col-span-2 flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-2">
+                        <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Vision-Modus</span>
+                      </div>
+                      <button
+                        onClick={() => setVisionMode(v => !v)}
+                        disabled={generating}
+                        className={`relative h-5 w-9 rounded-full transition-colors disabled:opacity-50 ${visionMode ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                        aria-label="Vision-Modus umschalten"
+                      >
+                        <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${visionMode ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
+                    {visionMode && (
+                      <div className="col-span-2 flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 px-3 py-2">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                        <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">Analysiert auch Grafiken & Diagramme. Bei komplexen Abbildungen können Batches mit mehr als 20 Seiten das 60-Sekunden-Limit überschreiten.</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -873,12 +907,12 @@ export default function ThemaPage({ params }: Props) {
                     {/* Individual batch buttons */}
                     {scanResult.batches.map((batch, idx) => {
                       const isActive = activeBatchIdx === idx
-                      const isDone = autoBatchRunning && idx < autoBatchCurrent - 1
+                      const isDone = completedBatches.has(idx) || (autoBatchRunning && idx < autoBatchCurrent - 1)
                       const isRunning = (generating || autoBatchRunning) && isActive
                       return (
                         <Button
                           key={idx}
-                          onClick={() => !autoBatchRunning && handlePrescanBatchStart(batch)}
+                          onClick={() => !autoBatchRunning && !generating && !isDone && handlePrescanBatchStart(batch, idx)}
                           disabled={generating || autoBatchRunning}
                           variant="outline"
                           className={`w-full h-10 gap-2.5 justify-start border-violet-200/60 dark:border-violet-800/40 hover:bg-violet-50 dark:hover:bg-violet-950/20 hover:border-violet-300 dark:hover:border-violet-700 transition-all ${
@@ -957,6 +991,27 @@ export default function ThemaPage({ params }: Props) {
                 )}
               </div>
 
+              {/* Vision mode toggle */}
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Vision-Modus</span>
+                </div>
+                <button
+                  onClick={() => setVisionMode(v => !v)}
+                  className={`relative h-5 w-9 rounded-full transition-colors ${visionMode ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                  aria-label="Vision-Modus umschalten"
+                >
+                  <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${visionMode ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+              {visionMode && (
+                <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 px-3 py-2.5">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">Analysiert auch Grafiken & Diagramme. Bei komplexen Abbildungen können Batches mit mehr als 20 Seiten das 60-Sekunden-Limit überschreiten.</p>
+                </div>
+              )}
+
               {/* Action buttons */}
               <div className="grid grid-cols-2 gap-2">
                 <Button
@@ -985,8 +1040,8 @@ export default function ThemaPage({ params }: Props) {
             </>
           )}
 
-          {/* ── Progress bar (during generation) ── */}
-          {generating && (
+          {/* ── Progress bar (during generation, only when no prescan UI is shown) ── */}
+          {generating && scanStep !== 'result' && (
             <div className="space-y-2 rounded-xl bg-primary/5 border border-primary/20 px-4 py-3 animate-fade-in">
               <div className="flex items-center gap-2 text-sm text-primary">
                 <Sparkles className="h-3.5 w-3.5 animate-pulse" />

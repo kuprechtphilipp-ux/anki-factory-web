@@ -104,27 +104,9 @@ export async function POST(req: Request) {
 
     const pageFrom = (formData.get('page_from') as string | null) || null
     const pageTo = (formData.get('page_to') as string | null) || null
+    const useVision = (formData.get('vision') as string) === 'true'
 
     const pdfBuffer = Buffer.from(await file.arrayBuffer())
-
-    // Extract text per page — avoids sending full binary PDF to Claude each batch
-    let pageTexts: string[] = []
-    try {
-      pageTexts = await extractPageTexts(pdfBuffer)
-    } catch {
-      // Fallback: extract full text if per-page extraction fails
-      const fallback = await pdf(pdfBuffer)
-      pageTexts = [fallback.text]
-    }
-
-    const totalPages = pageTexts.length
-    const fromIdx = pageFrom ? Math.max(0, parseInt(pageFrom) - 1) : 0
-    const toIdx = pageTo ? Math.min(totalPages - 1, parseInt(pageTo) - 1) : totalPages - 1
-
-    const relevantPages = pageTexts.slice(fromIdx, toIdx + 1)
-    const pageText = relevantPages
-      .map((text, i) => `--- Seite ${fromIdx + i + 1} ---\n${text.trim()}`)
-      .join('\n\n')
 
     const dynamicSystemPrompt =
       SYSTEM_PROMPT +
@@ -133,9 +115,42 @@ export async function POST(req: Request) {
 
     const batchSize = parseInt((formData.get('batch_size') as string) ?? '20') || 20
 
-    const userText = `Analysiere den folgenden Folientext (Seiten ${fromIdx + 1}–${toIdx + 1}) und erstelle ca. ${batchSize} Flashcards. Erstelle nicht mehr als ${batchSize} Karten — passe die Tiefe und Granularität an, um diese Zahl zu erreichen.\n\n${pageText}`
-
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+    let userContent: Anthropic.MessageParam['content']
+
+    if (useVision) {
+      // Vision mode: send full PDF as base64, Claude processes text + images
+      const pdfBase64 = pdfBuffer.toString('base64')
+      let userText = `Analysiere alle Folien in diesem PDF und erstelle ca. ${batchSize} Flashcards. Erstelle nicht mehr als ${batchSize} Karten — passe die Tiefe und Granularität an, um diese Zahl zu erreichen. Berücksichtige sowohl Text als auch Grafiken, Diagramme und Bilder.`
+      if (pageFrom && pageTo) userText += ` Analysiere NUR die Seiten ${pageFrom} bis ${pageTo}.`
+      else if (pageFrom) userText += ` Beginne ab Seite ${pageFrom}.`
+      else if (pageTo) userText += ` Analysiere nur bis einschließlich Seite ${pageTo}.`
+      userContent = [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } } as Anthropic.DocumentBlockParam,
+        { type: 'text', text: userText },
+      ]
+    } else {
+      // Text mode: extract text per page, send only relevant range — faster, no vision
+      let pageTexts: string[] = []
+      try {
+        pageTexts = await extractPageTexts(pdfBuffer)
+      } catch {
+        const fallback = await pdf(pdfBuffer)
+        pageTexts = [fallback.text]
+      }
+
+      const totalPages = pageTexts.length
+      const fromIdx = pageFrom ? Math.max(0, parseInt(pageFrom) - 1) : 0
+      const toIdx = pageTo ? Math.min(totalPages - 1, parseInt(pageTo) - 1) : totalPages - 1
+
+      const relevantPages = pageTexts.slice(fromIdx, toIdx + 1)
+      const pageText = relevantPages
+        .map((text, i) => `--- Seite ${fromIdx + i + 1} ---\n${text.trim()}`)
+        .join('\n\n')
+
+      userContent = `Analysiere den folgenden Folientext (Seiten ${fromIdx + 1}–${toIdx + 1}) und erstelle ca. ${batchSize} Flashcards. Erstelle nicht mehr als ${batchSize} Karten — passe die Tiefe und Granularität an, um diese Zahl zu erreichen.\n\n${pageText}`
+    }
 
     let allCards: RawCard[] = []
 
@@ -147,7 +162,7 @@ export async function POST(req: Request) {
         messages: [
           {
             role: 'user',
-            content: userText,
+            content: userContent,
           },
         ],
       })
