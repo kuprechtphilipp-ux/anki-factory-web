@@ -112,5 +112,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Fire-and-forget: log review for stats (ignore errors)
+  void supabase.from('review_log').insert({
+    karte_id: Number(params.id),
+    thema_id: karte.thema_id,
+    rating,
+    reviewed_at: now.toISOString(),
+  })
+
   return NextResponse.json({ updated: data as Karte, nextIntervals })
 }

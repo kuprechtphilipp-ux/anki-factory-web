@@ -11,9 +11,12 @@ import { Slider } from '@/components/ui/slider'
 import { ReviewCard } from '@/components/review-card'
 import { KarteListItem } from '@/components/karte-list-item'
 import { toast } from 'sonner'
-import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, X } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, X, Plus, PenLine, ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
-import type { Karte } from '@/lib/types'
+import type { Karte, KartTyp } from '@/lib/types'
+
+const PAGE_SIZE = 20
 
 interface Props {
   params: { kurs: string; thema: string }
@@ -29,7 +32,7 @@ export default function ThemaPage({ params }: Props) {
 
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
-  const [batchSize, setBatchSize] = useState(5)
+  const [batchSize, setBatchSize] = useState(20)
   const [lod, setLod] = useState('Mittel')
   const [generating, setGenerating] = useState(false)
   const [genProgress, setGenProgress] = useState(0)
@@ -49,6 +52,16 @@ export default function ThemaPage({ params }: Props) {
   const [alleLoading, setAlleLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('alle')
   const [searchQuery, setSearchQuery] = useState('')
+  const [alleKartenPage, setAlleKartenPage] = useState(1)
+
+  // Manual card creation
+  const [newTyp, setNewTyp] = useState<KartTyp>('basic')
+  const [newFrage, setNewFrage] = useState('')
+  const [newAntwort, setNewAntwort] = useState('')
+  const [newCloze, setNewCloze] = useState('')
+  const [newKontext, setNewKontext] = useState('')
+  const [newTags, setNewTags] = useState('')
+  const [creatingKarte, setCreatingKarte] = useState(false)
 
   const [dueCount, setDueCount] = useState<number | null>(null)
 
@@ -235,6 +248,36 @@ export default function ThemaPage({ params }: Props) {
     }
   }
 
+  async function handleCreateKarte() {
+    if (themaId == null) return
+    if (newTyp === 'basic' && !newFrage.trim()) { toast.error('Frage darf nicht leer sein'); return }
+    if (newTyp === 'cloze' && !newCloze.trim()) { toast.error('Lückentext darf nicht leer sein'); return }
+    setCreatingKarte(true)
+    try {
+      const tags = newTags.split(',').map(t => t.trim()).filter(Boolean)
+      const body = {
+        thema_id: themaId,
+        typ: newTyp,
+        frage: newTyp === 'basic' ? newFrage.trim() : '',
+        antwort: newTyp === 'basic' ? newAntwort.trim() : '',
+        cloze_text: newTyp === 'cloze' ? newCloze.trim() : null,
+        kontext: newKontext.trim() || null,
+        tags,
+        status: 'reviewed',
+      }
+      const res = await fetch('/api/karten', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) { toast.error('Karte konnte nicht gespeichert werden'); return }
+      toast.success('Karte erstellt und direkt ins Deck übernommen')
+      setNewFrage(''); setNewAntwort(''); setNewCloze(''); setNewKontext(''); setNewTags('')
+    } finally {
+      setCreatingKarte(false)
+    }
+  }
+
   if (loadingThema) {
     return (
       <div className="flex items-center gap-2.5 text-muted-foreground py-12">
@@ -319,6 +362,13 @@ export default function ThemaPage({ params }: Props) {
             className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
           >
             Alle Karten
+          </TabsTrigger>
+          <TabsTrigger
+            value="erstellen"
+            className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm gap-1.5"
+          >
+            <PenLine className="h-3.5 w-3.5" />
+            Erstellen
           </TabsTrigger>
         </TabsList>
 
@@ -427,19 +477,19 @@ export default function ThemaPage({ params }: Props) {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Batch-Größe</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Max. Karten</Label>
                 <span className="text-sm font-semibold tabular-nums text-primary">{batchSize}</span>
               </div>
               <div className="pt-2">
                 <Slider
                   value={[batchSize]}
                   onValueChange={([v]) => setBatchSize(v)}
-                  min={1} max={10} step={1}
+                  min={5} max={50} step={5}
                   disabled={generating}
                   className="w-full"
                 />
               </div>
-              <p className="text-[10px] text-muted-foreground">Folien pro API-Call</p>
+              <p className="text-[10px] text-muted-foreground">Zielanzahl Flashcards</p>
             </div>
 
             {pdfFile && (
@@ -580,7 +630,7 @@ export default function ThemaPage({ params }: Props) {
         {/* ── Tab: Alle Karten ── */}
         <TabsContent value="alle" className="mt-6 max-w-2xl space-y-4">
           <div className="flex items-center gap-3">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setAlleKartenPage(1) }}>
               <SelectTrigger className="w-44 h-9">
                 <SelectValue />
               </SelectTrigger>
@@ -597,28 +647,10 @@ export default function ThemaPage({ params }: Props) {
               <Input
                 placeholder="Karten durchsuchen…"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setAlleKartenPage(1) }}
                 className="h-9 pl-8"
               />
             </div>
-            {!alleLoading && (() => {
-              const count = searchQuery
-                ? alleKarten.filter((k) => {
-                    const q = searchQuery.toLowerCase()
-                    return (
-                      k.frage?.toLowerCase().includes(q) ||
-                      k.antwort?.toLowerCase().includes(q) ||
-                      k.cloze_text?.toLowerCase().includes(q) ||
-                      k.kontext?.toLowerCase().includes(q)
-                    )
-                  }).length
-                : alleKarten.length
-              return (
-                <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  {count} Karte{count !== 1 ? 'n' : ''}
-                </span>
-              )
-            })()}
           </div>
 
           {alleLoading ? (
@@ -638,18 +670,165 @@ export default function ThemaPage({ params }: Props) {
                   )
                 })
               : alleKarten
+            const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+            const page = Math.min(alleKartenPage, totalPages)
+            const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
             return filtered.length === 0 ? (
               <div className="py-12 text-center">
                 <p className="text-sm text-muted-foreground">Keine Karten gefunden.</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {filtered.map((karte) => (
-                  <KarteListItem key={karte.id} karte={karte} />
-                ))}
-              </div>
+              <>
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>{filtered.length} Karte{filtered.length !== 1 ? 'n' : ''}</span>
+                  {totalPages > 1 && (
+                    <span>Seite {page} / {totalPages}</span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {paginated.map((karte) => (
+                    <KarteListItem
+                      key={karte.id}
+                      karte={karte}
+                      onUpdate={(updated) => setAlleKarten(prev => prev.map(k => k.id === updated.id ? updated : k))}
+                      onDelete={(id) => setAlleKarten(prev => prev.filter(k => k.id !== id))}
+                    />
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1"
+                      disabled={page <= 1}
+                      onClick={() => setAlleKartenPage(p => p - 1)}
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                      Zurück
+                    </Button>
+                    <span className="text-sm text-muted-foreground tabular-nums">{page} / {totalPages}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1"
+                      disabled={page >= totalPages}
+                      onClick={() => setAlleKartenPage(p => p + 1)}
+                    >
+                      Weiter
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </>
             )
           })()}
+        </TabsContent>
+
+        {/* ── Tab: Erstellen ── */}
+        <TabsContent value="erstellen" className="mt-6 max-w-lg space-y-5">
+          <div className="space-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Karte manuell erstellen</p>
+            <p className="text-sm text-muted-foreground">Karte wird direkt als &bdquo;Überprüft&ldquo; ins Deck übernommen.</p>
+          </div>
+
+          <div className="space-y-4 p-4 rounded-xl bg-muted/50 border border-border/50">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Typ</Label>
+              <div className="flex gap-2">
+                {(['basic', 'cloze'] as KartTyp[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setNewTyp(t)}
+                    className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-all ${
+                      newTyp === t
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border text-muted-foreground hover:border-primary/40'
+                    }`}
+                  >
+                    {t === 'basic' ? 'Frage / Antwort' : 'Lückentext'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {newTyp === 'basic' ? (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Frage</Label>
+                  <Textarea
+                    value={newFrage}
+                    onChange={(e) => setNewFrage(e.target.value)}
+                    rows={3}
+                    className="resize-none bg-card"
+                    placeholder="Was ist …?"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Antwort</Label>
+                  <Textarea
+                    value={newAntwort}
+                    onChange={(e) => setNewAntwort(e.target.value)}
+                    rows={3}
+                    className="resize-none bg-card"
+                    placeholder="Antwort…"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Lückentext</Label>
+                <Textarea
+                  value={newCloze}
+                  onChange={(e) => setNewCloze(e.target.value)}
+                  rows={4}
+                  className="resize-none bg-card font-mono text-sm"
+                  placeholder={`Die Hauptstadt von {{c1::Deutschland}} ist {{c2::Berlin}}.`}
+                />
+                <p className="text-[10px] text-muted-foreground">Syntax: {`{{c1::Antwort}}`}</p>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kontext <span className="normal-case font-normal">(optional)</span></Label>
+              <Textarea
+                value={newKontext}
+                onChange={(e) => setNewKontext(e.target.value)}
+                rows={2}
+                className="resize-none bg-card"
+                placeholder="Hintergrundinformation…"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tags <span className="normal-case font-normal">(optional, kommagetrennt)</span></Label>
+              <Input
+                value={newTags}
+                onChange={(e) => setNewTags(e.target.value)}
+                className="bg-card"
+                placeholder="definition, formel, klausur"
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={handleCreateKarte}
+            disabled={creatingKarte}
+            className="w-full h-10 gap-2 shadow-sm"
+          >
+            {creatingKarte ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Speichere…
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                Karte erstellen
+              </>
+            )}
+          </Button>
         </TabsContent>
       </Tabs>
     </div>

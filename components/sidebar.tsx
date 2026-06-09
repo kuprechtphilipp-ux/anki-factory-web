@@ -11,8 +11,11 @@ import {
   ChevronRight,
   GraduationCap,
   LayoutDashboard,
+  BarChart2,
   Plus,
   Trash2,
+  Pencil,
+  Check,
   Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -48,8 +51,8 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
-  // Close mobile sidebar on navigation
   useEffect(() => { onClose?.() }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const [kurse, setKurse] = useState<KursWithThemen[]>([])
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [dueMap, setDueMap] = useState<Record<number, number>>({})
@@ -62,6 +65,12 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const [newThemaName, setNewThemaName] = useState('')
   const [savingThema, setSavingThema] = useState(false)
 
+  // Rename state
+  const [renamingKursId, setRenamingKursId] = useState<number | null>(null)
+  const [renameKursValue, setRenameKursValue] = useState('')
+  const [renamingThemaId, setRenamingThemaId] = useState<number | null>(null)
+  const [renameThemaValue, setRenameThemaValue] = useState('')
+
   async function load() {
     const { data: kursData } = await supabase.from('kurs').select('*').order('name')
     if (!kursData) return
@@ -73,15 +82,13 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
     }))
     setKurse(loaded)
 
-    // Load due counts per thema
-    const allThemenIds = themen.map((t) => t.id)
     const newDueMap: Record<number, number> = {}
     await Promise.all(
-      allThemenIds.map(async (tid) => {
+      themen.map(async (tid) => {
         try {
-          const res = await fetch(`/api/karten?thema_id=${tid}&status=reviewed&due=true`)
+          const res = await fetch(`/api/karten?thema_id=${tid.id}&status=reviewed&due=true`)
           const data = await res.json()
-          if (Array.isArray(data) && data.length > 0) newDueMap[tid] = data.length
+          if (Array.isArray(data) && data.length > 0) newDueMap[tid.id] = data.length
         } catch { /* ignore */ }
       })
     )
@@ -128,6 +135,22 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
     if (pathname.startsWith(`/${encodeURIComponent(kurs.name)}`)) router.push('/kurse')
   }
 
+  async function handleRenameKurs(kurs: KursWithThemen) {
+    const name = renameKursValue.trim()
+    if (!name || name === kurs.name) { setRenamingKursId(null); return }
+    const res = await fetch(`/api/kurse/${kurs.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    if (!res.ok) { toast.error('Umbenennen fehlgeschlagen'); return }
+    setRenamingKursId(null)
+    await load()
+    if (pathname.startsWith(`/${encodeURIComponent(kurs.name)}`)) {
+      router.push(`/${encodeURIComponent(name)}`)
+    }
+  }
+
   async function handleAddThema(kursId: number) {
     const name = newThemaName.trim()
     if (!name) return
@@ -162,10 +185,26 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
     if (pathname.startsWith(href)) router.push('/kurse')
   }
 
+  async function handleRenameThema(kurs: KursWithThemen, thema: Thema) {
+    const name = renameThemaValue.trim()
+    if (!name || name === thema.name) { setRenamingThemaId(null); return }
+    const res = await fetch(`/api/themen/${thema.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    if (!res.ok) { toast.error('Umbenennen fehlgeschlagen'); return }
+    setRenamingThemaId(null)
+    await load()
+    const oldHref = `/${encodeURIComponent(kurs.name)}/${encodeURIComponent(thema.name)}`
+    if (pathname.startsWith(oldHref)) {
+      router.push(`/${encodeURIComponent(kurs.name)}/${encodeURIComponent(name)}`)
+    }
+  }
+
   return (
     <aside className={cn(
       "flex h-screen w-64 shrink-0 flex-col border-r border-border/50 bg-card shadow-sm",
-      // Mobile: fixed overlay that slides in; Desktop: static in flow
       "fixed lg:static inset-y-0 left-0 z-50",
       "transition-transform duration-300 ease-in-out",
       !open && "-translate-x-full lg:translate-x-0"
@@ -179,7 +218,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3 px-2">
-        {/* Dashboard link */}
+        {/* Nav links */}
         <Link
           href="/kurse"
           className={cn(
@@ -191,6 +230,18 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         >
           <LayoutDashboard className="h-4 w-4 shrink-0" />
           Alle Kurse
+        </Link>
+        <Link
+          href="/statistik"
+          className={cn(
+            'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground',
+            pathname === '/statistik'
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground'
+          )}
+        >
+          <BarChart2 className="h-4 w-4 shrink-0" />
+          Statistik
         </Link>
 
         <div className="mt-4">
@@ -232,39 +283,70 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             const isOpen = expanded.has(kurs.id)
             const colorClass = hashColor(kurs.name)
             const kursActive = pathname.startsWith(`/${encodeURIComponent(kurs.name)}`)
+            const isRenamingKurs = renamingKursId === kurs.id
 
             return (
               <div key={kurs.id}>
                 <div className="group relative flex items-center">
-                  {/* Active indicator */}
                   {kursActive && (
                     <div className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-primary" />
                   )}
-                  <button
-                    onClick={() => toggleKurs(kurs.id)}
-                    className={cn(
-                      'flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent min-w-0',
-                      kursActive ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <div className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white', colorClass)}>
-                      {kurs.name.charAt(0).toUpperCase()}
+
+                  {isRenamingKurs ? (
+                    <div className="flex flex-1 items-center gap-1 px-2 py-1">
+                      <Input
+                        autoFocus
+                        value={renameKursValue}
+                        onChange={(e) => setRenameKursValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleRenameKurs(kurs)
+                          if (e.key === 'Escape') setRenamingKursId(null)
+                        }}
+                        className="h-7 text-xs flex-1"
+                      />
+                      <button
+                        onClick={() => handleRenameKurs(kurs)}
+                        className="flex h-6 w-6 items-center justify-center rounded hover:bg-accent"
+                      >
+                        <Check className="h-3 w-3 text-emerald-600" />
+                      </button>
                     </div>
-                    <span className="truncate">{kurs.name}</span>
-                    <span className="ml-auto shrink-0 text-muted-foreground">
-                      {isOpen
-                        ? <ChevronDown className="h-3 w-3" />
-                        : <ChevronRight className="h-3 w-3" />
-                      }
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => handleDeleteKurs(kurs)}
-                    className="mr-1 shrink-0 rounded p-1 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
-                    title="Kurs löschen"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+                  ) : (
+                    <button
+                      onClick={() => toggleKurs(kurs.id)}
+                      className={cn(
+                        'flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent min-w-0',
+                        kursActive ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <div className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white', colorClass)}>
+                        {kurs.name.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="truncate">{kurs.name}</span>
+                      <span className="ml-auto shrink-0 text-muted-foreground">
+                        {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                      </span>
+                    </button>
+                  )}
+
+                  {!isRenamingKurs && (
+                    <>
+                      <button
+                        onClick={() => { setRenamingKursId(kurs.id); setRenameKursValue(kurs.name) }}
+                        className="mr-0.5 shrink-0 rounded p-1 opacity-0 group-hover:opacity-100 hover:bg-accent text-muted-foreground hover:text-foreground transition-all"
+                        title="Umbenennen"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteKurs(kurs)}
+                        className="mr-1 shrink-0 rounded p-1 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
+                        title="Kurs löschen"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 {isOpen && (
@@ -273,34 +355,68 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                       const href = `/${encodeURIComponent(kurs.name)}/${encodeURIComponent(thema.name)}`
                       const isActive = pathname.startsWith(href)
                       const dueCount = dueMap[thema.id]
+                      const isRenamingThema = renamingThemaId === thema.id
 
                       return (
-                        <div key={thema.id} className="group flex items-center gap-1">
-                          <Link
-                            href={href}
-                            className={cn(
-                              'flex-1 truncate rounded-md px-2.5 py-1.5 text-sm transition-all',
-                              isActive
-                                ? 'bg-primary/10 text-primary font-medium'
-                                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                            )}
-                          >
-                            <span className="flex items-center gap-1.5">
-                              <span className="truncate">{thema.name}</span>
-                              {dueCount && dueCount > 0 && (
-                                <span className="ml-auto shrink-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
-                                  {dueCount > 9 ? '9+' : dueCount}
-                                </span>
+                        <div key={thema.id} className="group/thema flex items-center gap-1">
+                          {isRenamingThema ? (
+                            <div className="flex flex-1 items-center gap-1">
+                              <Input
+                                autoFocus
+                                value={renameThemaValue}
+                                onChange={(e) => setRenameThemaValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleRenameThema(kurs, thema)
+                                  if (e.key === 'Escape') setRenamingThemaId(null)
+                                }}
+                                className="h-7 text-xs flex-1"
+                              />
+                              <button
+                                onClick={() => handleRenameThema(kurs, thema)}
+                                className="flex h-6 w-6 items-center justify-center rounded hover:bg-accent"
+                              >
+                                <Check className="h-3 w-3 text-emerald-600" />
+                              </button>
+                            </div>
+                          ) : (
+                            <Link
+                              href={href}
+                              className={cn(
+                                'flex-1 truncate rounded-md px-2.5 py-1.5 text-sm transition-all',
+                                isActive
+                                  ? 'bg-primary/10 text-primary font-medium'
+                                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                               )}
-                            </span>
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteThema(kurs, thema)}
-                            className="shrink-0 rounded p-1 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
-                            title="Thema löschen"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
+                            >
+                              <span className="flex items-center gap-1.5">
+                                <span className="truncate">{thema.name}</span>
+                                {dueCount && dueCount > 0 && (
+                                  <span className="ml-auto shrink-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                                    {dueCount > 9 ? '9+' : dueCount}
+                                  </span>
+                                )}
+                              </span>
+                            </Link>
+                          )}
+
+                          {!isRenamingThema && (
+                            <>
+                              <button
+                                onClick={() => { setRenamingThemaId(thema.id); setRenameThemaValue(thema.name) }}
+                                className="shrink-0 rounded p-1 opacity-0 group-hover/thema:opacity-100 hover:bg-accent text-muted-foreground hover:text-foreground transition-all"
+                                title="Umbenennen"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteThema(kurs, thema)}
+                                className="shrink-0 rounded p-1 opacity-0 group-hover/thema:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
+                                title="Thema löschen"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       )
                     })}

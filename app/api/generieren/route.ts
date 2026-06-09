@@ -96,7 +96,9 @@ export async function POST(req: Request) {
       '\n\nDETAILGRAD-ANWEISUNG:\n' +
       (LOD_INSTRUCTIONS[lod] ?? LOD_INSTRUCTIONS['Mittel'])
 
-    let userText = 'Analysiere alle Folien in diesem PDF und erstelle Flashcards. Berücksichtige dabei sowohl den Text als auch alle Grafiken, Diagramme und Bilder.'
+    const batchSize = parseInt((formData.get('batch_size') as string) ?? '20') || 20
+
+    let userText = `Analysiere alle Folien in diesem PDF und erstelle ca. ${batchSize} Flashcards. Erstelle nicht mehr als ${batchSize} Karten — passe die Tiefe und Granularität an, um diese Zahl zu erreichen. Berücksichtige dabei sowohl den Text als auch alle Grafiken, Diagramme und Bilder.`
     if (pageFrom && pageTo) {
       userText += ` Analysiere NUR die Seiten ${pageFrom} bis ${pageTo}. Ignoriere alle anderen Seiten.`
     } else if (pageFrom) {

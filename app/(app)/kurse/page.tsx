@@ -4,7 +4,10 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import type { Kurs, Thema } from '@/lib/types'
-import { GraduationCap, BookOpen, Zap } from 'lucide-react'
+import { GraduationCap, BookOpen, Zap, Pencil, Trash2, Check, X } from 'lucide-react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 interface KursWithThemen extends Kurs {
   themen: Thema[]
@@ -50,47 +53,75 @@ export default function KursePage() {
   const [tableStats, setTableStats] = useState<ThemaStats[]>([])
   const [tableLoading, setTableLoading] = useState(false)
 
-  useEffect(() => {
-    async function load() {
-      const { data: kursData } = await supabase.from('kurs').select('*').order('name')
-      if (!kursData) { setLoading(false); return }
-      const { data: themenData } = await supabase.from('thema').select('*').order('name')
-      const themen = (themenData ?? []) as Thema[]
-      const withThemen = (kursData as Kurs[]).map((k) => ({
-        ...k,
-        themen: themen.filter((t) => t.kurs_id === k.id),
-      }))
-      setKurse(withThemen)
-      setLoading(false)
+  // Rename state: kursId → editing name
+  const [renamingId, setRenamingId] = useState<number | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [renameSaving, setRenameSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
-      // Load SRS stats for table
-      const allThemen = themen
-      if (allThemen.length === 0) return
-      setTableLoading(true)
-      const results = await Promise.all(
-        allThemen.map(async (t) => {
-          const kursName = (kursData as Kurs[]).find(k => k.id === t.kurs_id)?.name ?? ''
-          try {
-            const res = await fetch(`/api/karten?thema_id=${t.id}&mode=srs`)
-            const data = await res.json() as { learning: unknown[]; reviews: unknown[]; neue: unknown[]; total: number }
-            return {
-              thema: t,
-              kursName,
-              neu: data.neue?.length ?? 0,
-              lernen: data.learning?.length ?? 0,
-              faellig: data.reviews?.length ?? 0,
-              total: data.total ?? 0,
-            }
-          } catch {
-            return { thema: t, kursName, neu: 0, lernen: 0, faellig: 0, total: 0 }
-          }
-        })
-      )
-      setTableStats(results.filter(r => r.total > 0) as ThemaStats[])
-      setTableLoading(false)
+  async function loadData() {
+    const { data: kursData } = await supabase.from('kurs').select('*').order('name')
+    if (!kursData) { setLoading(false); return }
+    const { data: themenData } = await supabase.from('thema').select('*').order('name')
+    const themen = (themenData ?? []) as Thema[]
+    const withThemen = (kursData as Kurs[]).map((k) => ({
+      ...k,
+      themen: themen.filter((t) => t.kurs_id === k.id),
+    }))
+    setKurse(withThemen)
+    setLoading(false)
+
+    if (themen.length === 0) return
+    setTableLoading(true)
+    const results = await Promise.all(
+      themen.map(async (t) => {
+        const kursName = (kursData as Kurs[]).find(k => k.id === t.kurs_id)?.name ?? ''
+        try {
+          const res = await fetch(`/api/karten?thema_id=${t.id}&mode=srs`)
+          const data = await res.json() as { learning: unknown[]; reviews: unknown[]; neue: unknown[]; total: number }
+          return { thema: t, kursName, neu: data.neue?.length ?? 0, lernen: data.learning?.length ?? 0, faellig: data.reviews?.length ?? 0, total: data.total ?? 0 }
+        } catch {
+          return { thema: t, kursName, neu: 0, lernen: 0, faellig: 0, total: 0 }
+        }
+      })
+    )
+    setTableStats(results.filter(r => r.total > 0) as ThemaStats[])
+    setTableLoading(false)
+  }
+
+  useEffect(() => { loadData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleRename(kurs: KursWithThemen) {
+    const name = renameValue.trim()
+    if (!name || name === kurs.name) { setRenamingId(null); return }
+    setRenameSaving(true)
+    try {
+      const res = await fetch(`/api/kurse/${kurs.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      if (!res.ok) { toast.error('Umbenennen fehlgeschlagen'); return }
+      toast.success(`Kurs umbenannt in "${name}"`)
+      setRenamingId(null)
+      await loadData()
+    } finally {
+      setRenameSaving(false)
     }
-    load()
-  }, [])
+  }
+
+  async function handleDelete(kurs: KursWithThemen) {
+    if (!confirm(`Kurs "${kurs.name}" und alle Themen/Karten löschen?`)) return
+    setDeletingId(kurs.id)
+    try {
+      const res = await fetch(`/api/kurse/${kurs.id}`, { method: 'DELETE' })
+      if (!res.ok) { toast.error('Löschen fehlgeschlagen'); return }
+      toast.success(`Kurs "${kurs.name}" gelöscht`)
+      await loadData()
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -136,6 +167,9 @@ export default function KursePage() {
         {kurse.map((kurs) => {
           const colorIdx = hashColorIdx(kurs.name)
           const color = KURS_COLORS[colorIdx]
+          const isRenaming = renamingId === kurs.id
+          const isDeleting = deletingId === kurs.id
+
           return (
             <div
               key={kurs.id}
@@ -146,8 +180,46 @@ export default function KursePage() {
                   <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-bold text-white ${color.bg}`}>
                     {kurs.name.charAt(0).toUpperCase()}
                   </div>
-                  <div className="min-w-0 pt-0.5">
-                    <h2 className="font-semibold text-base leading-tight truncate">{kurs.name}</h2>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    {isRenaming ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          autoFocus
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleRename(kurs)
+                            if (e.key === 'Escape') setRenamingId(null)
+                          }}
+                          className="h-7 text-sm font-semibold"
+                        />
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleRename(kurs)} disabled={renameSaving}>
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setRenamingId(null)}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <h2 className="font-semibold text-base leading-tight truncate flex-1">{kurs.name}</h2>
+                        <button
+                          onClick={() => { setRenamingId(kurs.id); setRenameValue(kurs.name) }}
+                          className="opacity-0 group-hover:opacity-100 flex h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-black/10 dark:hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all"
+                          title="Umbenennen"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(kurs)}
+                          disabled={isDeleting}
+                          className="opacity-0 group-hover:opacity-100 flex h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-all"
+                          title="Kurs löschen"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {kurs.themen.length} {kurs.themen.length === 1 ? 'Thema' : 'Themen'}
                     </p>
