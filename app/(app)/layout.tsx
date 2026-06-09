@@ -85,7 +85,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">{children}</main>
+        <main
+          className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8"
+          style={{ paddingBottom: 'max(1rem, calc(1rem + env(safe-area-inset-bottom)))' }}
+        >{children}</main>
         <CommandPalette />
       </div>
     </div>

@@ -882,10 +882,10 @@ export default function ThemaPage({ params }: Props) {
             </Link>
 
             {/* Secondary modes */}
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-3 gap-2">
               <Link
                 href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/drill`}
-                className="group flex flex-col gap-2.5 rounded-xl border border-amber-200/50 dark:border-amber-700/30 bg-gradient-to-b from-amber-50/70 to-transparent dark:from-amber-950/15 p-4 hover:border-amber-300/70 transition-all shadow-card hover:-translate-y-0.5"
+                className="group flex flex-col gap-2 rounded-xl border border-amber-200/50 dark:border-amber-700/30 bg-gradient-to-b from-amber-50/70 to-transparent dark:from-amber-950/15 p-3 sm:p-4 hover:border-amber-300/70 transition-all shadow-card hover:-translate-y-0.5"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
                   <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -898,7 +898,7 @@ export default function ThemaPage({ params }: Props) {
 
               <Link
                 href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/quiz`}
-                className="group flex flex-col gap-2.5 rounded-xl border border-indigo-200/50 dark:border-indigo-700/30 bg-gradient-to-b from-indigo-50/70 to-transparent dark:from-indigo-950/15 p-4 hover:border-indigo-300/70 transition-all shadow-card hover:-translate-y-0.5"
+                className="group flex flex-col gap-2 rounded-xl border border-indigo-200/50 dark:border-indigo-700/30 bg-gradient-to-b from-indigo-50/70 to-transparent dark:from-indigo-950/15 p-3 sm:p-4 hover:border-indigo-300/70 transition-all shadow-card hover:-translate-y-0.5"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
                   <BookOpen className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
@@ -911,7 +911,7 @@ export default function ThemaPage({ params }: Props) {
 
               <Link
                 href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/schriftlich`}
-                className="group flex flex-col gap-2.5 rounded-xl border border-emerald-200/50 dark:border-emerald-700/30 bg-gradient-to-b from-emerald-50/70 to-transparent dark:from-emerald-950/15 p-4 hover:border-emerald-300/70 transition-all shadow-card hover:-translate-y-0.5"
+                className="group flex flex-col gap-2 rounded-xl border border-emerald-200/50 dark:border-emerald-700/30 bg-gradient-to-b from-emerald-50/70 to-transparent dark:from-emerald-950/15 p-3 sm:p-4 hover:border-emerald-300/70 transition-all shadow-card hover:-translate-y-0.5"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
                   <PenLine className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />

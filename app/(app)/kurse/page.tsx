@@ -305,7 +305,7 @@ export default function KursePage() {
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-4">Lernstand</p>
           <div className="rounded-xl border border-border/60 bg-card shadow-card overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[400px]">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50 bg-muted/30">
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Thema</th>

@@ -459,7 +459,7 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
       </div>
 
       {/* Priority Filter */}
-      <div className="flex items-center justify-center p-1 rounded-xl max-w-[320px] mx-auto mb-7 bg-background/60 dark:bg-muted/30 backdrop-blur-md border border-border/40 shadow-sm relative z-20">
+      <div className="flex items-center justify-center p-1 rounded-xl w-full max-w-sm mx-auto mb-7 bg-background/60 dark:bg-muted/30 backdrop-blur-md border border-border/40 shadow-sm relative z-20">
         <button
           onClick={() => setPriorityFilter('alle')}
           className={`flex items-center justify-center gap-1.5 flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${

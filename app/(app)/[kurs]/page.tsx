@@ -182,15 +182,16 @@ export default function KursDashboard({ params }: Props) {
       {/* Header */}
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">Kurs</p>
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
           <h1 className="text-[1.75rem] font-semibold tracking-tight">{kursName}</h1>
           {stats.themen.length >= 2 && (
             <Link
               href={`/${encodeURIComponent(kursName)}/lernen-gesamt`}
-              className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-all hover:border-primary/40"
+              className="self-start shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-all hover:border-primary/40"
             >
               <Brain className="h-4 w-4" />
-              Quiz aus allen Themen
+              <span className="sm:hidden">Gesamt-Lernen</span>
+              <span className="hidden sm:inline">Quiz aus allen Themen</span>
             </Link>
           )}
         </div>
