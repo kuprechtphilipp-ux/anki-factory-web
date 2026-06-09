@@ -54,20 +54,25 @@ export async function POST(req: Request) {
   }).join('\n\n')
 
   const schwierigkeitInstruktion = {
-    leicht: `- Wrong answer options should be clearly distinguishable from the correct answer and from each other`,
-    mittel: `- Wrong answer options must sound plausible and come from the same subject area`,
-    schwer: `- HARD MODE: Wrong answers must be from the exact same sub-category as the correct answer. They should differ from the correct answer by only ONE critical detail (e.g., a different number, reversed relationship, wrong direction of causality). Include common misconceptions and partial truths as distractors. A student who only superficially understood the topic should pick a wrong answer.`,
+    leicht: `DISTRACTOR RULE (Leicht): Wrong answers come from a related but clearly distinct area of the subject. A student with basic knowledge can identify them as wrong.`,
+    mittel: `DISTRACTOR RULE (Mittel): Wrong answers must sound like they could plausibly appear in a textbook or lecture on the same topic. They should use correct domain terminology. A student who has skimmed the material but not studied deeply should find all options believable.`,
+    schwer: `DISTRACTOR RULE (Schwer/Hard): Wrong answers must be from the exact same sub-category as the correct answer. Each wrong answer differs from the correct one by exactly ONE critical detail — a swapped relationship, a reversed direction of causality, a wrong number, a negation, or a subtly incorrect qualifier. Exploit common misconceptions. A student who superficially understood the topic WILL pick a wrong answer.`,
   }[schwierigkeit]
 
-  const systemPrompt = `You are a quiz generator. Create multiple-choice questions from the given flashcards.
-Rules:
-- CRITICAL: Use exactly the same language as the flashcard content. If cards are in English, write in English. If in German, write in German. Match the language precisely.
-- Exactly 4 answer options per question (A, B, C, D)
-- Exactly 1 correct answer
+  const systemPrompt = `You are an expert quiz generator. Create multiple-choice questions from the given flashcards.
+
+UNIVERSAL RULES (apply to every question regardless of difficulty):
+1. LANGUAGE: Use exactly the same language as the flashcard content. Match it precisely — do not translate.
+2. OPTION LENGTH PARITY: All 4 answer options MUST be approximately the same length and level of detail. The correct answer must NOT be noticeably longer, more complete, or better-structured than the wrong ones. If the correct answer is a long sentence, all distractors must also be long sentences of similar complexity.
+3. NO OBVIOUS FILLERS: Wrong answers must never sound absurd, trivially false, or like placeholder text. Every option must read as something a real course or textbook could plausibly state.
+4. NO GIVEAWAY PATTERNS: Never make the correct answer the only one that uses specific terminology from the card. Never use "only X", "never X", or "always X" as obviously wrong traps. The correct answer must not stand out by being the most complete or best-worded option.
+5. ANSWER COUNT: Exactly 4 options per question (A, B, C, D). Exactly 1 correct answer.
+6. QUESTION QUALITY: The question must test real understanding, not just pattern-matching to the wording of the card.
+
 ${schwierigkeitInstruktion}
-- No questions that can be trivially answered by their wording
-- Return ONLY a JSON array, no markdown, no explanations outside the JSON:
-[{"frage":"...","optionen":["A: ...","B: ...","C: ...","D: ..."],"richtig":0,"erklaerung":"Short explanation in the same language as the cards","karte_id":123}]`
+
+Return ONLY a JSON array, no markdown, no text outside the JSON:
+[{"frage":"...","optionen":["A: ...","B: ...","C: ...","D: ..."],"richtig":0,"erklaerung":"Short explanation why the correct answer is right, in the same language as the cards","karte_id":123}]`
 
   const msg = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
