@@ -1,0 +1,288 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import type { KursStatistik, KursThemaStats } from '@/lib/types'
+
+interface Props {
+  params: { kurs: string }
+}
+
+function DayLabel(dayOffset: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + dayOffset)
+  return d.toLocaleDateString('de-DE', { weekday: 'short' })
+}
+
+function ThemaCard({
+  thema,
+  kursName,
+  reviewedCount,
+}: {
+  thema: KursThemaStats
+  kursName: string
+  reviewedCount: number
+}) {
+  const retentionPct = Math.round(thema.retention * 100)
+  const total = thema.total
+  const enc = encodeURIComponent
+
+  const borderColor =
+    total === 0
+      ? 'border-l-border/40'
+      : thema.due > 0
+      ? 'border-l-primary'
+      : thema.neu > 0
+      ? 'border-l-amber-400'
+      : 'border-l-emerald-500'
+
+  const deckPct = total > 0 ? Math.round((total / Math.max(total, 50)) * 100) : 0
+
+  return (
+    <div className={`rounded-2xl border border-border/50 bg-card shadow-card border-l-4 ${borderColor} p-4 space-y-3`}>
+      <div className="flex items-start justify-between gap-2">
+        <Link
+          href={`/${enc(kursName)}/${enc(thema.name)}`}
+          className="font-semibold text-sm hover:text-primary transition-colors leading-tight"
+        >
+          {thema.name}
+        </Link>
+        {thema.due > 0 && (
+          <span className="shrink-0 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-bold">
+            {thema.due} fällig
+          </span>
+        )}
+      </div>
+
+      {total > 0 ? (
+        <>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground/60">
+              <span>{total} Karten</span>
+              {retentionPct > 0 && <span>~{retentionPct}% Retention</span>}
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
+              <div className="h-full bg-primary/60 rounded-full" style={{ width: `${Math.min(100, deckPct)}%` }} />
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Link
+              href={`/${enc(kursName)}/${enc(thema.name)}/lernen`}
+              className="inline-flex items-center gap-1 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors"
+            >
+              <Brain className="h-3 w-3" />
+              Lernen
+            </Link>
+            <Link
+              href={`/${enc(kursName)}/${enc(thema.name)}/quiz`}
+              className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-card hover:bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <BookOpen className="h-3 w-3" />
+              Quiz
+            </Link>
+            <Link
+              href={`/${enc(kursName)}/${enc(thema.name)}`}
+              className="inline-flex items-center gap-1 rounded-lg border border-violet-200/50 dark:border-violet-800/30 hover:bg-violet-50/50 dark:hover:bg-violet-950/20 px-2.5 py-1 text-xs font-medium text-violet-700 dark:text-violet-400 transition-colors"
+            >
+              <Sparkles className="h-3 w-3" />
+              Generieren
+            </Link>
+          </div>
+        </>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Noch kein Deck</p>
+          <Link
+            href={`/${enc(kursName)}/${enc(thema.name)}`}
+            className="inline-flex items-center gap-1 rounded-lg border border-violet-200/50 dark:border-violet-800/30 hover:bg-violet-50/50 dark:hover:bg-violet-950/20 px-2.5 py-1 text-xs font-medium text-violet-700 dark:text-violet-400 transition-colors"
+          >
+            <Sparkles className="h-3 w-3" />
+            Karten generieren
+          </Link>
+        </div>
+      )}
+      {/* suppress unused var warning */}
+      {reviewedCount > -1 && null}
+    </div>
+  )
+}
+
+export default function KursDashboard({ params }: Props) {
+  const kursName = decodeURIComponent(params.kurs)
+
+  const [stats, setStats] = useState<KursStatistik | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    fetch(`/api/kurs-statistik?kurs_name=${encodeURIComponent(kursName)}`)
+      .then((r) => r.json())
+      .then((data: KursStatistik) => {
+        setStats(data)
+        setLoading(false)
+      })
+      .catch(() => {
+        setError(true)
+        setLoading(false)
+      })
+  }, [kursName])
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="text-sm">Lade Kurs...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !stats) {
+    return <div className="py-12 text-destructive text-sm">Kurs &quot;{kursName}&quot; nicht gefunden.</div>
+  }
+
+  const maxBar = Math.max(...stats.due_7_tage, 1)
+  const totalKartenGesamt = stats.themen.reduce((s, t) => s + t.total + t.neu, 0)
+
+  return (
+    <div className="max-w-3xl space-y-8">
+      {/* Header */}
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">Kurs</p>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-[1.75rem] font-semibold tracking-tight">{kursName}</h1>
+          {stats.themen.length >= 2 && (
+            <Link
+              href={`/${encodeURIComponent(kursName)}/lernen-gesamt`}
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-all hover:border-primary/40"
+            >
+              <Brain className="h-4 w-4" />
+              Quiz aus allen Themen
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Combined CTA Hero */}
+      {stats.due_heute > 0 ? (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/15 via-primary/8 to-transparent border border-primary/20 p-5 shadow-card">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Kurs-Session</p>
+              <p className="text-2xl font-bold tabular-nums">
+                <span className="text-primary">{stats.due_heute}</span> Karten fällig
+              </p>
+              <p className="text-sm text-muted-foreground">Aus allen Themen dieses Kurses</p>
+            </div>
+            <Link
+              href={`/${encodeURIComponent(kursName)}/lernen-gesamt`}
+              className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2.5 text-sm font-semibold transition-colors shadow-sm"
+            >
+              <Brain className="h-4 w-4" />
+              Alle lernen
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="relative overflow-hidden rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50/60 to-transparent dark:from-emerald-950/15 p-5 shadow-card">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30 shrink-0">
+              <Zap className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <p className="font-semibold">Alles im Plan</p>
+              <p className="text-sm text-muted-foreground">
+                {totalKartenGesamt > 0
+                  ? `${totalKartenGesamt} Karten · alle Themen erledigt`
+                  : 'Noch keine Karten in diesem Kurs'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Thema Health Grid */}
+      {stats.themen.length > 0 ? (
+        <div className="space-y-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Themen</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {stats.themen.map((thema) => (
+              <ThemaCard key={thema.id} thema={thema} kursName={kursName} reviewedCount={thema.total} />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-border/60 p-8 text-center space-y-3">
+          <p className="text-sm text-muted-foreground">Noch keine Themen angelegt.</p>
+          <Button asChild variant="outline" size="sm" className="gap-1.5">
+            <Link href="/kurse">
+              <Plus className="h-3.5 w-3.5" />
+              Thema anlegen
+            </Link>
+          </Button>
+        </div>
+      )}
+
+      {/* Upcoming Reviews Chart */}
+      {stats.total_karten > 0 && (
+        <div className="space-y-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Fälligkeiten — nächste 7 Tage</p>
+          <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card">
+            <div className="flex items-end gap-2 h-24">
+              {stats.due_7_tage.map((count, i) => (
+                <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
+                  <div
+                    className="w-full rounded-t-md transition-all"
+                    style={{
+                      height: `${Math.max(4, (count / maxBar) * 72)}px`,
+                      background: count > 0
+                        ? (i === 0 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.4)')
+                        : 'hsl(var(--muted))',
+                    }}
+                    title={`${count} Karten`}
+                  />
+                  <span className="text-[9px] font-medium text-muted-foreground/60 leading-none">{DayLabel(i)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 flex items-center gap-3 text-[10px] text-muted-foreground/50">
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-primary inline-block" />Heute</span>
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-primary/40 inline-block" />Folgetage</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Generate CTA */}
+      <button
+        onClick={() => {
+          if (stats.themen.length > 0) {
+            window.location.href = `/${encodeURIComponent(kursName)}/${encodeURIComponent(stats.themen[0].name)}`
+          }
+        }}
+        className="group relative w-full overflow-hidden rounded-2xl border border-violet-200/50 dark:border-violet-800/30 p-4 text-left transition-all hover:border-violet-300/70 hover:shadow-md"
+        style={{ background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(243 75% 59% / 0.04) 50%, hsl(var(--card)) 100%)' }}
+      >
+        <div
+          className="animate-shimmer absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl"
+          style={{ background: 'linear-gradient(90deg, transparent 0%, hsl(243 75% 59% / 0.06) 50%, transparent 100%)' }}
+        />
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 shrink-0">
+              <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400 group-hover:animate-spin" style={{ animationDuration: '2s' }} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Neues Material generieren</p>
+              <p className="text-xs text-muted-foreground">PDF → Flashcards in Sekunden</p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-violet-600 group-hover:translate-x-0.5 transition-all" />
+        </div>
+      </button>
+    </div>
+  )
+}

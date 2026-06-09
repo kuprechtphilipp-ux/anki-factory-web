@@ -354,8 +354,9 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
                       </button>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => toggleKurs(kurs.id)}
+                    <Link
+                      href={`/${encodeURIComponent(kurs.name)}`}
+                      onClick={() => { if (!isOpen) toggleKurs(kurs.id) }}
                       className={cn(
                         'flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent min-w-0',
                         kursActive ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'
@@ -365,10 +366,14 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
                         {kurs.name.charAt(0).toUpperCase()}
                       </div>
                       <span className="truncate">{kurs.name}</span>
-                      <span className="ml-auto shrink-0 text-muted-foreground">
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleKurs(kurs.id) }}
+                        className="ml-auto shrink-0 rounded p-0.5 hover:bg-muted/60 text-muted-foreground transition-colors"
+                        aria-label={isOpen ? 'Kurs einklappen' : 'Kurs ausklappen'}
+                      >
                         {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                      </span>
-                    </button>
+                      </button>
+                    </Link>
                   )}
 
                   {!isRenamingKurs && (

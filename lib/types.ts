@@ -90,6 +90,36 @@ export interface PrescanResult {
   hatProfil: boolean
 }
 
+export interface QuizFrage {
+  frage: string
+  optionen: string[]
+  richtig: number
+  erklaerung: string
+  karte_id: number
+}
+
+export interface AktivitaetTag {
+  date: string
+  studied: boolean
+}
+
+export interface KursThemaStats {
+  name: string
+  id: number
+  due: number
+  total: number
+  neu: number
+  retention: number
+}
+
+export interface KursStatistik {
+  due_heute: number
+  due_7_tage: number[]
+  total_karten: number
+  avg_retention: number
+  themen: KursThemaStats[]
+}
+
 export type Database = {
   public: {
     Tables: {

@@ -2,18 +2,32 @@ import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import type { Karte, KartStatus } from '@/lib/types'
 
+async function resolveThemaIds(themaId: string | null, kursName: string | null): Promise<number[] | null> {
+  if (themaId) return [Number(themaId)]
+  if (kursName) {
+    const { data: kursRow } = await supabase.from('kurs').select('id').eq('name', kursName).single()
+    if (!kursRow) return null
+    const { data: themen } = await supabase.from('thema').select('id').eq('kurs_id', kursRow.id)
+    return (themen ?? []).map((t: { id: number }) => t.id)
+  }
+  return null
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const themaId = searchParams.get('thema_id')
+  const kursName = searchParams.get('kurs_name')
   const status = searchParams.get('status') as KartStatus | null
   const due = searchParams.get('due')
   const mode = searchParams.get('mode')
 
   if (mode === 'srs') {
     const now = new Date().toISOString()
+    const themaIds = await resolveThemaIds(themaId, kursName)
     const base = () => {
       let q = supabase.from('karte').select('*').eq('status', 'reviewed')
-      if (themaId) q = q.eq('thema_id', Number(themaId))
+      if (themaIds && themaIds.length === 1) q = q.eq('thema_id', themaIds[0])
+      else if (themaIds && themaIds.length > 1) q = q.in('thema_id', themaIds)
       return q
     }
     const [lr, rr, nr] = await Promise.all([
@@ -28,8 +42,10 @@ export async function GET(req: Request) {
   }
 
   if (mode === 'drill') {
+    const themaIds = await resolveThemaIds(themaId, kursName)
     let query = supabase.from('karte').select('*').eq('status', 'reviewed')
-    if (themaId) query = query.eq('thema_id', Number(themaId))
+    if (themaIds && themaIds.length === 1) query = query.eq('thema_id', themaIds[0])
+    else if (themaIds && themaIds.length > 1) query = query.in('thema_id', themaIds)
     const { data, error } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data as Karte[])

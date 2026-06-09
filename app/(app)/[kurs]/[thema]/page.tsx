@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,7 @@ import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, 
 import Link from 'next/link'
 import { FeedbackModal } from '@/components/feedback-modal'
 import { FactoryLoader } from '@/components/factory-loader'
-import type { Karte, KartTyp, PrescanResult, PrescanBatch } from '@/lib/types'
+import type { Karte, KartTyp, PrescanResult, PrescanBatch, AktivitaetTag } from '@/lib/types'
 
 const PAGE_SIZE = 20
 
@@ -104,6 +104,50 @@ export default function ThemaPage({ params }: Props) {
   const [dueCount, setDueCount] = useState<number | null>(null)
   const [neuCount, setNeuCount] = useState<number | null>(null)
   const [reviewedCount, setReviewedCount] = useState<number | null>(null)
+  const [reviewedCards, setReviewedCards] = useState<Karte[]>([])
+  const [aktivitaetDays, setAktivitaetDays] = useState<AktivitaetTag[]>([])
+
+  const maturity = useMemo(() => {
+    const inLearning = reviewedCards.filter(k => k.fsrs_state === 0 || k.fsrs_state === 1 || k.fsrs_state === 3).length
+    const gut = reviewedCards.filter(k => k.fsrs_state === 2 && k.fsrs_stability <= 21).length
+    const solid = reviewedCards.filter(k => k.fsrs_state === 2 && k.fsrs_stability > 21).length
+    const neu = neuCount ?? 0
+    const total = neu + reviewedCards.length
+    return { inLearning, gut, solid, neu, total }
+  }, [reviewedCards, neuCount])
+
+  const nextDueDate = useMemo(() => {
+    const future = reviewedCards
+      .filter(k => new Date(k.fsrs_due) > new Date())
+      .sort((a, b) => new Date(a.fsrs_due).getTime() - new Date(b.fsrs_due).getTime())
+    return future.length > 0 ? future[0].fsrs_due : null
+  }, [reviewedCards])
+
+  const daysSinceLastSession = useMemo(() => {
+    const lastReviews = reviewedCards
+      .filter(k => k.fsrs_last_review)
+      .map(k => new Date(k.fsrs_last_review!).getTime())
+    if (lastReviews.length === 0) return null
+    return Math.floor((Date.now() - Math.max(...lastReviews)) / 86_400_000)
+  }, [reviewedCards])
+
+  const retentionEst = useMemo(() => {
+    const eligible = reviewedCards.filter(k => k.fsrs_stability > 0 && k.fsrs_last_review)
+    if (eligible.length === 0) return null
+    const now = Date.now()
+    const sum = eligible.reduce((acc, k) => {
+      const days = (now - new Date(k.fsrs_last_review!).getTime()) / 86_400_000
+      return acc + Math.exp(-days / k.fsrs_stability)
+    }, 0)
+    return Math.round((sum / eligible.length) * 100)
+  }, [reviewedCards])
+
+  const bannerState = useMemo(() => {
+    if ((reviewedCount ?? 0) === 0 && (neuCount ?? 0) === 0) return 'D'
+    if ((dueCount ?? 0) > 0) return 'A'
+    if ((neuCount ?? 0) > 0) return 'C'
+    return 'B'
+  }, [dueCount, neuCount, reviewedCount])
 
   useEffect(() => {
     async function load() {
@@ -121,10 +165,13 @@ export default function ThemaPage({ params }: Props) {
           fetch(`/api/karten?thema_id=${tid}&status=reviewed&due=true`).then(r => r.json()),
           fetch(`/api/karten?thema_id=${tid}&status=neu`).then(r => r.json()),
           fetch(`/api/karten?thema_id=${tid}&status=reviewed`).then(r => r.json()),
-        ]).then(([due, neu, reviewed]: [Karte[], Karte[], Karte[]]) => {
+          fetch(`/api/aktivitaet?thema_id=${tid}`).then(r => r.json()),
+        ]).then(([due, neu, reviewed, akt]: [Karte[], Karte[], Karte[], { days: AktivitaetTag[] }]) => {
           setDueCount(due.length)
           setNeuCount(neu.length)
           setReviewedCount(reviewed.length)
+          setReviewedCards(reviewed)
+          setAktivitaetDays(akt.days ?? [])
         }).catch(() => {})
       }
       setLoadingThema(false)
@@ -593,116 +640,285 @@ export default function ThemaPage({ params }: Props) {
 
         {/* ── Tab: Übersicht ── */}
         <TabsContent value="uebersicht" className="mt-6 max-w-2xl space-y-5">
-          {/* Stat row */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-border/50 bg-card p-4 shadow-card">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1">Fällig heute</p>
-              <p className={`text-2xl font-bold tabular-nums ${dueCount && dueCount > 0 ? 'text-primary' : 'text-muted-foreground/40'}`}>
-                {dueCount ?? '–'}
-              </p>
+
+          {/* ── Hero Status Banner ── */}
+          {bannerState === 'A' && (
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 p-5 text-white shadow-lg">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.12),transparent_60%)]" />
+              <div className="relative flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-violet-200">Bereit zum Lernen</p>
+                  <p className="text-3xl font-bold tabular-nums">{dueCount} Karten</p>
+                  {daysSinceLastSession != null && (
+                    <p className="text-sm text-violet-200">
+                      {daysSinceLastSession === 0
+                        ? 'Heute schon gelernt — weiter so'
+                        : daysSinceLastSession === 1
+                        ? 'Letzte Session gestern'
+                        : `Letzte Session vor ${daysSinceLastSession} Tagen`}
+                    </p>
+                  )}
+                </div>
+                <Link
+                  href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}
+                  className="shrink-0 rounded-xl bg-white/20 hover:bg-white/30 px-4 py-2.5 text-sm font-semibold transition-colors backdrop-blur-sm"
+                >
+                  Jetzt lernen
+                </Link>
+              </div>
+              {aktivitaetDays.length > 0 && (
+                <div className="relative mt-4 flex items-end gap-1.5">
+                  {aktivitaetDays.map((day, i) => (
+                    <div key={i} className="flex flex-col items-center gap-1">
+                      <div className={`w-3 h-3 rounded-full transition-colors ${day.studied ? 'bg-white' : 'bg-white/25'}`} title={day.date} />
+                    </div>
+                  ))}
+                  <span className="ml-1 text-[10px] text-violet-300">7-Tage-Aktivität</span>
+                </div>
+              )}
             </div>
-            <div className="rounded-xl border border-border/50 bg-card p-4 shadow-card">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1">Im Review</p>
-              <p className={`text-2xl font-bold tabular-nums ${neuCount && neuCount > 0 ? 'text-amber-500' : 'text-muted-foreground/40'}`}>
-                {neuCount ?? '–'}
-              </p>
+          )}
+
+          {bannerState === 'B' && (
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 p-5 text-white shadow-lg">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.12),transparent_60%)]" />
+              <div className="relative space-y-1">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-emerald-200">Alles im Plan</p>
+                <p className="text-2xl font-bold">Alle Karten erledigt</p>
+                {nextDueDate && (
+                  <p className="text-sm text-emerald-200">
+                    Nächste Session{' '}
+                    <span className="font-semibold text-white">
+                      {new Date(nextDueDate).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </span>
+                  </p>
+                )}
+              </div>
+              {aktivitaetDays.length > 0 && (
+                <div className="relative mt-4 flex items-end gap-1.5">
+                  {aktivitaetDays.map((day, i) => (
+                    <div key={i} className={`w-3 h-3 rounded-full ${day.studied ? 'bg-white' : 'bg-white/25'}`} title={day.date} />
+                  ))}
+                  <span className="ml-1 text-[10px] text-emerald-300">7-Tage-Aktivität</span>
+                </div>
+              )}
             </div>
-            <div className="rounded-xl border border-border/50 bg-card p-4 shadow-card">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1">Im Deck</p>
-              <p className="text-2xl font-bold tabular-nums text-muted-foreground">
-                {reviewedCount ?? '–'}
-              </p>
+          )}
+
+          {bannerState === 'C' && (
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 p-5 text-white shadow-lg">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.12),transparent_60%)]" />
+              <div className="relative flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-100">Neue Karten</p>
+                  <p className="text-3xl font-bold tabular-nums">{neuCount} Karten</p>
+                  <p className="text-sm text-amber-100">warten auf deinen Review</p>
+                </div>
+                <button
+                  onClick={() => setActiveTab('review')}
+                  className="shrink-0 rounded-xl bg-white/20 hover:bg-white/30 px-4 py-2.5 text-sm font-semibold transition-colors backdrop-blur-sm"
+                >
+                  Zum Review
+                </button>
+              </div>
             </div>
+          )}
+
+          {bannerState === 'D' && (
+            <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-card">
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Deck leer</p>
+                <p className="text-xl font-semibold">Noch keine Karten</p>
+                <p className="text-sm text-muted-foreground">Lade ein PDF hoch und generiere deine ersten Flashcards.</p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Secondary stats chips ── */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${(dueCount ?? 0) > 0 ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground/60'}`}>
+              {dueCount ?? '–'} fällig
+            </div>
+            <div className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${(neuCount ?? 0) > 0 ? 'border-amber-300/60 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400' : 'border-border/60 text-muted-foreground/60'}`}>
+              {neuCount ?? '–'} im Review
+            </div>
+            <div className="rounded-full border border-border/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground/60">
+              {reviewedCount ?? '–'} im Deck
+            </div>
+            {retentionEst != null && (
+              <div className="rounded-full border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                ~{retentionEst}% Retention
+              </div>
+            )}
           </div>
 
-          {/* Primary actions */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* ── Deck Maturity Bar ── */}
+          {maturity.total > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Deck-Reifegrad</p>
+                <p className="text-[10px] text-muted-foreground/60 tabular-nums">{maturity.total} Karten</p>
+              </div>
+              <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted/50 gap-px">
+                {maturity.neu > 0 && (
+                  <div
+                    title={`Neu: ${maturity.neu}`}
+                    className="bg-amber-400 dark:bg-amber-500 rounded-l-full transition-all"
+                    style={{ width: `${(maturity.neu / maturity.total) * 100}%` }}
+                  />
+                )}
+                {maturity.inLearning > 0 && (
+                  <div
+                    title={`Im Lernen: ${maturity.inLearning}`}
+                    className="bg-violet-500 transition-all"
+                    style={{ width: `${(maturity.inLearning / maturity.total) * 100}%` }}
+                  />
+                )}
+                {maturity.gut > 0 && (
+                  <div
+                    title={`Gut: ${maturity.gut}`}
+                    className="bg-indigo-500 transition-all"
+                    style={{ width: `${(maturity.gut / maturity.total) * 100}%` }}
+                  />
+                )}
+                {maturity.solid > 0 && (
+                  <div
+                    title={`Gefestigt: ${maturity.solid}`}
+                    className="bg-emerald-500 rounded-r-full transition-all"
+                    style={{ width: `${(maturity.solid / maturity.total) * 100}%` }}
+                  />
+                )}
+              </div>
+              <div className="flex items-center gap-3 text-[10px] text-muted-foreground/60 flex-wrap">
+                {maturity.neu > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400 inline-block" />Neu ({maturity.neu})</span>}
+                {maturity.inLearning > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-500 inline-block" />Lernen ({maturity.inLearning})</span>}
+                {maturity.gut > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-indigo-500 inline-block" />Gut ({maturity.gut})</span>}
+                {maturity.solid > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" />Gefestigt ({maturity.solid})</span>}
+              </div>
+            </div>
+          )}
+
+          {/* ── Lernmodi ── */}
+          <div className="space-y-3">
+            {/* Hero: Lernen */}
             <Link
               href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}
-              className="group relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 hover:border-primary/40 hover:from-primary/15 transition-all shadow-card hover:shadow-card-hover hover:-translate-y-0.5"
+              className="group relative flex overflow-hidden rounded-2xl bg-gradient-to-br from-primary/15 via-primary/8 to-transparent border border-primary/20 hover:border-primary/40 hover:from-primary/20 transition-all shadow-card hover:shadow-card-hover hover:-translate-y-0.5 p-5"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 group-hover:bg-primary/25 transition-colors">
+              <div className="flex items-start gap-4 flex-1 min-w-0">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 group-hover:bg-primary/25 transition-colors">
                   <Brain className="h-5 w-5 text-primary" />
                 </div>
-                {dueCount != null && dueCount > 0 && (
-                  <span className="rounded-full bg-primary text-primary-foreground px-2.5 py-0.5 text-xs font-bold">
-                    {dueCount} fällig
-                  </span>
-                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-foreground">Lernen</p>
+                    {dueCount != null && dueCount > 0 && (
+                      <span className="rounded-full bg-primary text-primary-foreground px-2.5 py-0.5 text-xs font-bold">
+                        {dueCount} fällig heute
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">Spaced Repetition · FSRS-Algorithmus</p>
+                  {retentionEst != null && (
+                    <p className="text-xs text-muted-foreground/70 mt-1">~{retentionEst}% geschätzte Retention</p>
+                  )}
+                </div>
               </div>
-              <p className="font-semibold text-foreground">Lernen</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Spaced Repetition</p>
             </Link>
 
-            <Link
-              href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/drill`}
-              className="group relative overflow-hidden rounded-2xl border border-amber-200/50 dark:border-amber-700/30 bg-gradient-to-br from-amber-50/80 via-amber-50/30 to-transparent dark:from-amber-950/20 p-5 hover:border-amber-300/60 transition-all shadow-card hover:shadow-card-hover hover:-translate-y-0.5"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
-                  <Zap className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            {/* Secondary modes */}
+            <div className="grid grid-cols-3 gap-2.5">
+              <Link
+                href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/drill`}
+                className="group flex flex-col gap-2.5 rounded-xl border border-amber-200/50 dark:border-amber-700/30 bg-gradient-to-b from-amber-50/70 to-transparent dark:from-amber-950/15 p-4 hover:border-amber-300/70 transition-all shadow-card hover:-translate-y-0.5"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                  <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 </div>
-                {reviewedCount != null && reviewedCount > 0 && (
-                  <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2.5 py-0.5 text-xs font-medium">
-                    {reviewedCount} Karten
-                  </span>
-                )}
+                <div>
+                  <p className="text-sm font-semibold">Drill</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">Ohne Zeitdruck</p>
+                </div>
+              </Link>
+
+              <Link
+                href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/quiz`}
+                className="group flex flex-col gap-2.5 rounded-xl border border-indigo-200/50 dark:border-indigo-700/30 bg-gradient-to-b from-indigo-50/70 to-transparent dark:from-indigo-950/15 p-4 hover:border-indigo-300/70 transition-all shadow-card hover:-translate-y-0.5"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+                  <BookOpen className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Quiz</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">Multiple Choice</p>
+                </div>
+              </Link>
+
+              <div className="flex flex-col gap-2.5 rounded-xl border border-border/40 bg-muted/30 p-4 opacity-50 cursor-not-allowed select-none">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                  <Layers className="h-4 w-4 text-muted-foreground/50" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-muted-foreground">Probe</p>
+                  <p className="text-xs text-muted-foreground/60 mt-0.5 leading-snug">Bald verfügbar</p>
+                </div>
               </div>
-              <p className="font-semibold text-foreground">Drill</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Ohne Zeitdruck üben</p>
-            </Link>
+            </div>
           </div>
 
-          {/* Secondary actions */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* ── Generate Magic CTA ── */}
+          <button
+            onClick={() => setActiveTab('generieren')}
+            className="group relative w-full overflow-hidden rounded-2xl border border-violet-200/50 dark:border-violet-800/30 p-4 text-left transition-all hover:border-violet-300/70 hover:shadow-md"
+            style={{
+              background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(243 75% 59% / 0.04) 50%, hsl(var(--card)) 100%)',
+            }}
+          >
+            <div
+              className="animate-shimmer absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl"
+              style={{
+                background: 'linear-gradient(90deg, transparent 0%, hsl(243 75% 59% / 0.06) 50%, transparent 100%)',
+              }}
+            />
+            <div className="relative flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 shrink-0">
+                  <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400 group-hover:animate-spin" style={{ animationDuration: '2s' }} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Neues Material generieren</p>
+                  <p className="text-xs text-muted-foreground">PDF → Flashcards in Sekunden</p>
+                </div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-violet-600 group-hover:translate-x-0.5 transition-all" />
+            </div>
+          </button>
+
+          {/* ── Deck verwalten ── */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 w-full mb-0.5">Deck verwalten</p>
             <button
               onClick={() => setActiveTab('review')}
-              className="group rounded-xl border border-border/50 bg-card p-4 text-left hover:border-primary/30 hover:bg-primary/5 transition-all shadow-card hover:-translate-y-0.5"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground hover:bg-primary/5 transition-all shadow-sm"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted mb-3 group-hover:bg-primary/10 transition-colors">
-                <BookOpen className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-              </div>
-              <p className="text-sm font-medium">Review</p>
-              {neuCount != null && (
-                <p className="text-xs text-muted-foreground mt-0.5">{neuCount} neu</p>
-              )}
+              <BookOpen className="h-3 w-3" />
+              Review {neuCount != null && neuCount > 0 && `(${neuCount} neu)`}
             </button>
-
-            <button
-              onClick={() => setActiveTab('generieren')}
-              className="group rounded-xl border border-border/50 bg-card p-4 text-left hover:border-violet-300/50 hover:bg-violet-50/50 dark:hover:bg-violet-950/20 transition-all shadow-card hover:-translate-y-0.5"
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted mb-3 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30 transition-colors">
-                <Sparkles className="h-4 w-4 text-muted-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors" />
-              </div>
-              <p className="text-sm font-medium">Generieren</p>
-              <p className="text-xs text-muted-foreground mt-0.5">PDF → Karten</p>
-            </button>
-
             <button
               onClick={() => setActiveTab('erstellen')}
-              className="group rounded-xl border border-border/50 bg-card p-4 text-left hover:border-emerald-300/50 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-all shadow-card hover:-translate-y-0.5"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground hover:bg-primary/5 transition-all shadow-sm"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted mb-3 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/30 transition-colors">
-                <PenLine className="h-4 w-4 text-muted-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
-              </div>
-              <p className="text-sm font-medium">Erstellen</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Manuell</p>
+              <PenLine className="h-3 w-3" />
+              Manuell erstellen
+            </button>
+            <button
+              onClick={() => setActiveTab('alle')}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground hover:bg-primary/5 transition-all shadow-sm"
+            >
+              <List className="h-3 w-3" />
+              Alle Karten
             </button>
           </div>
-
-          {/* Alle Karten link */}
-          <button
-            onClick={() => setActiveTab('alle')}
-            className="group flex w-full items-center justify-between rounded-xl border border-border/50 bg-card px-4 py-3 hover:border-primary/20 hover:bg-muted/30 transition-all shadow-card"
-          >
-            <div className="flex items-center gap-3">
-              <List className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Alle Karten durchsuchen</span>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
-          </button>
         </TabsContent>
 
         {/* ── Tab: Generieren ── */}
