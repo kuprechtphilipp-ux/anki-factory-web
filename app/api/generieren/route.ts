@@ -1,29 +1,76 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { createClient } from '@supabase/supabase-js'
 import pdf from 'pdf-parse'
 
-export const maxDuration = 300 // Pro: 300s, Hobby: hard-capped at 60s
+export const maxDuration = 300
 
-const SYSTEM_PROMPT = `Du bist ein Elite-Tutor und Didaktik-Experte.
-Regeln:
-- Eine Karte = ein Konzept
-- Frage testet Verständnis, nicht Auswendiglernen
-- Antwort max. 3 Zeilen
-- Bei Formeln immer mit Intuition ("warum gilt das?")
-- Kein "laut Folie X"
-- WICHTIG: Erkenne die Sprache des Folientexts und erstelle alle Karten (frage, antwort, kontext_erklaerung) konsequent in genau dieser Sprache. Wechsle die Sprache nicht, auch wenn du auf Deutsch angesprochen wirst.
-- WICHTIG ZU TAGS: Jedes tags-Array MUSS als ersten Eintrag entweder "core" oder "detail" enthalten:
-  * "core": Essentielles Grundlagenwissen, Kern-Definitionen, Hauptformeln, absolut notwendig zum Bestehen der Prüfung.
-  * "detail": Hintergrundwissen, Herleitungen, ergänzende Beispiele, Vertiefungen.
-- WICHTIG ZU FOKUS: Kennzeichne zusätzlich maximal 10–15 % der allerwichtigsten, typischsten Prüfungsfragen mit einem zweiten Tag "fokus" (z.B. ["core", "fokus", "definition"]). Sei extrem restriktiv: Nur absolute Schlüsselkarten, die fast sicher in der Prüfung abgefragt werden, erhalten den Tag "fokus".
-- Vergib danach 1-2 weitere passende, kurze Anki-Tags (z.B. "definition", "formel", "beispiel"). Ohne "#" Symbol.
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
-Du erhältst den extrahierten Text der Folien, seitenweise strukturiert.
-Entscheide für jede Information selbst den besten Kartentyp:
-- 'basic': Klassische Frage/Antwort Karte.
-- 'cloze': Lückentext. Nutze dies für wichtige Definitionen oder Aufzählungen. Syntax: "Die Hauptstadt von {{c1::Frankreich}} ist {{c2::Paris}}."
+const SYSTEM_PROMPT_BASE = `Du bist ein Elite-Lernstratege und Didaktik-Experte für Hochschulprüfungen.
 
-Gib ausschließlich ein JSON-Array zurück, kein Markdown, kein Kommentar:
+AUFTRAG:
+Erstelle ein Flashcard-Deck das einen Studenten schnellstmöglich prüfungsready macht — nicht vollständig dokumentiert.
+Denke zuerst strategisch: Was sind die Kern-Konzepte? Was baut worauf auf? Was kann man aus dem Kernprinzip ableiten (→ braucht keine eigene Karte)?
+Weniger, dafür perfekte Karten. Lieber 12 präzise als 25 mittelmässige.
+
+ANTWORT-FORMATE — du wählst pro Karte das Format das die Info am schnellsten einprägbar macht:
+
+1. STANDARD — 1–2 kurze Sätze, einprägsames Kernprinzip. Lesezeit < 5 Sekunden.
+   → Für: Konzepte, Zusammenhänge, Kausalität, Definitionen
+   → Beispiel: "BPM requires deep org knowledge because changing one process pillar disrupts all others."
+
+2. LISTE — Max. 3–4 fette Key-Terms, keine Sätze.
+   → Für: Aufzählungen die wirklich auswendig gelernt werden müssen
+   → Format: **Term A** · **Term B** · **Term C**
+   → Beispiel: **Task division** · **Task allocation** · **Rewards** · **Information**
+
+3. PROZESS — Visuelle Kette, max. 5 Schritte, 1–3 Schlagwörter pro Schritt.
+   → Für: Lifecycles, Workflows, Phasenmodelle
+   → Format: Schritt A ➔ Schritt B ➔ Schritt C
+   → Beispiel: Identifikation ➔ Entdeckung ➔ Analyse ➔ Redesign ➔ Implementierung
+
+4. VERGLEICH — Parallele Gegenüberstellung.
+   → Für: "Was unterscheidet X von Y?"
+   → Format: X: **Begriff** / Y: **Begriff**
+   → Beispiel: Push: **forecast-driven** / Pull: **demand-driven**
+
+VERBOTEN in der Antwort (antwort-Feld):
+- Lange "Weil..."-Satzstrukturen oder vollständige Erklärungen
+- Mehr als 4 Items in einer Liste
+- Antworten die länger als 5 Sekunden zu lesen sind
+- Alles was erklärt WARUM → gehört in kontext_erklaerung
+
+KONTEXT-FELD (kontext_erklaerung):
+Hier gehört alles was hilft zu VERSTEHEN warum die Antwort gilt:
+- Mechanismus, Herleitung, Kausalität
+- Einordnung im Gesamtthema
+- Bezug zu anderen Konzepten des Kurses
+- Max. 2–3 prägnante Sätze
+
+FILTER — stelle dir vor jeder Karte diese Fragen:
+✓ Würde ein Prüfer genau das fragen?
+✓ Kann der Student die Antwort in 20 Sekunden lernen?
+✓ Ist die Antwort in < 5 Sekunden lesbar?
+✗ Kann man es aus dem Kernprinzip ableiten? → keine eigene Karte nötig
+✗ Wäre diese Karte frustrierend weil die Antwort zu lang zum Merken ist?
+
+TAGS:
+- Erster Tag: "core" (Prüfungsessentiell) oder "detail" (Vertiefung)
+- Max. 10–15% der Karten bekommen zusätzlich "fokus" (fast sicher in der Prüfung — sehr restriktiv!)
+- 1–2 weitere Tags: "definition", "formel", "prozess", "vergleich", "beispiel"
+
+SPRACHE: Erkenne die Sprache der Folien und erstelle ALLE Karten konsequent in genau dieser Sprache.
+Wechsle die Sprache nicht, auch wenn du auf Deutsch angesprochen wirst.
+
+KARTENTYPEN:
+- 'basic': Klassische Frage/Antwort-Karte
+- 'cloze': Lückentext mit {{c1::Begriff}} — optimal für Begriffe, Definitionen, Prozessschritte
+
+Gib ausschliesslich ein JSON-Array zurück, kein Markdown, kein Kommentar:
 [
   {
     "typ": "basic",
@@ -45,15 +92,15 @@ Gib ausschließlich ein JSON-Array zurück, kein Markdown, kein Kommentar:
   }
 ]`
 
-function getKartentypInstructions(clozeProzent: number, limit: number): string {
+function getKartentypInstructions(clozeProzent: number, richtwert: number): string {
   const basicProzent = 100 - clozeProzent
-  if (clozeProzent >= 60) {
-    return `KARTENTYP-MIX: Erstelle ~${clozeProzent}% Cloze-Karten und ~${basicProzent}% Basic-Karten. Cloze eignet sich optimal für Definitionen, Fachbegriffe, Aufzählungen und Prozessschritte — nutze ihn dort konsequent. Maximal ${limit} Karten insgesamt.`
-  } else if (clozeProzent <= 30) {
-    return `KARTENTYP-MIX: Erstelle ~${basicProzent}% Basic-Karten und ~${clozeProzent}% Cloze-Karten. Nutze Basic für konzeptuelle Verständnisfragen, Formeln mit Intuition ("warum gilt das?") und Kausalzusammenhänge. Maximal ${limit} Karten insgesamt.`
-  } else {
-    return `KARTENTYP-MIX: Ausgewogener Mix – ~${clozeProzent}% Cloze für Schlüsselbegriffe und Definitionen, ~${basicProzent}% Basic für konzeptuelle Fragen und Zusammenhänge. Maximal ${limit} Karten insgesamt.`
-  }
+  const mixText = clozeProzent >= 60
+    ? `~${clozeProzent}% Cloze (Begriffe, Definitionen, Prozessschritte) und ~${basicProzent}% Basic (Konzepte, Zusammenhänge)`
+    : clozeProzent <= 30
+    ? `~${basicProzent}% Basic (konzeptuelle Fragen, Kausalzusammenhänge) und ~${clozeProzent}% Cloze`
+    : `Ausgewogener Mix — ~${clozeProzent}% Cloze für Schlüsselbegriffe, ~${basicProzent}% Basic für Konzepte`
+
+  return `\nKARTENTYP-MIX: ${mixText}.\n\nRICHTWERT KARTENMENGE: ~${richtwert} Karten. Du kannst abweichen wenn der Inhalt es begründet — aber bleibe im Geist: lieber weniger präzise als viele mittelmässige Karten.`
 }
 
 interface RawCard {
@@ -74,20 +121,16 @@ function parseJson(raw: string): RawCard[] {
   return JSON.parse(cleaned)
 }
 
-// Extract text per page using pdf-parse pagerender callback
 async function extractPageTexts(buffer: Buffer): Promise<string[]> {
   const pages: string[] = []
-
   await pdf(buffer, {
-    pagerender(pageData: { getTextContent: () => Promise<{ items: Array<{ str: string }> }> }) {
-      return pageData.getTextContent().then((content) => {
-        const text = content.items.map((item) => item.str).join(' ')
-        pages.push(text)
-        return text
-      })
+    async pagerender(pageData: { getTextContent: () => Promise<{ items: Array<{ str: string }> }> }) {
+      const content = await pageData.getTextContent()
+      const text = content.items.map((item) => item.str).join(' ')
+      pages.push(text)
+      return text
     },
   } as Parameters<typeof pdf>[1])
-
   return pages
 }
 
@@ -102,26 +145,79 @@ export async function POST(req: Request) {
     const clozeProzent = Math.min(80, Math.max(20, parseInt((formData.get('cloze_anteil') as string) ?? '50') || 50))
     const themaId = formData.get('thema_id')
 
-    if (!file) {
-      return NextResponse.json({ error: 'Kein PDF hochgeladen (field: pdf)' }, { status: 400 })
-    }
-    if (!themaId) {
-      return NextResponse.json({ error: 'thema_id fehlt' }, { status: 400 })
-    }
+    if (!file) return NextResponse.json({ error: 'Kein PDF hochgeladen (field: pdf)' }, { status: 400 })
+    if (!themaId) return NextResponse.json({ error: 'thema_id fehlt' }, { status: 400 })
 
     const pageFrom = (formData.get('page_from') as string | null) || null
     const pageTo = (formData.get('page_to') as string | null) || null
     const useVision = (formData.get('vision') as string) === 'true'
-
     const batchSize = parseInt((formData.get('batch_size') as string) ?? '20') || 20
     const conceptsRaw = formData.get('concepts') as string | null
     const conceptsList = conceptsRaw ? (JSON.parse(conceptsRaw) as string[]) : null
 
+    // ── Kurs context ──────────────────────────────────────────────────────────
+    let kursKontext = ''
+    let duplicateHint = ''
+
+    const { data: themaRow } = await supabase
+      .from('thema')
+      .select('name, kurs_id')
+      .eq('id', Number(themaId))
+      .single()
+
+    if (themaRow) {
+      const { data: kursRow } = await supabase
+        .from('kurs')
+        .select('name')
+        .eq('id', themaRow.kurs_id)
+        .single()
+
+      if (kursRow) {
+        const { data: alleThemen } = await supabase
+          .from('thema')
+          .select('name')
+          .eq('kurs_id', themaRow.kurs_id)
+          .order('name')
+
+        const andereThemen = (alleThemen ?? [])
+          .map((t: { name: string }) => t.name)
+          .filter((n: string) => n !== themaRow.name)
+
+        kursKontext = `\n\nKURSKONTEXT:
+Kurs: "${kursRow.name}" (typischer Bachelor-Studiengang).
+Aktuelles Thema: "${themaRow.name}".
+${andereThemen.length > 0 ? `Weitere Themen dieses Kurses: ${andereThemen.join(', ')}.` : ''}
+Nutze dein Wissen über "${kursRow.name}" Bachelor-Kurse um zu beurteilen welche Konzepte prüfungsrelevant sind. Gehe bei Themen, die in anderen Kursthemen behandelt werden, nicht unnötig tief.`
+      }
+
+      // ── Duplicate prevention ──────────────────────────────────────────────
+      const { data: existingCards } = await supabase
+        .from('karte')
+        .select('frage, cloze_text')
+        .eq('thema_id', Number(themaId))
+        .in('status', ['neu', 'reviewed'])
+        .limit(50)
+
+      if (existingCards && existingCards.length > 0) {
+        const existingList = existingCards
+          .map((c: { frage: string; cloze_text: string | null }) => c.frage || c.cloze_text || '')
+          .filter(Boolean)
+          .slice(0, 30)
+          .map((q: string) => `- ${q.slice(0, 80)}`)
+          .join('\n')
+
+        duplicateHint = `\n\nBEREITS VORHANDENE KARTEN (erstelle KEINE ähnlichen):
+${existingList}`
+      }
+    }
+
     const pdfBuffer = Buffer.from(await file.arrayBuffer())
 
     const dynamicSystemPrompt =
-      SYSTEM_PROMPT +
-      '\n\nKARTENTYP-ANWEISUNG:\n' +
+      SYSTEM_PROMPT_BASE +
+      kursKontext +
+      duplicateHint +
+      '\n' +
       getKartentypInstructions(clozeProzent, batchSize)
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -129,21 +225,19 @@ export async function POST(req: Request) {
     let userContent: Anthropic.MessageParam['content']
 
     if (useVision) {
-      // Vision mode: send full PDF as base64, Claude processes text + images
       const pdfBase64 = pdfBuffer.toString('base64')
-      let userText = `Analysiere alle Folien in diesem PDF und erstelle ca. ${batchSize} Flashcards. Erstelle nicht mehr als ${batchSize} Karten — passe die Tiefe und Granularität an, um diese Zahl zu erreichen. Berücksichtige sowohl Text als auch Grafiken, Diagramme und Bilder.`
+      let userText = `Analysiere alle Folien strategisch und erstelle Flashcards. Richtwert: ~${batchSize} Karten — aber entscheide selbst was sinnvoll ist. Berücksichtige Text, Grafiken und Diagramme.`
       if (conceptsList && conceptsList.length > 0) {
-        userText += `\n\nFokussiere dich AUSSCHLIESSLICH auf die folgenden Schlüsselkonzepte und erstelle für jedes Konzept entsprechende Karten. Ignoriere andere Themen vollkommen:\n${conceptsList.map(c => `- ${c}`).join('\n')}`
+        userText += `\n\nFokus auf diese Schlüsselkonzepte:\n${conceptsList.map(c => `- ${c}`).join('\n')}`
       }
-      if (pageFrom && pageTo) userText += ` Analysiere NUR die Seiten ${pageFrom} bis ${pageTo}.`
-      else if (pageFrom) userText += ` Beginne ab Seite ${pageFrom}.`
-      else if (pageTo) userText += ` Analysiere nur bis einschließlich Seite ${pageTo}.`
+      if (pageFrom && pageTo) userText += ` Seiten ${pageFrom}–${pageTo}.`
+      else if (pageFrom) userText += ` Ab Seite ${pageFrom}.`
+      else if (pageTo) userText += ` Bis Seite ${pageTo}.`
       userContent = [
         { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } } as Anthropic.DocumentBlockParam,
         { type: 'text', text: userText },
       ]
     } else {
-      // Text mode: extract text per page, send only relevant range — faster, no vision
       let pageTexts: string[] = []
       try {
         pageTexts = await extractPageTexts(pdfBuffer)
@@ -155,22 +249,17 @@ export async function POST(req: Request) {
       const totalPages = pageTexts.length
       const fromIdx = pageFrom ? Math.max(0, parseInt(pageFrom) - 1) : 0
       const toIdx = pageTo ? Math.min(totalPages - 1, parseInt(pageTo) - 1) : totalPages - 1
-
       const relevantPages = pageTexts.slice(fromIdx, toIdx + 1)
       const pageText = relevantPages
         .map((text, i) => `--- Seite ${fromIdx + i + 1} ---\n${text.trim()}`)
         .join('\n\n')
 
+      const basePrompt = `Analysiere diesen Folientext strategisch und erstelle Flashcards. Richtwert: ~${batchSize} Karten (Seiten ${fromIdx + 1}–${toIdx + 1}) — aber entscheide selbst was sinnvoll ist.`
+
       if (conceptsList && conceptsList.length > 0) {
-        userContent = `Analysiere den folgenden Folientext (Seiten ${fromIdx + 1}–${toIdx + 1}) und erstelle ca. ${batchSize} Flashcards. Erstelle nicht mehr als ${batchSize} Karten — passe die Tiefe und Granularität an, um diese Zahl zu erreichen.
-
-Fokussiere dich AUSSCHLIESSLICH auf die folgenden Schlüsselkonzepte und erstelle für jedes Konzept entsprechende Karten. Ignoriere andere Themen vollkommen:
-${conceptsList.map(c => `- ${c}`).join('\n')}
-
-Folientext:
-${pageText}`
+        userContent = `${basePrompt}\n\nFokus auf diese Schlüsselkonzepte:\n${conceptsList.map(c => `- ${c}`).join('\n')}\n\nFolientext:\n${pageText}`
       } else {
-        userContent = `Analysiere den folgenden Folientext (Seiten ${fromIdx + 1}–${toIdx + 1}) und erstelle ca. ${batchSize} Flashcards. Erstelle nicht mehr als ${batchSize} Karten — passe die Tiefe und Granularität an, um diese Zahl zu erreichen.\n\n${pageText}`
+        userContent = `${basePrompt}\n\n${pageText}`
       }
     }
 
@@ -181,23 +270,18 @@ ${pageText}`
         model: 'claude-sonnet-4-6',
         max_tokens: 8192,
         system: dynamicSystemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: userContent,
-          },
-        ],
+        messages: [{ role: 'user', content: userContent }],
       })
 
       const raw = (message.content[0] as { type: 'text'; text: string }).text
       try {
         allCards = parseJson(raw)
-        
-        // Server-side Downsampling Guardrail: Ensure we do not return more cards than batchSize
-        if (allCards.length > batchSize && batchSize > 0) {
+        // Soft cap: allow ±40% around batchSize, but don't hard-cut good cards
+        const softMax = Math.round(batchSize * 1.4)
+        if (allCards.length > softMax && batchSize > 0) {
           const downsampled: RawCard[] = []
-          for (let i = 0; i < batchSize; i++) {
-            const idx = Math.floor((i * allCards.length) / batchSize)
+          for (let i = 0; i < softMax; i++) {
+            const idx = Math.floor((i * allCards.length) / softMax)
             downsampled.push(allCards[idx])
           }
           allCards = downsampled

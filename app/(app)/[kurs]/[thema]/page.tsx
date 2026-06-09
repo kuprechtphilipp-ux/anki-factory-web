@@ -260,6 +260,7 @@ export default function ThemaPage({ params }: Props) {
     try {
       const form = new FormData()
       form.append('pdf', pdfFile)
+      if (themaId != null) form.append('thema_id', String(themaId))
       const res = await fetch('/api/prescan', { method: 'POST', body: form })
       const json = await res.json()
       if (!res.ok || json.error) {
@@ -1139,6 +1140,20 @@ export default function ThemaPage({ params }: Props) {
 
               {/* Recommendation body */}
               <div className="px-5 py-4 space-y-3">
+                {/* Strategy block */}
+                {scanResult.strategie && (
+                  <div className="rounded-xl bg-violet-50/80 dark:bg-violet-950/20 border border-violet-200/40 dark:border-violet-800/30 px-4 py-3 space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-violet-600/80 dark:text-violet-400/70">Lernstrategie</p>
+                    <p className="text-xs text-foreground/80 leading-relaxed">{scanResult.strategie.lernreihenfolge}</p>
+                    {scanResult.strategie.kern_konzepte?.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {scanResult.strategie.kern_konzepte.map((k, i) => (
+                          <span key={i} className="rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2 py-0.5 text-[10px] font-medium">{k}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Insight texts */}
                 <p className="text-xs text-muted-foreground leading-relaxed italic">
                   &ldquo;{scanResult.empfehlung.begruendung}&rdquo;

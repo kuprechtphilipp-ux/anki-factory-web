@@ -72,6 +72,12 @@ export interface PrescanBatch {
   schluesselkonzepte: string[]
 }
 
+export interface PrescanStrategie {
+  kern_konzepte: string[]
+  lernreihenfolge: string
+  was_weglassen: string
+}
+
 export interface PrescanResult {
   thema: string
   fachtyp: 'definitionen' | 'konzepte' | 'formeln'
@@ -80,6 +86,7 @@ export interface PrescanResult {
   textdichte: 'gering' | 'mittel' | 'hoch'
   komplexitaet: 'gering' | 'mittel' | 'hoch'
   sprache: string
+  strategie?: PrescanStrategie
   empfehlung: {
     kartenmenge: number
     cloze_anteil: number
