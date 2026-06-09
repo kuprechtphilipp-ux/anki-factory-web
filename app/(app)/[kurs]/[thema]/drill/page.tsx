@@ -130,7 +130,18 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
         body: JSON.stringify({ rating: 4, mode: 'drill' }),
       })
       await advance(false)
-      if (deck.length === 1) setSessionComplete(true)
+      if (deck.length === 1) {
+        const finalCorrect = !wrongIds.has(current.id) ? correctOnFirst + 1 : correctOnFirst
+        const finalPct = totalCards > 0 ? Math.round((finalCorrect / totalCards) * 100) : 0
+        if (themaId) {
+          fetch('/api/session-results', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ thema_id: themaId, mode: 'drill', score_pct: finalPct, correct: finalCorrect, total: totalCards }),
+          })
+        }
+        setSessionComplete(true)
+      }
     } finally {
       setActionLoading(false)
     }

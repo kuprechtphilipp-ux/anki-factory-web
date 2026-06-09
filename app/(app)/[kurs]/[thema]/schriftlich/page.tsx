@@ -32,6 +32,7 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
   const themaName = decodeURIComponent(params.thema)
   const backHref = `/${encodeURIComponent(params.kurs)}/${encodeURIComponent(params.thema)}`
 
+  const [themaId, setThemaId] = useState<number | null>(null)
   const [allKarten, setAllKarten] = useState<Karte[]>([])
   const [sessionKarten, setSessionKarten] = useState<Karte[]>([])
   const [pageState, setPageState] = useState<'loading' | 'idle' | 'playing' | 'done'>('loading')
@@ -52,6 +53,7 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
       if (!kursRow) { setPageState('idle'); return }
       const { data: themaRow } = await supabase.from('thema').select('id').eq('kurs_id', kursRow.id).eq('name', themaName).single()
       if (!themaRow) { setPageState('idle'); return }
+      setThemaId(themaRow.id)
       const res = await fetch(`/api/karten?thema_id=${themaRow.id}&status=reviewed`)
       const data = await res.json()
       setAllKarten(Array.isArray(data) ? data : [])
@@ -116,6 +118,15 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
       setAiFeedback(null)
       setTimeout(() => textareaRef.current?.focus(), 100)
     } else {
+      const finalCorrect = newResults.filter(r => r.korrekt).length
+      const finalPct = newResults.length > 0 ? Math.round((finalCorrect / newResults.length) * 100) : 0
+      if (themaId) {
+        fetch('/api/session-results', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ thema_id: themaId, mode: 'schriftlich', score_pct: finalPct, correct: finalCorrect, total: newResults.length }),
+        })
+      }
       setPageState('done')
     }
   }

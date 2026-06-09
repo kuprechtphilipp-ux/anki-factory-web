@@ -104,6 +104,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
   }
 
+  // Cap scheduled_days and due to max 5 days
+  if (typeof updateFields.fsrs_scheduled_days === 'number') {
+    updateFields.fsrs_scheduled_days = Math.min(updateFields.fsrs_scheduled_days, 5)
+  }
+  if (typeof updateFields.fsrs_due === 'string') {
+    const maxDue = new Date(now.getTime() + 5 * 86_400_000).toISOString()
+    if (updateFields.fsrs_due > maxDue) updateFields.fsrs_due = maxDue
+  }
+
   const { data, error } = await supabase
     .from('karte')
     .update(updateFields)

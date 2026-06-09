@@ -65,6 +65,20 @@ export async function GET(req: Request) {
   }
   const avgRetention = retentionCount > 0 ? totalRetention / retentionCount : 0
 
+  const { data: sessionData } = await supabase
+    .from('session_results')
+    .select('thema_id, mode, score_pct, created_at')
+    .in('thema_id', themaIds)
+    .order('created_at', { ascending: false })
+
+  const lastSession: Record<number, Record<string, number>> = {}
+  for (const row of (sessionData ?? []) as { thema_id: number; mode: string; score_pct: number }[]) {
+    if (!lastSession[row.thema_id]) lastSession[row.thema_id] = {}
+    if (lastSession[row.thema_id][row.mode] == null) {
+      lastSession[row.thema_id][row.mode] = row.score_pct
+    }
+  }
+
   const themenStats = themen.map((t) => {
     const tk = karten.filter((k) => k.thema_id === t.id)
     const dueToday = tk.filter((k) => new Date(k.fsrs_due) <= now).length
@@ -77,7 +91,9 @@ export async function GET(req: Request) {
         tRetCount++
       }
     }
-    const mature = tk.filter(k => k.fsrs_state === 2 && k.fsrs_stability > 21).length
+    const mature = tk.filter(k => k.fsrs_state === 2 && k.fsrs_stability > 4).length
+    const gelernt = tk.filter(k => k.fsrs_reps > 0).length
+    const ls = lastSession[t.id] ?? {}
     return {
       name: t.name,
       id: t.id,
@@ -86,6 +102,10 @@ export async function GET(req: Request) {
       neu: neuByThema[t.id] ?? 0,
       retention: tRetCount > 0 ? tRetTotal / tRetCount : 0,
       mature,
+      gelernt,
+      last_drill: ls['drill'] ?? null,
+      last_quiz: ls['quiz'] ?? null,
+      last_schriftlich: ls['schriftlich'] ?? null,
     }
   })
 

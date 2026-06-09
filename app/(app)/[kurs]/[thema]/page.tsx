@@ -132,11 +132,12 @@ export default function ThemaPage({ params }: Props) {
   const [reviewedCount, setReviewedCount] = useState<number | null>(null)
   const [reviewedCards, setReviewedCards] = useState<Karte[]>([])
   const [aktivitaetDays, setAktivitaetDays] = useState<AktivitaetTag[]>([])
+  const [lastResults, setLastResults] = useState<{ drill: number | null; quiz: number | null; schriftlich: number | null }>({ drill: null, quiz: null, schriftlich: null })
 
   const maturity = useMemo(() => {
     const inLearning = reviewedCards.filter(k => k.fsrs_state === 0 || k.fsrs_state === 1 || k.fsrs_state === 3).length
-    const gut = reviewedCards.filter(k => k.fsrs_state === 2 && k.fsrs_stability <= 21).length
-    const solid = reviewedCards.filter(k => k.fsrs_state === 2 && k.fsrs_stability > 21).length
+    const gut = reviewedCards.filter(k => k.fsrs_state === 2 && k.fsrs_stability <= 4).length
+    const solid = reviewedCards.filter(k => k.fsrs_state === 2 && k.fsrs_stability > 4).length
     const neu = neuCount ?? 0
     const total = neu + reviewedCards.length
     return { inLearning, gut, solid, neu, total }
@@ -168,14 +169,9 @@ export default function ThemaPage({ params }: Props) {
     return Math.round((sum / eligible.length) * 100)
   }, [reviewedCards])
 
-  const gelerntPct = useMemo(() => {
-    const total = (reviewedCount ?? 0) + (neuCount ?? 0)
-    return total > 0 ? Math.round((reviewedCount ?? 0) / total * 100) : 0
-  }, [reviewedCount, neuCount])
-
-  const reifePct = useMemo(() => {
-    return reviewedCards.length > 0 ? Math.round(maturity.solid / reviewedCards.length * 100) : 0
-  }, [maturity.solid, reviewedCards.length])
+  const gelerntRingPct = useMemo(() => {
+    return reviewedCards.length > 0 ? Math.round(reviewedCards.filter(k => k.fsrs_reps > 0).length / reviewedCards.length * 100) : 0
+  }, [reviewedCards])
 
   const bannerState = useMemo(() => {
     if ((reviewedCount ?? 0) === 0 && (neuCount ?? 0) === 0) return 'D'
@@ -208,6 +204,16 @@ export default function ThemaPage({ params }: Props) {
           setReviewedCards(reviewed)
           setAktivitaetDays(akt.days ?? [])
         }).catch(() => {})
+
+        fetch(`/api/session-results?thema_id=${tid}`)
+          .then(r => r.json())
+          .then((d: { drill: { score_pct: number } | null; quiz: { score_pct: number } | null; schriftlich: { score_pct: number } | null }) => {
+            setLastResults({
+              drill: d.drill?.score_pct ?? null,
+              quiz: d.quiz?.score_pct ?? null,
+              schriftlich: d.schriftlich?.score_pct ?? null,
+            })
+          }).catch(() => {})
       }
       setLoadingThema(false)
     }
@@ -838,11 +844,11 @@ export default function ThemaPage({ params }: Props) {
             <div className="rounded-2xl border border-border/50 bg-card/50 px-5 py-4 shadow-card">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-4">Performance</p>
               <div className="flex items-center justify-around">
-                <RingMetric label="Gelernt" value={gelerntPct} fillColor="hsl(var(--primary))" />
+                <RingMetric label="Gelernt" value={gelerntRingPct} fillColor="hsl(var(--primary))" />
                 <div className="w-px h-10 bg-border/50" />
-                <RingMetric label="Retention" value={retentionEst ?? 0} fillColor="hsl(142 71% 45%)" />
+                <RingMetric label="Drill" value={lastResults.drill ?? 0} fillColor="hsl(38 92% 50%)" />
                 <div className="w-px h-10 bg-border/50" />
-                <RingMetric label="Reife" value={reifePct} fillColor="hsl(238 84% 67%)" />
+                <RingMetric label="Quiz" value={lastResults.quiz ?? 0} fillColor="hsl(238 84% 67%)" />
               </div>
             </div>
           )}

@@ -111,6 +111,10 @@ export interface KursThemaStats {
   neu: number
   retention: number
   mature: number
+  gelernt: number
+  last_drill: number | null
+  last_quiz: number | null
+  last_schriftlich: number | null
 }
 
 export interface KursStatistik {

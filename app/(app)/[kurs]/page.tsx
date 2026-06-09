@@ -46,9 +46,9 @@ function ThemaCard({ thema, kursName }: { thema: KursThemaStats; kursName: strin
   const total = thema.total
   const enc = encodeURIComponent
 
-  const gelerntPct = (total + thema.neu) > 0 ? Math.round(total / (total + thema.neu) * 100) : 0
-  const retentionPct = Math.round(thema.retention * 100)
-  const reifePct = total > 0 ? Math.round(thema.mature / total * 100) : 0
+  const gelerntPct = total > 0 ? Math.round(thema.gelernt / total * 100) : 0
+  const drillPct = thema.last_drill ?? 0
+  const quizPct = thema.last_quiz ?? 0
 
   const borderColor =
     total === 0
@@ -80,8 +80,8 @@ function ThemaCard({ thema, kursName }: { thema: KursThemaStats; kursName: strin
           {/* Ring metrics */}
           <div className="flex items-center justify-around pt-1 pb-0.5">
             <RingMetric label="Gelernt" value={gelerntPct} trackColor="hsl(var(--muted))" fillColor="hsl(var(--primary))" />
-            <RingMetric label="Retention" value={retentionPct} trackColor="hsl(var(--muted))" fillColor="hsl(142 71% 45%)" />
-            <RingMetric label="Reife" value={reifePct} trackColor="hsl(var(--muted))" fillColor="hsl(238 84% 67%)" />
+            <RingMetric label="Drill" value={drillPct} trackColor="hsl(var(--muted))" fillColor="hsl(38 92% 50%)" />
+            <RingMetric label="Quiz" value={quizPct} trackColor="hsl(var(--muted))" fillColor="hsl(238 84% 67%)" />
           </div>
 
           {/* Action buttons */}

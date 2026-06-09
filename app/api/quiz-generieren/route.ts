@@ -13,10 +13,11 @@ function sampleRandom<T>(arr: T[], n: number): T[] {
 
 export async function POST(req: Request) {
   const body = await req.json()
-  const { thema_id, kurs_name, anzahl = 10 } = body as {
+  const { thema_id, kurs_name, anzahl = 10, schwierigkeit = 'mittel' } = body as {
     thema_id?: number
     kurs_name?: string
     anzahl?: number
+    schwierigkeit?: 'leicht' | 'mittel' | 'schwer'
   }
 
   let query = supabase.from('karte').select('*').eq('status', 'reviewed')
@@ -52,12 +53,18 @@ export async function POST(req: Request) {
     return `${i + 1}. [ID: ${k.id}] Frage: ${k.frage}\nAntwort: ${k.antwort}`
   }).join('\n\n')
 
+  const schwierigkeitInstruktion = {
+    leicht: `- Wrong answer options should be clearly distinguishable from the correct answer and from each other`,
+    mittel: `- Wrong answer options must sound plausible and come from the same subject area`,
+    schwer: `- HARD MODE: Wrong answers must be from the exact same sub-category as the correct answer. They should differ from the correct answer by only ONE critical detail (e.g., a different number, reversed relationship, wrong direction of causality). Include common misconceptions and partial truths as distractors. A student who only superficially understood the topic should pick a wrong answer.`,
+  }[schwierigkeit]
+
   const systemPrompt = `You are a quiz generator. Create multiple-choice questions from the given flashcards.
 Rules:
 - CRITICAL: Use exactly the same language as the flashcard content. If cards are in English, write in English. If in German, write in German. Match the language precisely.
 - Exactly 4 answer options per question (A, B, C, D)
 - Exactly 1 correct answer
-- The 3 wrong options must sound plausible (from the same subject area)
+${schwierigkeitInstruktion}
 - No questions that can be trivially answered by their wording
 - Return ONLY a JSON array, no markdown, no explanations outside the JSON:
 [{"frage":"...","optionen":["A: ...","B: ...","C: ...","D: ..."],"richtig":0,"erklaerung":"Short explanation in the same language as the cards","karte_id":123}]`

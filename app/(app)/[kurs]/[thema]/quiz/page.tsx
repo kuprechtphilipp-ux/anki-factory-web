@@ -19,7 +19,7 @@ const ANZAHL_OPTIONS = [5, 10, 15, 20]
 export default function QuizPage({ params }: { params: { kurs: string; thema: string } }) {
   const kursName = decodeURIComponent(params.kurs)
   const themaName = decodeURIComponent(params.thema)
-  const backHref = `/${encodeURIComponent(params.kurs)}/${encodeURIComponent(params.thema)}`
+  const backHref = `/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}`
 
   const [themaId, setThemaId] = useState<number | null>(null)
   const [reviewedCount, setReviewedCount] = useState<number | null>(null)
@@ -31,6 +31,7 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
   const [answers, setAnswers] = useState<AnswerRecord[]>([])
   const [revealed, setRevealed] = useState(false)
   const [anzahl, setAnzahl] = useState(10)
+  const [schwierigkeit, setSchwierigkeit] = useState<'leicht' | 'mittel' | 'schwer'>('mittel')
   const [genError, setGenError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
       const res = await fetch('/api/quiz-generieren', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ thema_id: themaId, anzahl }),
+        body: JSON.stringify({ thema_id: themaId, anzahl, schwierigkeit }),
       })
       const data = await res.json()
       if (!res.ok || data.error) {
@@ -87,6 +88,15 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
       setCurrentIdx((i) => i + 1)
       setRevealed(false)
     } else {
+      const finalCorrect = answers.filter((a) => a.correct).length
+      const finalPct = answers.length > 0 ? Math.round((finalCorrect / answers.length) * 100) : 0
+      if (themaId) {
+        fetch('/api/session-results', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ thema_id: themaId, mode: 'quiz', score_pct: finalPct, correct: finalCorrect, total: answers.length }),
+        })
+      }
       setQuizState('done')
     }
   }
@@ -332,6 +342,30 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
         </div>
         <p className="text-[11px] text-muted-foreground">
           Aus {reviewedCount ?? '…'} verfügbaren Karten
+        </p>
+      </div>
+
+      <div className="space-y-3 p-5 rounded-2xl bg-card border border-border/50 shadow-card">
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Schwierigkeit</p>
+        <div className="flex gap-2">
+          {(['leicht', 'mittel', 'schwer'] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setSchwierigkeit(s)}
+              className={`flex-1 rounded-xl border-2 py-2.5 text-sm font-semibold transition-all capitalize ${
+                schwierigkeit === s
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border/60 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+              }`}
+            >
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          {schwierigkeit === 'leicht' && 'Klar unterscheidbare Optionen'}
+          {schwierigkeit === 'mittel' && 'Plausible Distraktoren'}
+          {schwierigkeit === 'schwer' && 'Subtile Unterschiede, Missverständnisse'}
         </p>
       </div>
 
