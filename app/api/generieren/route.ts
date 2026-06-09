@@ -23,10 +23,10 @@ ANTWORT-FORMATE — du wählst pro Karte das Format das die Info am schnellsten 
    → Für: Konzepte, Zusammenhänge, Kausalität, Definitionen
    → Beispiel: "BPM requires deep org knowledge because changing one process pillar disrupts all others."
 
-2. LISTE — Max. 3–4 fette Key-Terms, keine Sätze.
+2. LISTE — Max. 3–5 fette Key-Terms, jeder auf einer eigenen Zeile (Zeilenumbruch \n zwischen den Items).
    → Für: Aufzählungen die wirklich auswendig gelernt werden müssen
-   → Format: **Term A** · **Term B** · **Term C**
-   → Beispiel: **Task division** · **Task allocation** · **Rewards** · **Information**
+   → Format: **Term A**\n**Term B**\n**Term C**
+   → Beispiel: **Task division**\n**Task allocation**\n**Rewards**\n**Information**
 
 3. PROZESS — Visuelle Kette, max. 5 Schritte, 1–3 Schlagwörter pro Schritt.
    → Für: Lifecycles, Workflows, Phasenmodelle
