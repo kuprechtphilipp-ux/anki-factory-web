@@ -4,10 +4,16 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import type { Kurs, Thema } from '@/lib/types'
-import { GraduationCap, BookOpen, Zap, Pencil, Trash2, Check, X } from 'lucide-react'
+import { GraduationCap, BookOpen, Zap, Pencil, Trash2, Check, X, Flame, Bell } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+interface StreakData {
+  streak: number
+  learnedToday: boolean
+  dueCount: number
+}
 
 interface KursWithThemen extends Kurs {
   themen: Thema[]
@@ -52,6 +58,7 @@ export default function KursePage() {
   const [loading, setLoading] = useState(true)
   const [tableStats, setTableStats] = useState<ThemaStats[]>([])
   const [tableLoading, setTableLoading] = useState(false)
+  const [streak, setStreak] = useState<StreakData | null>(null)
 
   // Rename state: kursId → editing name
   const [renamingId, setRenamingId] = useState<number | null>(null)
@@ -89,7 +96,10 @@ export default function KursePage() {
     setTableLoading(false)
   }
 
-  useEffect(() => { loadData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    loadData()
+    fetch('/api/streak').then(r => r.json()).then(setStreak).catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleRename(kurs: KursWithThemen) {
     const name = renameValue.trim()
@@ -161,6 +171,47 @@ export default function KursePage() {
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">Übersicht</p>
         <h1 className="text-[1.75rem] font-semibold tracking-tight">Meine Kurse</h1>
       </div>
+
+      {/* Streak widget */}
+      {streak && (
+        <div className="mb-6 animate-fade-in">
+          {streak.streak > 0 ? (
+            <div className="relative overflow-hidden rounded-2xl border border-orange-200/60 dark:border-orange-800/40 bg-gradient-to-r from-orange-50 to-amber-50/60 dark:from-orange-950/25 dark:to-amber-950/15 px-5 py-4 flex items-center justify-between gap-4">
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[60px] leading-none select-none pointer-events-none opacity-10">🔥</div>
+              <div className="flex items-center gap-4 relative">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-900/40">
+                  <Flame className="h-6 w-6 text-orange-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400 leading-none">
+                    {streak.streak} {streak.streak === 1 ? 'Tag' : 'Tage'}
+                  </p>
+                  <p className="text-xs text-orange-700/70 dark:text-orange-300/60 mt-0.5">
+                    {streak.learnedToday ? 'Heute schon gelernt ✓' : 'Streak in Gefahr — heute noch lernen!'}
+                  </p>
+                </div>
+              </div>
+              {!streak.learnedToday && streak.dueCount > 0 && (
+                <div className="text-right shrink-0">
+                  <span className="inline-block rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 px-3 py-1 text-xs font-semibold">
+                    {streak.dueCount} fällig
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            streak.dueCount > 0 && !streak.learnedToday && (
+              <div className="flex items-center gap-3 rounded-xl border border-blue-200/60 dark:border-blue-800/40 bg-blue-50/60 dark:bg-blue-950/20 px-4 py-3">
+                <Bell className="h-4 w-4 text-blue-500 shrink-0" />
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Heute noch nicht gelernt —{' '}
+                  <span className="font-semibold">{streak.dueCount} Karten</span> fällig
+                </p>
+              </div>
+            )
+          )}
+        </div>
+      )}
 
       {/* Kurs cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

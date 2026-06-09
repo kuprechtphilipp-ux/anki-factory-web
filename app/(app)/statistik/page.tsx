@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Loader2, Flame, TrendingUp, Star, Calendar, Brain } from 'lucide-react'
+import { Loader2, Flame, TrendingUp, Star, Calendar, Brain, Target } from 'lucide-react'
 
 interface StatsData {
   streak: number
@@ -11,17 +11,18 @@ interface StatsData {
   retentionRate: number
   heatmap: { date: string; count: number }[]
   totalCards: number
+  weekTotal: number
+  avgCardsPerDay: number
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
 const DAYS = ['Mo', '', 'Mi', '', 'Fr', '', 'So']
 
-function getHeatmapColor(count: number, isDark: boolean): string {
-  if (count === 0) return isDark ? '#1a1a2e' : '#f0f0f5'
-  if (count <= 3) return isDark ? '#1e3a5f' : '#c7e0fb'
-  if (count <= 8) return isDark ? '#1e5fa8' : '#7fb8f5'
-  if (count <= 15) return isDark ? '#2563eb' : '#3b82f6'
-  return isDark ? '#7c3aed' : '#6d28d9'
+function getHeatmapColor(count: number): string {
+  if (count === 0) return 'bg-muted/60'
+  if (count <= 5) return 'bg-emerald-200 dark:bg-emerald-900'
+  if (count <= 15) return 'bg-emerald-400 dark:bg-emerald-700'
+  return 'bg-emerald-600 dark:bg-emerald-500'
 }
 
 function StatCard({
@@ -29,16 +30,16 @@ function StatCard({
   label,
   value,
   sub,
-  accent,
+  highlight,
 }: {
   icon: React.ReactNode
   label: string
   value: string | number
   sub?: string
-  accent?: string
+  highlight?: boolean
 }) {
   return (
-    <div className={`relative overflow-hidden rounded-2xl border p-5 bg-card shadow-card ${accent ?? ''}`}>
+    <div className={`relative overflow-hidden rounded-2xl border p-5 bg-card shadow-card ${highlight ? 'border-primary/30' : 'border-border/50'}`}>
       <div className="flex items-start justify-between">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">{icon}</div>
         {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
@@ -54,16 +55,6 @@ function StatCard({
 export default function StatistikPage() {
   const [stats, setStats] = useState<StatsData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isDark, setIsDark] = useState(false)
-
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains('dark'))
-    const observer = new MutationObserver(() => {
-      setIsDark(document.documentElement.classList.contains('dark'))
-    })
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    return () => observer.disconnect()
-  }, [])
 
   useEffect(() => {
     fetch('/api/stats')
@@ -85,31 +76,23 @@ export default function StatistikPage() {
     return <div className="py-12 text-sm text-muted-foreground">Statistiken konnten nicht geladen werden.</div>
   }
 
-  // Build the 52×7 heatmap grid
-  // heatmap is already 365 days, ascending
-  // Reshape into weeks (columns), days of week (rows)
-  // We want Mon=0 … Sun=6
   const heatmap = stats.heatmap
-
-  // Compute week boundaries for month labels
-  const weekLabels: { weekIdx: number; label: string }[] = []
-  let lastMonth = -1
   const weeks: { date: string; count: number }[][] = []
+  const weekLabels: { weekIdx: number; label: string }[] = []
   let week: { date: string; count: number }[] = []
+  let lastMonth = -1
 
   for (let i = 0; i < heatmap.length; i++) {
     const d = new Date(heatmap[i].date + 'T00:00:00')
-    const dow = (d.getDay() + 6) % 7 // 0=Mon, 6=Sun
+    const dow = (d.getDay() + 6) % 7
 
     if (i === 0) {
-      // Pad start of first week
       for (let p = 0; p < dow; p++) week.push({ date: '', count: -1 })
     }
 
     week.push(heatmap[i])
 
     if (dow === 6 || i === heatmap.length - 1) {
-      // Pad end of last week
       while (week.length < 7) week.push({ date: '', count: -1 })
       weeks.push(week)
       const month = d.getMonth()
@@ -125,7 +108,6 @@ export default function StatistikPage() {
 
   return (
     <div className="max-w-3xl space-y-10">
-      {/* Header */}
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">Lernfortschritt</p>
         <h1 className="text-[1.75rem] font-semibold tracking-tight">Statistik</h1>
@@ -140,9 +122,11 @@ export default function StatistikPage() {
               <Flame className="h-7 w-7 text-orange-500" />
             </div>
             <div>
-              <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">{stats.streak} {stats.streak === 1 ? 'Tag' : 'Tage'}</p>
+              <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                {stats.streak} {stats.streak === 1 ? 'Tag' : 'Tage'}
+              </p>
               <p className="text-sm text-orange-700/70 dark:text-orange-300/70">
-                Aktuelle Lernserie {stats.bestStreak > stats.streak && `· Bestleistung: ${stats.bestStreak} Tage`}
+                Aktuelle Lernserie{stats.bestStreak > stats.streak ? ` · Bestleistung: ${stats.bestStreak} Tage` : ''}
               </p>
             </div>
           </div>
@@ -152,22 +136,36 @@ export default function StatistikPage() {
       {stats.streak === 0 && stats.bestStreak > 0 && (
         <div className="rounded-2xl border border-border/50 bg-muted/30 px-6 py-4">
           <p className="text-sm text-muted-foreground">
-            Kein aktiver Streak — dein Rekord war <span className="font-semibold text-foreground">{stats.bestStreak} Tage</span>. Heute lernen, um wieder anzufangen! 🎯
+            Kein aktiver Streak — dein Rekord war{' '}
+            <span className="font-semibold text-foreground">{stats.bestStreak} Tage</span>. Heute lernen, um wieder anzufangen! 🎯
           </p>
         </div>
       )}
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {/* Metric cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <StatCard
+          icon={<Flame className="h-5 w-5 text-orange-500" />}
+          label="Längste Serie"
+          value={`${stats.bestStreak} Tg`}
+          highlight={stats.bestStreak > 7}
+        />
+        <StatCard
+          icon={<Calendar className="h-5 w-5 text-blue-500" />}
+          label="Diese Woche"
+          value={stats.weekTotal}
+          sub="Karten"
+        />
+        <StatCard
+          icon={<Target className="h-5 w-5 text-violet-500" />}
+          label="Ø Karten/Tag"
+          value={stats.avgCardsPerDay}
+          sub="30 Tage"
+        />
         <StatCard
           icon={<Brain className="h-5 w-5 text-primary" />}
           label="Reviews gesamt"
           value={stats.totalReviews.toLocaleString('de')}
-        />
-        <StatCard
-          icon={<Calendar className="h-5 w-5 text-blue-500" />}
-          label="Heute gelernt"
-          value={stats.todayReviews}
         />
         <StatCard
           icon={<TrendingUp className="h-5 w-5 text-emerald-500" />}
@@ -184,7 +182,9 @@ export default function StatistikPage() {
 
       {/* Heatmap */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-4">Lernaktivität — letzte 365 Tage</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-4">
+          Lernaktivität — letzte 365 Tage
+        </p>
         <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card overflow-x-auto">
           <div className="min-w-[600px]">
             {/* Month labels */}
@@ -211,20 +211,18 @@ export default function StatistikPage() {
               </div>
 
               {/* Weeks */}
-              {weeks.map((week, wi) => (
+              {weeks.map((wk, wi) => (
                 <div key={wi} className="flex flex-col gap-[3px] flex-1">
-                  {week.map((cell, di) => {
+                  {wk.map((cell, di) => {
                     if (cell.count < 0) {
-                      return <div key={di} className="h-[11px] rounded-sm" style={{ background: 'transparent' }} />
+                      return <div key={di} className="h-[11px] rounded-sm" />
                     }
                     const isToday = cell.date === today
-                    const color = getHeatmapColor(cell.count, isDark)
                     return (
                       <div
                         key={di}
-                        className={`h-[11px] rounded-sm transition-transform hover:scale-125 cursor-default ${isToday ? 'ring-1 ring-primary ring-offset-1' : ''}`}
-                        style={{ background: color }}
-                        title={cell.date ? `${cell.date}: ${cell.count} Review${cell.count !== 1 ? 's' : ''}` : ''}
+                        className={`h-[11px] rounded-sm transition-transform hover:scale-125 cursor-default ${getHeatmapColor(cell.count)} ${isToday ? 'ring-1 ring-primary ring-offset-1' : ''}`}
+                        title={cell.date ? `${cell.date}: ${cell.count} Karte${cell.count !== 1 ? 'n' : ''}` : ''}
                       />
                     )
                   })}
@@ -235,12 +233,8 @@ export default function StatistikPage() {
             {/* Legend */}
             <div className="flex items-center gap-2 mt-3 justify-end">
               <span className="text-[10px] text-muted-foreground/60">Weniger</span>
-              {[0, 3, 8, 15, 20].map((n) => (
-                <div
-                  key={n}
-                  className="h-[11px] w-[11px] rounded-sm"
-                  style={{ background: getHeatmapColor(n, isDark) }}
-                />
+              {[0, 3, 8, 16].map((n) => (
+                <div key={n} className={`h-[11px] w-[11px] rounded-sm ${getHeatmapColor(n)}`} />
               ))}
               <span className="text-[10px] text-muted-foreground/60">Mehr</span>
             </div>

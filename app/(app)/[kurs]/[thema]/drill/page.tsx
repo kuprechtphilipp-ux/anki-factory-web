@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
-import { Loader2, ArrowLeft, RotateCcw, BookOpen } from 'lucide-react'
+import { Loader2, ArrowLeft, RotateCcw, BookOpen, Pencil } from 'lucide-react'
+import { InlineEditSheet } from '@/components/inline-edit-sheet'
 import type { Karte } from '@/lib/types'
 
 function shuffle<T>(arr: T[]): T[] {
@@ -44,6 +45,7 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
   const [revealed, setRevealed] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [sessionComplete, setSessionComplete] = useState(false)
+  const [editingKarte, setEditingKarte] = useState<Karte | null>(null)
 
   // Stable refs for keyboard
   const revealedRef = useRef(false)
@@ -257,6 +259,14 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
   // ── Active drill ──
   return (
     <div className="flex flex-col max-w-2xl mx-auto">
+      <InlineEditSheet
+        karte={editingKarte}
+        onClose={() => setEditingKarte(null)}
+        onSave={(updated) => {
+          setDeck(prev => prev.map(k => k.id === updated.id ? updated : k))
+          setEditingKarte(null)
+        }}
+      />
       {/* Header */}
       <div className="flex items-center justify-between mb-7">
         <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -296,6 +306,14 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
         className={`transition-all duration-300 ${exiting ? 'opacity-0 translate-y-1' : 'animate-fade-in'}`}
       >
         <div className="relative bg-card rounded-2xl border border-border/50 shadow-card overflow-hidden flex flex-col min-h-[320px]">
+          {/* Edit button */}
+          <button
+            onClick={() => setEditingKarte(current ?? null)}
+            className="absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+            title="Karte bearbeiten"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
           {current?.image_b64 && (
             <div className="border-b border-border/50 bg-muted/20 px-8 pt-6 pb-4">
               <img

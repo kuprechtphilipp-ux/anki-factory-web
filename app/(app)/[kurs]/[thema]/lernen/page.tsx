@@ -6,7 +6,8 @@ import { supabase } from '@/lib/supabase'
 import { FSRS, generatorParameters } from 'ts-fsrs'
 import { karteToFsrsCard } from '@/lib/fsrs'
 import { Button } from '@/components/ui/button'
-import { Loader2, ArrowLeft, BookOpen } from 'lucide-react'
+import { Loader2, ArrowLeft, BookOpen, Pencil } from 'lucide-react'
+import { InlineEditSheet } from '@/components/inline-edit-sheet'
 import type { Karte, FsrsState } from '@/lib/types'
 
 const clientFsrs = new FSRS(generatorParameters())
@@ -84,6 +85,7 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
   const [revealed, setRevealed] = useState(false)
   const [returningCard, setReturningCard] = useState(false)
   const [ratingLoading, setRatingLoading] = useState(false)
+  const [editingKarte, setEditingKarte] = useState<Karte | null>(null)
 
   // Touch swipe
   const touchStartX = useRef<number | null>(null)
@@ -279,6 +281,12 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
 
   // ── No cards ──
   if (initialized && totalInitial === 0) {
+    const drillHref = `/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/drill`
+    const nextDueDate = nextDue ? new Date(nextDue) : null
+    const diffMs = nextDueDate ? nextDueDate.getTime() - Date.now() : 0
+    const diffMins = Math.ceil(diffMs / 60_000)
+    const countdown = diffMs <= 0 ? 'Jetzt' : diffMins < 60 ? `in ${diffMins} Min.` : diffMins < 1440 ? `in ${Math.ceil(diffMins / 60)} Std.` : `in ${Math.ceil(diffMins / 1440)} Tagen`
+
     return (
       <div className="flex flex-col h-full max-w-2xl mx-auto">
         <div className="mb-8">
@@ -286,18 +294,35 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
             <ArrowLeft className="h-3.5 w-3.5" />{themaName}
           </Link>
         </div>
-        <div className="flex flex-1 flex-col items-center justify-center text-center max-w-sm mx-auto space-y-5">
-          <h2 className="text-2xl font-semibold tracking-tight">Alles erledigt</h2>
-          <p className="text-muted-foreground leading-relaxed">Keine Karten fällig für heute.</p>
+        <div className="flex flex-1 flex-col items-center justify-center text-center max-w-sm mx-auto space-y-5 animate-fade-in">
+          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40">
+            <span className="text-4xl select-none">✓</span>
+          </div>
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight">Alles erledigt für heute</h2>
+            <p className="text-muted-foreground leading-relaxed mt-2 text-sm">Keine Karten fällig — gut gemacht!</p>
+          </div>
           {nextDue && (
-            <div className="rounded-xl bg-muted/60 border border-border/50 px-5 py-3 text-sm">
-              <p className="text-muted-foreground text-xs uppercase tracking-wider font-semibold mb-1">Nächste Wiederholung</p>
-              <p className="font-medium">{new Date(nextDue).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</p>
+            <div className="w-full rounded-xl bg-muted/50 border border-border/50 px-5 py-4 text-sm">
+              <p className="text-muted-foreground text-[10px] uppercase tracking-wider font-semibold mb-1">Nächste Wiederholung</p>
+              <p className="font-semibold text-lg">{countdown}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {nextDueDate?.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+              </p>
             </div>
           )}
-          <Button asChild variant="outline" className="gap-2">
-            <Link href={backHref}><BookOpen className="h-4 w-4" />Zurück zum Thema</Link>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full">
+            <Button asChild variant="default" className="flex-1 gap-2">
+              <Link href={drillHref}>
+                <BookOpen className="h-4 w-4" />Drill starten
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="flex-1 gap-2">
+              <Link href={backHref}>
+                <ArrowLeft className="h-4 w-4" />Zurück
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -347,6 +372,16 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
   // ── Active session ──
   return (
     <div className="flex flex-col max-w-2xl mx-auto">
+      <InlineEditSheet
+        karte={editingKarte}
+        onClose={() => setEditingKarte(null)}
+        onSave={(updated) => {
+          setQueue(prev => prev.map(item =>
+            item.karte.id === updated.id ? { ...item, karte: updated } : item
+          ))
+          setEditingKarte(null)
+        }}
+      />
       {/* Back + progress row */}
       <div className="flex items-center gap-3 mb-7">
         <Link
@@ -389,6 +424,14 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
       >
         {/* Main card */}
         <div className="relative bg-card rounded-2xl border border-border/50 shadow-card overflow-hidden flex flex-col min-h-[320px]">
+          {/* Edit button */}
+          <button
+            onClick={() => setEditingKarte(currentKarte ?? null)}
+            className="absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+            title="Karte bearbeiten"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
           {/* Image */}
           {currentKarte?.image_b64 && (
             <div className="border-b border-border/50 bg-muted/20 px-8 pt-6 pb-4">

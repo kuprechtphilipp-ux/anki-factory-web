@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { Sidebar } from '@/components/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { CommandPalette } from '@/components/command-palette'
 import { Button } from '@/components/ui/button'
-import { Menu } from 'lucide-react'
+import { Menu, Search } from 'lucide-react'
 
 const DEFAULT_WIDTH = 256
 const MIN_WIDTH = 180
@@ -57,9 +58,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Menu className="h-5 w-5" />
           </Button>
           <div className="flex-1" />
+          <button
+            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
+            className="hidden sm:flex items-center gap-2 rounded-lg border border-border/60 bg-muted/50 hover:bg-muted px-3 py-1.5 text-xs text-muted-foreground transition-colors mr-2"
+            title="Suche (⌘K)"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span>Suche</span>
+            <kbd className="ml-1 rounded border border-border/60 bg-card px-1 text-[10px] font-mono">⌘K</kbd>
+          </button>
           <ThemeToggle />
         </header>
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">{children}</main>
+        <CommandPalette />
       </div>
     </div>
   )

@@ -113,13 +113,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Fire-and-forget: log review for stats (ignore errors)
+  // Fire-and-forget: log review + upsert daily streak
   void supabase.from('review_log').insert({
     karte_id: Number(params.id),
     thema_id: karte.thema_id,
     rating,
     reviewed_at: now.toISOString(),
   })
+
+  const todayDate = now.toISOString().slice(0, 10)
+  void supabase.rpc('upsert_lern_streak', { p_datum: todayDate })
 
   return NextResponse.json({ updated: data as Karte, nextIntervals })
 }

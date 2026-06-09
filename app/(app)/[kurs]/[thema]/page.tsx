@@ -622,19 +622,25 @@ export default function ThemaPage({ params }: Props) {
               {pdfFile ? (
                 <div className="flex items-center justify-between gap-2.5">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 shrink-0">
-                      <FileText className="h-4.5 w-4.5 text-primary" />
+                    <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-800/40 shrink-0 flex-col gap-0.5">
+                      <FileText className="h-4 w-4 text-rose-500" />
+                      <span className="text-[8px] font-bold text-rose-500 leading-none">PDF</span>
                     </div>
                     <div className="text-left">
                       <p className="font-medium text-sm truncate max-w-[200px]">{pdfFile.name}</p>
-                      <p className="text-xs text-muted-foreground">{(pdfFile.size / 1024 / 1024).toFixed(1)} MB</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(pdfFile.size / 1024 / 1024).toFixed(1)} MB
+                        {' · '}
+                        <span className="text-primary/80">~{Math.max(1, Math.round(pdfFile.size / 50000))} Seiten</span>
+                      </p>
                     </div>
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; resetPrescan() }}
-                    className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                    className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0 border border-border/50 hover:border-destructive/30"
+                    title="PDF entfernen"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               ) : (
@@ -1006,14 +1012,34 @@ export default function ThemaPage({ params }: Props) {
               <span className="text-sm">Lade Karten...</span>
             </div>
           ) : reviewKarten.length === 0 ? (
-            <div className="py-16 text-center space-y-2">
-              <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-2xl bg-muted">
-                <FileText className="h-6 w-6 text-muted-foreground/50" />
+            <div className="py-16 text-center space-y-4 animate-fade-in">
+              <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40">
+                <CheckCheck className="h-7 w-7 text-emerald-500" />
               </div>
-              <p className="text-base font-medium mt-4">Keine Karten zu reviewen</p>
-              <p className="text-sm text-muted-foreground">
-                Generiere zuerst Karten oder alle neuen Karten wurden bereits überprüft.
-              </p>
+              <div>
+                <p className="text-base font-semibold mt-2">Alle Karten überprüft ✓</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Keine neuen Karten im Posteingang.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Button
+                  variant="default"
+                  className="gap-2"
+                  onClick={() => setActiveTab('generieren')}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Neue Karten generieren
+                </Button>
+                {reviewedCount != null && reviewedCount > 0 && (
+                  <Button asChild variant="outline" className="gap-2">
+                    <Link href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}>
+                      <Brain className="h-4 w-4" />
+                      Zum Lernen
+                    </Link>
+                  </Button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1106,8 +1132,24 @@ export default function ThemaPage({ params }: Props) {
             const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
             return filtered.length === 0 ? (
-              <div className="py-12 text-center">
-                <p className="text-sm text-muted-foreground">Keine Karten gefunden.</p>
+              <div className="py-14 text-center space-y-4 animate-fade-in">
+                {alleKarten.length === 0 ? (
+                  <>
+                    <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-muted">
+                      <Sparkles className="h-7 w-7 text-muted-foreground/40" />
+                    </div>
+                    <div>
+                      <p className="text-base font-semibold">Noch keine Karten</p>
+                      <p className="text-sm text-muted-foreground mt-1">Lade ein PDF hoch und generiere deine ersten Flashcards.</p>
+                    </div>
+                    <Button variant="default" className="gap-2" onClick={() => setActiveTab('generieren')}>
+                      <Upload className="h-4 w-4" />
+                      PDF hochladen
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Keine Karten für diesen Filter.</p>
+                )}
               </div>
             ) : (
               <>
