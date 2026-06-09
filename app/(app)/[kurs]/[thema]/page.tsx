@@ -70,6 +70,10 @@ export default function ThemaPage({ params }: Props) {
   const [scanError, setScanError] = useState<string | null>(null)
   const [settingsExpanded, setSettingsExpanded] = useState(false)
   const [activeBatchIdx, setActiveBatchIdx] = useState<number | null>(null)
+  const [autoBatchRunning, setAutoBatchRunning] = useState(false)
+  const [autoBatchCurrent, setAutoBatchCurrent] = useState(0)
+  const [autoBatchTotal, setAutoBatchTotal] = useState(0)
+  const [autoBatchTotalCount, setAutoBatchTotalCount] = useState(0)
 
   // Feedback modal state
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -165,10 +169,41 @@ export default function ThemaPage({ params }: Props) {
   }
 
   function handlePrescanBatchStart(batch: PrescanBatch) {
-    setPageFrom(String(batch.von))
-    setPageTo(String(batch.bis))
-    setActiveBatchIdx(scanResult?.batches.findIndex(b => b.von === batch.von) ?? null)
-    handleGenerieren()
+    const idx = scanResult?.batches.findIndex(b => b.von === batch.von) ?? null
+    setActiveBatchIdx(idx)
+    handleGenerieren(String(batch.von), String(batch.bis))
+  }
+
+  async function handleAlleGenerieren() {
+    if (!pdfFile || themaId == null || !scanResult) return
+    const batches = scanResult.batches
+    setAutoBatchRunning(true)
+    setAutoBatchTotal(batches.length)
+    setAutoBatchTotalCount(0)
+    let totalCount = 0
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i]
+      setAutoBatchCurrent(i + 1)
+      setActiveBatchIdx(i)
+      const count = await runGenerieren(String(batch.von), String(batch.bis))
+      if (count === null) {
+        // Error already toasted in runGenerieren
+        setAutoBatchRunning(false)
+        setActiveBatchIdx(null)
+        return
+      }
+      totalCount += count
+      setAutoBatchTotalCount(totalCount)
+      toast.success(`Batch ${i + 1}/${batches.length}: ${count} Karten gespeichert`)
+    }
+    setAutoBatchRunning(false)
+    setActiveBatchIdx(null)
+    setLastGenCount(totalCount)
+    setLastGenLod(lod)
+    setPdfFile(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    resetPrescan()
+    toast.success(`Alle ${batches.length} Batches fertig · ${totalCount} Karten total`)
   }
 
   function resetPrescan() {
@@ -177,47 +212,56 @@ export default function ThemaPage({ params }: Props) {
     setScanError(null)
     setSettingsExpanded(false)
     setActiveBatchIdx(null)
+    setAutoBatchRunning(false)
+    setAutoBatchCurrent(0)
+    setAutoBatchTotal(0)
   }
 
-  async function handleGenerieren() {
-    if (!pdfFile || themaId == null) return
-    if (pageFrom && parseInt(pageFrom) < 1) { toast.error('"Von Seite" muss ≥ 1 sein'); return }
-    if (pageTo && parseInt(pageTo) < 1) { toast.error('"Bis Seite" muss ≥ 1 sein'); return }
-    if (pageFrom && pageTo && parseInt(pageFrom) > parseInt(pageTo)) {
-      toast.error('"Von Seite" muss ≤ "Bis Seite" sein')
-      return
+  // Core generation logic — returns card count or null on error
+  async function runGenerieren(overrideFrom?: string, overrideTo?: string): Promise<number | null> {
+    if (!pdfFile || themaId == null) return null
+    const from = overrideFrom ?? pageFrom
+    const to = overrideTo ?? pageTo
+    const form = new FormData()
+    form.append('pdf', pdfFile)
+    form.append('thema_id', String(themaId))
+    form.append('lod', lod)
+    form.append('batch_size', String(batchSize))
+    if (from) form.append('page_from', from)
+    if (to) form.append('page_to', to)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 90_000)
+    let res: Response
+    try {
+      res = await fetch('/api/generieren', { method: 'POST', body: form, signal: controller.signal })
+    } finally {
+      clearTimeout(timeout)
     }
+    const json = await res.json()
+    if (!res.ok || json.error) { toast.error(json.error ?? 'Fehler bei der Generierung'); return null }
+    const { karten, count } = json as { karten: Partial<Karte>[]; count: number }
+    if (count === 0) { toast.warning('Keine Karten generiert – PDF möglicherweise leer.'); return 0 }
+    const saveRes = await fetch('/api/karten', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(karten),
+    })
+    if (!saveRes.ok) { toast.error('Karten generiert, aber Speichern fehlgeschlagen.'); return null }
+    return count
+  }
+
+  async function handleGenerieren(overrideFrom?: string, overrideTo?: string) {
+    if (!pdfFile || themaId == null) return
+    const from = overrideFrom ?? pageFrom
+    const to = overrideTo ?? pageTo
+    if (from && parseInt(from) < 1) { toast.error('"Von Seite" muss ≥ 1 sein'); return }
+    if (to && parseInt(to) < 1) { toast.error('"Bis Seite" muss ≥ 1 sein'); return }
+    if (from && to && parseInt(from) > parseInt(to)) { toast.error('"Von Seite" muss ≤ "Bis Seite" sein'); return }
     setGenerating(true)
     setLastGenCount(null)
     try {
-      const form = new FormData()
-      form.append('pdf', pdfFile)
-      form.append('thema_id', String(themaId))
-      form.append('lod', lod)
-      form.append('batch_size', String(batchSize))
-      if (pageFrom) form.append('page_from', pageFrom)
-      if (pageTo) form.append('page_to', pageTo)
-
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 90_000)
-      let res: Response
-      try {
-        res = await fetch('/api/generieren', { method: 'POST', body: form, signal: controller.signal })
-      } finally {
-        clearTimeout(timeout)
-      }
-      const json = await res.json()
-      if (!res.ok || json.error) { toast.error(json.error ?? 'Fehler bei der Generierung'); return }
-
-      const { karten, count } = json as { karten: Partial<Karte>[]; count: number }
-      if (count === 0) { toast.warning('Keine Karten generiert – PDF möglicherweise leer.'); return }
-
-      const saveRes = await fetch('/api/karten', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(karten),
-      })
-      if (!saveRes.ok) { toast.error('Karten generiert, aber Speichern fehlgeschlagen.'); return }
+      const count = await runGenerieren(overrideFrom, overrideTo)
+      if (count === null || count === 0) return
 
       setGenProgress(100)
       setLastGenCount(count)
@@ -767,28 +811,76 @@ export default function ThemaPage({ params }: Props) {
               <div className="px-5 pb-5 space-y-2">
                 {scanResult.batches.length > 0 ? (
                   <>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Batches generieren</p>
-                    {scanResult.batches.map((batch, idx) => (
+                    {/* Auto-run progress */}
+                    {autoBatchRunning && (
+                      <div className="rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-violet-50/60 dark:bg-violet-950/20 px-4 py-3 space-y-2 animate-fade-in">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2 text-violet-700 dark:text-violet-300 font-medium">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Batch {autoBatchCurrent} / {autoBatchTotal}
+                          </div>
+                          {autoBatchTotalCount > 0 && (
+                            <span className="text-xs text-muted-foreground">{autoBatchTotalCount} Karten bisher</span>
+                          )}
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-violet-200/50 dark:bg-violet-900/30">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-violet-500 to-violet-400 transition-all duration-500"
+                            style={{ width: `${((autoBatchCurrent - 1) / autoBatchTotal) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* All-at-once button */}
+                    {!autoBatchRunning && !generating && (
                       <Button
-                        key={idx}
-                        onClick={() => handlePrescanBatchStart(batch)}
-                        disabled={generating}
-                        variant="outline"
-                        className={`w-full h-10 gap-2.5 justify-start border-violet-200/60 dark:border-violet-800/40 hover:bg-violet-50 dark:hover:bg-violet-950/20 hover:border-violet-300 dark:hover:border-violet-700 ${activeBatchIdx === idx ? 'bg-violet-50 dark:bg-violet-950/20' : ''}`}
+                        onClick={handleAlleGenerieren}
+                        className="w-full h-10 gap-2 bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
                       >
-                        {generating && activeBatchIdx === idx ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-violet-600" />
-                        ) : (
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-[10px] font-bold text-violet-700 dark:text-violet-300 shrink-0">{idx + 1}</span>
-                        )}
-                        <span className="text-sm font-medium flex-1 text-left truncate">{batch.label}</span>
-                        <span className="text-xs text-muted-foreground shrink-0">S.{batch.von}–{batch.bis}</span>
+                        <Sparkles className="h-4 w-4" />
+                        Alle {scanResult.batches.length} Batches automatisch
                       </Button>
-                    ))}
+                    )}
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-2 py-1">
+                      <div className="flex-1 h-px bg-border/50" />
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">oder einzeln</span>
+                      <div className="flex-1 h-px bg-border/50" />
+                    </div>
+
+                    {/* Individual batch buttons */}
+                    {scanResult.batches.map((batch, idx) => {
+                      const isActive = activeBatchIdx === idx
+                      const isDone = autoBatchRunning && idx < autoBatchCurrent - 1
+                      const isRunning = (generating || autoBatchRunning) && isActive
+                      return (
+                        <Button
+                          key={idx}
+                          onClick={() => !autoBatchRunning && handlePrescanBatchStart(batch)}
+                          disabled={generating || autoBatchRunning}
+                          variant="outline"
+                          className={`w-full h-10 gap-2.5 justify-start border-violet-200/60 dark:border-violet-800/40 hover:bg-violet-50 dark:hover:bg-violet-950/20 hover:border-violet-300 dark:hover:border-violet-700 transition-all ${
+                            isActive ? 'bg-violet-50 dark:bg-violet-950/20 border-violet-300 dark:border-violet-700' : ''
+                          } ${isDone ? 'opacity-50' : ''}`}
+                        >
+                          {isRunning ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-violet-600 shrink-0" />
+                          ) : isDone ? (
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0">✓</span>
+                          ) : (
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-[10px] font-bold text-violet-700 dark:text-violet-300 shrink-0">{idx + 1}</span>
+                          )}
+                          <span className="text-sm font-medium flex-1 text-left truncate">{batch.label}</span>
+                          <span className="text-xs text-muted-foreground shrink-0">S.{batch.von}–{batch.bis}</span>
+                        </Button>
+                      )
+                    })}
                   </>
                 ) : (
                   <Button
-                    onClick={handleGenerieren}
+                    onClick={() => handleGenerieren()}
                     disabled={generating}
                     className="w-full h-10 gap-2 bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
                   >
@@ -857,7 +949,7 @@ export default function ThemaPage({ params }: Props) {
                   Analysieren
                 </Button>
                 <Button
-                  onClick={handleGenerieren}
+                  onClick={() => handleGenerieren()}
                   disabled={!pdfFile}
                   className="h-10 gap-2 shadow-sm"
                 >
