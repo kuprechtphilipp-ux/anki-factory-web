@@ -181,29 +181,29 @@ export default function ThemaPage({ params }: Props) {
     setAutoBatchTotal(batches.length)
     setAutoBatchTotalCount(0)
     let totalCount = 0
-    for (let i = 0; i < batches.length; i++) {
-      const batch = batches[i]
-      setAutoBatchCurrent(i + 1)
-      setActiveBatchIdx(i)
-      const count = await runGenerieren(String(batch.von), String(batch.bis))
-      if (count === null) {
-        // Error already toasted in runGenerieren
-        setAutoBatchRunning(false)
-        setActiveBatchIdx(null)
-        return
+    try {
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i]
+        setAutoBatchCurrent(i + 1)
+        setActiveBatchIdx(i)
+        const count = await runGenerieren(String(batch.von), String(batch.bis))
+        if (count === null) return
+        totalCount += count
+        setAutoBatchTotalCount(totalCount)
+        if (batches.length > 1) toast.success(`Batch ${i + 1}/${batches.length}: ${count} Karten gespeichert`)
       }
-      totalCount += count
-      setAutoBatchTotalCount(totalCount)
-      toast.success(`Batch ${i + 1}/${batches.length}: ${count} Karten gespeichert`)
+      setLastGenCount(totalCount)
+      setLastGenLod(lod)
+      setPdfFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      resetPrescan()
+      toast.success(`Alle ${batches.length} Batches fertig · ${totalCount} Karten total`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Unbekannter Fehler beim Auto-Generieren')
+    } finally {
+      setAutoBatchRunning(false)
+      setActiveBatchIdx(null)
     }
-    setAutoBatchRunning(false)
-    setActiveBatchIdx(null)
-    setLastGenCount(totalCount)
-    setLastGenLod(lod)
-    setPdfFile(null)
-    if (fileInputRef.current) fileInputRef.current.value = ''
-    resetPrescan()
-    toast.success(`Alle ${batches.length} Batches fertig · ${totalCount} Karten total`)
   }
 
   function resetPrescan() {
@@ -217,7 +217,7 @@ export default function ThemaPage({ params }: Props) {
     setAutoBatchTotal(0)
   }
 
-  // Core generation logic — returns card count or null on error
+  // Core generation logic — returns card count or null on error, throws on network/timeout
   async function runGenerieren(overrideFrom?: string, overrideTo?: string): Promise<number | null> {
     if (!pdfFile || themaId == null) return null
     const from = overrideFrom ?? pageFrom
@@ -229,18 +229,30 @@ export default function ThemaPage({ params }: Props) {
     form.append('batch_size', String(batchSize))
     if (from) form.append('page_from', from)
     if (to) form.append('page_to', to)
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 90_000)
+
     let res: Response
     try {
-      res = await fetch('/api/generieren', { method: 'POST', body: form, signal: controller.signal })
-    } finally {
-      clearTimeout(timeout)
+      res = await fetch('/api/generieren', { method: 'POST', body: form })
+    } catch (fetchErr) {
+      const msg = fetchErr instanceof Error ? fetchErr.message : 'Netzwerkfehler'
+      toast.error(`Generierung fehlgeschlagen: ${msg}`)
+      return null
     }
-    const json = await res.json()
-    if (!res.ok || json.error) { toast.error(json.error ?? 'Fehler bei der Generierung'); return null }
+
+    let json: { karten?: Partial<Karte>[]; count?: number; error?: string }
+    try {
+      json = await res.json()
+    } catch {
+      toast.error('Ungültige Antwort vom Server (kein JSON)')
+      return null
+    }
+
+    if (!res.ok || json.error) {
+      toast.error(json.error ?? `Serverfehler ${res.status}`)
+      return null
+    }
     const { karten, count } = json as { karten: Partial<Karte>[]; count: number }
-    if (count === 0) { toast.warning('Keine Karten generiert – PDF möglicherweise leer.'); return 0 }
+    if (!count || count === 0) { toast.warning('Keine Karten generiert – PDF möglicherweise leer.'); return 0 }
     const saveRes = await fetch('/api/karten', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -432,44 +444,46 @@ export default function ThemaPage({ params }: Props) {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="h-9 rounded-lg bg-muted p-1 gap-0.5 mb-0">
-          <TabsTrigger
-            value="uebersicht"
-            className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-          >
-            Übersicht
-          </TabsTrigger>
-          <TabsTrigger
-            value="generieren"
-            className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-          >
-            Generieren
-          </TabsTrigger>
-          <TabsTrigger
-            value="review"
-            className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm gap-1.5"
-          >
-            Review
-            {neuCount != null && neuCount > 0 && (
-              <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-bold">
-                {neuCount}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger
-            value="alle"
-            className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-          >
-            Karten
-          </TabsTrigger>
-          <TabsTrigger
-            value="erstellen"
-            className="rounded-md px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm gap-1.5"
-          >
-            <PenLine className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Erstellen</span>
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
+          <TabsList className="h-9 rounded-lg bg-muted p-1 gap-0.5 mb-0 inline-flex w-auto min-w-full sm:w-full flex-nowrap">
+            <TabsTrigger
+              value="uebersicht"
+              className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm shrink-0"
+            >
+              Übersicht
+            </TabsTrigger>
+            <TabsTrigger
+              value="generieren"
+              className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm shrink-0"
+            >
+              Generieren
+            </TabsTrigger>
+            <TabsTrigger
+              value="review"
+              className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm gap-1.5 shrink-0"
+            >
+              Review
+              {neuCount != null && neuCount > 0 && (
+                <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-bold">
+                  {neuCount}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="alle"
+              className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm shrink-0"
+            >
+              Karten
+            </TabsTrigger>
+            <TabsTrigger
+              value="erstellen"
+              className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm gap-1.5 shrink-0"
+            >
+              <PenLine className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Erstellen</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ── Tab: Übersicht ── */}
         <TabsContent value="uebersicht" className="mt-6 max-w-2xl space-y-5">
