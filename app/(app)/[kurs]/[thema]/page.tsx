@@ -184,11 +184,12 @@ export default function ThemaPage({ params }: Props) {
     setAutoBatchTotalCount(0)
     let totalCount = 0
     try {
+      const perBatchSize = Math.ceil(batchSize / batches.length)
       for (let i = 0; i < batches.length; i++) {
         const batch = batches[i]
         setAutoBatchCurrent(i + 1)
         setActiveBatchIdx(i)
-        const count = await runGenerieren(String(batch.von), String(batch.bis))
+        const count = await runGenerieren(String(batch.von), String(batch.bis), perBatchSize)
         if (count === null) return
         totalCount += count
         setAutoBatchTotalCount(totalCount)
@@ -221,7 +222,7 @@ export default function ThemaPage({ params }: Props) {
   }
 
   // Core generation logic — returns card count or null on error, throws on network/timeout
-  async function runGenerieren(overrideFrom?: string, overrideTo?: string): Promise<number | null> {
+  async function runGenerieren(overrideFrom?: string, overrideTo?: string, overrideBatchSize?: number): Promise<number | null> {
     if (!pdfFile || themaId == null) return null
     const from = overrideFrom ?? pageFrom
     const to = overrideTo ?? pageTo
@@ -229,7 +230,7 @@ export default function ThemaPage({ params }: Props) {
     form.append('pdf', pdfFile)
     form.append('thema_id', String(themaId))
     form.append('lod', lod)
-    form.append('batch_size', String(batchSize))
+    form.append('batch_size', String(overrideBatchSize ?? batchSize))
     form.append('vision', visionMode ? 'true' : 'false')
     if (from) form.append('page_from', from)
     if (to) form.append('page_to', to)
@@ -276,7 +277,12 @@ export default function ThemaPage({ params }: Props) {
     setGenerating(true)
     setLastGenCount(null)
     try {
-      const count = await runGenerieren(overrideFrom, overrideTo)
+      // Distribute total card budget evenly across all batches
+      const numBatches = isPrescanBatch && scanResult && scanResult.batches.length > 1
+        ? scanResult.batches.length
+        : 1
+      const perBatchSize = Math.ceil(batchSize / numBatches)
+      const count = await runGenerieren(overrideFrom, overrideTo, perBatchSize)
       if (count === null || count === 0) return
 
       setGenProgress(100)
@@ -865,6 +871,30 @@ export default function ThemaPage({ params }: Props) {
               <div className="px-5 pb-5 space-y-2">
                 {scanResult.batches.length > 0 ? (
                   <>
+                    {/* Individual batch progress */}
+                    {generating && !autoBatchRunning && activeBatchIdx !== null && (
+                      <div className="rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-violet-50/60 dark:bg-violet-950/20 px-4 py-3 space-y-2 animate-fade-in">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2 text-violet-700 dark:text-violet-300 font-medium">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            {scanResult.batches[activeBatchIdx]?.label ?? `Batch ${activeBatchIdx + 1}`}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            S.{scanResult.batches[activeBatchIdx]?.von}–{scanResult.batches[activeBatchIdx]?.bis}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-violet-200/50 dark:bg-violet-900/30">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-violet-500 to-violet-400 transition-all duration-700"
+                            style={{ width: `${genProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Ziel: ~{Math.ceil(batchSize / scanResult.batches.length)} Karten für diesen Abschnitt
+                        </p>
+                      </div>
+                    )}
+
                     {/* Auto-run progress */}
                     {autoBatchRunning && (
                       <div className="rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-violet-50/60 dark:bg-violet-950/20 px-4 py-3 space-y-2 animate-fade-in">
