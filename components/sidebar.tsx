@@ -17,6 +17,7 @@ import {
   Pencil,
   Check,
   Loader2,
+  X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -236,7 +237,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
   return (
     <aside
       className={cn(
-        "relative flex h-screen shrink-0 flex-col border-r border-border/50 bg-card shadow-sm",
+        "relative flex h-dvh shrink-0 flex-col border-r border-border/50 bg-card shadow-sm",
         "fixed lg:static inset-y-0 left-0 z-50",
         "transition-transform duration-300 ease-in-out",
         !open && "-translate-x-full lg:translate-x-0"
@@ -249,9 +250,17 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
           <GraduationCap className="h-4.5 w-4.5 h-[18px] w-[18px] text-primary-foreground" />
         </div>
         <span className="font-semibold gradient-text tracking-tight">Anki Factory</span>
+        {/* Close button — mobile only */}
+        <button
+          onClick={onClose}
+          className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors lg:hidden"
+          aria-label="Sidebar schließen"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-3 px-2">
+      <nav className="flex-1 overflow-y-auto py-3 px-2" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
         {/* Nav links */}
         <Link
           href="/kurse"

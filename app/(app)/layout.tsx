@@ -23,6 +23,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Lock body scroll on iOS when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [sidebarOpen])
+
   function handleWidthChange(w: number) {
     const clamped = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, w))
     setSidebarWidth(clamped)
@@ -30,7 +40,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-dvh overflow-hidden bg-background">
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div

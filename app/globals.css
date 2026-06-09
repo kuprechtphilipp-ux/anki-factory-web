@@ -68,4 +68,12 @@
 /* Smooth theme transitions */
 html {
   transition: background-color 0.2s ease, color 0.2s ease;
+  /* Prevent iOS rubber-band scroll from showing background gaps */
+  background-color: hsl(var(--background));
+  overscroll-behavior: none;
+}
+
+body {
+  background-color: hsl(var(--background));
+  overscroll-behavior: none;
 }

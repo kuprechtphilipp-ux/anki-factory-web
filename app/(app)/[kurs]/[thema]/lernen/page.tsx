@@ -182,7 +182,8 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
   const progressPct = totalInitial > 0 ? (donePermanent / totalInitial) * 100 : 0
 
   async function handleRate(rating: 1 | 2 | 3 | 4) {
-    if (!currentKarte || !currentItem || ratingLoading || exiting) return
+    // Allow swipe-triggered calls even when exiting=true (swipeExitRef guards the re-entry case)
+    if (!currentKarte || !currentItem || ratingLoading || (exiting && !swipeExitRef.current)) return
     setRatingLoading(true)
     try {
       const res = await fetch(`/api/karte/${currentKarte.id}/review`, {

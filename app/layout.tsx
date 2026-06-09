@@ -4,6 +4,7 @@ import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
 import { PwaRegister } from '@/components/pwa-register'
+import { PwaInstallBanner } from '@/components/pwa-install-banner'
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <Toaster />
           <PwaRegister />
+          <PwaInstallBanner />
         </ThemeProvider>
       </body>
     </html>

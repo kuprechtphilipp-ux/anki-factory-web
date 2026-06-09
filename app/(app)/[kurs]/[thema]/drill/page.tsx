@@ -118,7 +118,7 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
   }
 
   async function handleGewusst() {
-    if (!current || actionLoading || exiting) return
+    if (!current || actionLoading || (exiting && !swipeExitRef.current)) return
     setActionLoading(true)
     try {
       if (!wrongIds.has(current.id)) {
@@ -137,7 +137,7 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
   }
 
   async function handleNichtGewusst() {
-    if (!current || actionLoading || exiting) return
+    if (!current || actionLoading || (exiting && !swipeExitRef.current)) return
     setActionLoading(true)
     try {
       if (!wrongIds.has(current.id)) {
