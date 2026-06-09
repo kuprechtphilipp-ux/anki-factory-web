@@ -24,13 +24,20 @@ Gib NUR dieses JSON-Objekt zurück, kein Markdown, kein Text davor oder danach:
     "kartenmenge": <int zwischen 10 und 50>,
     "begruendung": "1-2 prägnante Sätze warum diese Einstellungen"
   },
-  "batches": []
+  "batches": [
+    {
+      "von": <int>,
+      "bis": <int>,
+      "label": "kurze thematische Beschreibung",
+      "karten": <int>,
+      "schluesselkonzepte": ["konzept1", "konzept2", "konzept3"]
+    }
+  ]
 }
 
-Batch-Regel: Wenn mehr als 22 Seiten → splitte in sinnvolle Batches von max. 20 Seiten.
-Verteile die empfohlene kartenmenge inhaltlich gewichtet auf die Batches — dichtere oder konzeptuell reichere Abschnitte bekommen mehr Karten. Die Summe aller Batch-karten soll ungefähr der kartenmenge entsprechen.
-"batches": [{"von": 1, "bis": 20, "label": "kurze thematische Beschreibung", "karten": 12}, ...]
-Bei ≤ 22 Seiten: batches bleibt ein leeres Array.`
+Batch-Regel: Splitte das PDF in sinnvolle Batches von maximal 20 Seiten. Wenn das PDF ≤ 22 Seiten hat, erstelle genau 1 Batch für das gesamte Dokument (von 1 bis seitenanzahl).
+Verteile die empfohlene kartenmenge inhaltlich gewichtet auf die Batches — dichtere oder konzeptuell reichere Abschnitte bekommen mehr Karten. Die Summe aller Batch-karten soll der empfohlenen kartenmenge entsprechen.
+Jeder Batch MUSS ein Array "schluesselkonzepte" mit 3-5 konkreten, wichtigen Begriffen, Definitionen oder Kernthemen dieses Abschnitts enthalten, die für Karteikarten relevant sind.`
 
 export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {

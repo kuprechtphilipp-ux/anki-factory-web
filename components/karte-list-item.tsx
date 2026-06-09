@@ -116,9 +116,18 @@ export function KarteListItem({ karte, onUpdate, onDelete }: Props) {
               <Badge variant={STATUS_VARIANT[karte.status]} className="text-xs h-5">
                 {STATUS_LABEL[karte.status]}
               </Badge>
-              {karte.tags?.slice(0, 3).map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs h-5">{tag}</Badge>
-              ))}
+              {karte.tags?.map((tag) => {
+                if (tag === 'fokus') {
+                  return <Badge key={tag} className="text-[10px] h-5 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/50 hover:bg-amber-100">🎯 Fokus</Badge>
+                }
+                if (tag === 'core') {
+                  return <Badge key={tag} className="text-[10px] h-5 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/50 hover:bg-blue-100">Core</Badge>
+                }
+                if (tag === 'detail') {
+                  return <Badge key={tag} variant="outline" className="text-[10px] h-5 text-muted-foreground/80">Detail</Badge>
+                }
+                return <Badge key={tag} variant="secondary" className="text-[10px] h-5">{tag}</Badge>
+              })}
               {karte.slide_nr != null && (
                 <span className="text-xs text-muted-foreground">Folie {karte.slide_nr}</span>
               )}

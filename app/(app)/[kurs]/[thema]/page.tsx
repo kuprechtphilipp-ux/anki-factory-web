@@ -47,7 +47,6 @@ export default function ThemaPage({ params }: Props) {
   const [reviewIdx, setReviewIdx] = useState(0)
   const [reviewLoading, setReviewLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
-  const [bulkLoading, setBulkLoading] = useState(false)
 
   const [alleKarten, setAlleKarten] = useState<Karte[]>([])
   const [alleLoading, setAlleLoading] = useState(false)
@@ -81,6 +80,22 @@ export default function ThemaPage({ params }: Props) {
   // Feedback modal state
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [lastGenLod, setLastGenLod] = useState('Mittel')
+  const [selectedConcepts, setSelectedConcepts] = useState<Record<string, boolean>>({})
+  const [priorityFilter, setPriorityFilter] = useState<'alle' | 'core' | 'detail' | 'fokus'>('alle')
+
+  const activeReviewKarten = reviewKarten.filter(k => {
+    if (priorityFilter === 'alle') return true
+    if (priorityFilter === 'fokus') return k.tags?.includes('fokus')
+    if (priorityFilter === 'core') return k.tags?.includes('core')
+    if (priorityFilter === 'detail') return k.tags?.includes('detail')
+    return true
+  })
+
+  useEffect(() => {
+    if (activeReviewKarten.length > 0 && reviewIdx >= activeReviewKarten.length) {
+      setReviewIdx(activeReviewKarten.length - 1)
+    }
+  }, [activeReviewKarten.length, reviewIdx])
 
   const [dueCount, setDueCount] = useState<number | null>(null)
   const [neuCount, setNeuCount] = useState<number | null>(null)
@@ -160,10 +175,21 @@ export default function ThemaPage({ params }: Props) {
         setScanStep('idle')
         return
       }
-      setScanResult(json as PrescanResult)
+      const data = json as PrescanResult
+      setScanResult(data)
       // Pre-fill settings from recommendation
-      setLod(json.empfehlung.lod)
-      setBatchSize(json.empfehlung.kartenmenge)
+      setLod(data.empfehlung.lod)
+      setBatchSize(data.empfehlung.kartenmenge)
+
+      // Initialize selected concepts
+      const initialSelected: Record<string, boolean> = {}
+      data.batches?.forEach((batch: PrescanBatch, bIdx: number) => {
+        batch.schluesselkonzepte?.forEach((_, cIdx: number) => {
+          initialSelected[`${bIdx}_${cIdx}`] = true
+        })
+      })
+      setSelectedConcepts(initialSelected)
+
       setScanStep('result')
     } catch (e) {
       setScanError(e instanceof Error ? e.message : 'Unbekannter Fehler')
@@ -187,11 +213,21 @@ export default function ThemaPage({ params }: Props) {
       const prescanTotal = scanResult.empfehlung.kartenmenge
       for (let i = 0; i < batches.length; i++) {
         const batch = batches[i]
+        const concepts = batch.schluesselkonzepte ?? []
+        const activeConcepts = concepts.filter((_, cIdx) => selectedConcepts[`${i}_${cIdx}`] !== false)
+        if (activeConcepts.length === 0) {
+          // Skip this batch if no concepts are selected
+          continue
+        }
+
         setAutoBatchCurrent(i + 1)
         setActiveBatchIdx(i)
-        const ratio = prescanTotal > 0 ? batch.karten / prescanTotal : 1 / batches.length
-        const perBatchSize = Math.max(1, Math.round(batchSize * ratio))
-        const count = await runGenerieren(String(batch.von), String(batch.bis), perBatchSize)
+
+        const baseRatio = prescanTotal > 0 ? batch.karten / prescanTotal : 1 / batches.length
+        const baseBatchCards = Math.max(1, Math.round(batchSize * baseRatio))
+        const adjustedBatchCards = Math.max(1, Math.round(baseBatchCards * (activeConcepts.length / concepts.length)))
+
+        const count = await runGenerieren(String(batch.von), String(batch.bis), adjustedBatchCards, activeConcepts)
         if (count === null) return
         totalCount += count
         setAutoBatchTotalCount(totalCount)
@@ -202,7 +238,7 @@ export default function ThemaPage({ params }: Props) {
       setPdfFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
       resetPrescan()
-      toast.success(`Alle ${batches.length} Batches fertig · ${totalCount} Karten total`)
+      toast.success(`Generierung fertig · ${totalCount} Karten total`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Unbekannter Fehler beim Auto-Generieren')
     } finally {
@@ -221,10 +257,24 @@ export default function ThemaPage({ params }: Props) {
     setAutoBatchCurrent(0)
     setAutoBatchTotal(0)
     setCompletedBatches(new Set<number>())
+    setSelectedConcepts({})
+  }
+
+  function toggleConcept(bIdx: number, cIdx: number) {
+    const key = `${bIdx}_${cIdx}`
+    setSelectedConcepts(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }))
   }
 
   // Core generation logic — returns card count or null on error, throws on network/timeout
-  async function runGenerieren(overrideFrom?: string, overrideTo?: string, overrideBatchSize?: number): Promise<number | null> {
+  async function runGenerieren(
+    overrideFrom?: string, 
+    overrideTo?: string, 
+    overrideBatchSize?: number,
+    conceptsList?: string[]
+  ): Promise<number | null> {
     if (!pdfFile || themaId == null) return null
     const from = overrideFrom ?? pageFrom
     const to = overrideTo ?? pageTo
@@ -236,6 +286,9 @@ export default function ThemaPage({ params }: Props) {
     form.append('vision', visionMode ? 'true' : 'false')
     if (from) form.append('page_from', from)
     if (to) form.append('page_to', to)
+    if (conceptsList && conceptsList.length > 0) {
+      form.append('concepts', JSON.stringify(conceptsList))
+    }
 
     let res: Response
     try {
@@ -281,13 +334,24 @@ export default function ThemaPage({ params }: Props) {
     try {
       // Use prescan's per-batch card recommendation, scaled to the user's total budget
       let perBatchSize = batchSize
-      if (isPrescanBatch && scanResult && scanResult.batches.length > 1 && batchIdx !== undefined) {
+      let activeConcepts: string[] | undefined = undefined
+      if (isPrescanBatch && scanResult && scanResult.batches.length > 0 && batchIdx !== undefined) {
         const batch = scanResult.batches[batchIdx]
+        const concepts = batch.schluesselkonzepte ?? []
+        activeConcepts = concepts.filter((_, cIdx) => selectedConcepts[`${batchIdx}_${cIdx}`] !== false)
+        
         const prescanTotal = scanResult.empfehlung.kartenmenge
-        const ratio = prescanTotal > 0 ? batch.karten / prescanTotal : 1 / scanResult.batches.length
-        perBatchSize = Math.max(1, Math.round(batchSize * ratio))
+        const baseRatio = prescanTotal > 0 ? batch.karten / prescanTotal : 1 / scanResult.batches.length
+        const baseBatchCards = Math.max(1, Math.round(batchSize * baseRatio))
+        perBatchSize = activeConcepts.length === 0 ? 0 : Math.max(1, Math.round(baseBatchCards * (activeConcepts.length / concepts.length)))
       }
-      const count = await runGenerieren(overrideFrom, overrideTo, perBatchSize)
+
+      if (perBatchSize === 0) {
+        toast.warning('Keine Konzepte für diesen Batch ausgewählt.')
+        return
+      }
+
+      const count = await runGenerieren(overrideFrom, overrideTo, perBatchSize, activeConcepts)
       if (count === null || count === 0) return
 
       setGenProgress(100)
@@ -321,7 +385,8 @@ export default function ThemaPage({ params }: Props) {
   }
 
   async function handleAccept(updates: Partial<Karte>) {
-    const karte = reviewKarten[reviewIdx]
+    const karte = activeReviewKarten[reviewIdx]
+    if (!karte) return
     setActionLoading(true)
     try {
       const res = await fetch(`/api/karte/${karte.id}`, {
@@ -331,17 +396,20 @@ export default function ThemaPage({ params }: Props) {
       })
       if (!res.ok) { toast.error('Fehler beim Speichern'); return }
       toast.success('Karte übernommen')
-      const next = reviewKarten.filter((_, i) => i !== reviewIdx)
+      const next = reviewKarten.filter((k) => k.id !== karte.id)
       setReviewKarten(next)
-      setReviewIdx(Math.max(0, Math.min(reviewIdx, next.length - 1)))
-      maybeTriggerFeedback(next.length)
+      
+      const filteredNext = activeReviewKarten.filter((k) => k.id !== karte.id)
+      setReviewIdx(Math.max(0, Math.min(reviewIdx, filteredNext.length - 1)))
+      maybeTriggerFeedback(filteredNext.length)
     } finally {
       setActionLoading(false)
     }
   }
 
   async function handleReject() {
-    const karte = reviewKarten[reviewIdx]
+    const karte = activeReviewKarten[reviewIdx]
+    if (!karte) return
     setActionLoading(true)
     try {
       const res = await fetch(`/api/karte/${karte.id}`, {
@@ -351,21 +419,23 @@ export default function ThemaPage({ params }: Props) {
       })
       if (!res.ok) { toast.error('Fehler beim Verwerfen'); return }
       toast.success('Karte verworfen')
-      const next = reviewKarten.filter((_, i) => i !== reviewIdx)
+      const next = reviewKarten.filter((k) => k.id !== karte.id)
       setReviewKarten(next)
-      setReviewIdx(Math.max(0, Math.min(reviewIdx, next.length - 1)))
-      maybeTriggerFeedback(next.length)
+      
+      const filteredNext = activeReviewKarten.filter((k) => k.id !== karte.id)
+      setReviewIdx(Math.max(0, Math.min(reviewIdx, filteredNext.length - 1)))
+      maybeTriggerFeedback(filteredNext.length)
     } finally {
       setActionLoading(false)
     }
   }
 
   async function handleBulkAccept() {
-    setBulkLoading(true)
-    const count = reviewKarten.length
+    setActionLoading(true)
+    const count = activeReviewKarten.length
     try {
       await Promise.all(
-        reviewKarten.map((k) =>
+        activeReviewKarten.map((k) =>
           fetch(`/api/karte/${k.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -374,20 +444,21 @@ export default function ThemaPage({ params }: Props) {
         )
       )
       toast.success(`${count} Karten übernommen`)
-      setReviewKarten([])
+      const activeIds = new Set(activeReviewKarten.map((k) => k.id))
+      setReviewKarten(prev => prev.filter(k => !activeIds.has(k.id)))
       setReviewIdx(0)
       maybeTriggerFeedback(0)
     } finally {
-      setBulkLoading(false)
+      setActionLoading(false)
     }
   }
 
   async function handleBulkReject() {
-    setBulkLoading(true)
-    const count = reviewKarten.length
+    setActionLoading(true)
+    const count = activeReviewKarten.length
     try {
       await Promise.all(
-        reviewKarten.map((k) =>
+        activeReviewKarten.map((k) =>
           fetch(`/api/karte/${k.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -396,11 +467,12 @@ export default function ThemaPage({ params }: Props) {
         )
       )
       toast.success(`${count} Karten verworfen`)
-      setReviewKarten([])
+      const activeIds = new Set(activeReviewKarten.map((k) => k.id))
+      setReviewKarten(prev => prev.filter(k => !activeIds.has(k.id)))
       setReviewIdx(0)
       maybeTriggerFeedback(0)
     } finally {
-      setBulkLoading(false)
+      setActionLoading(false)
     }
   }
 
@@ -933,7 +1005,7 @@ export default function ThemaPage({ params }: Props) {
                         className="w-full h-10 gap-2 bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
                       >
                         <Sparkles className="h-4 w-4" />
-                        Alle {scanResult.batches.length} Batches automatisch
+                        Ausgewählte Batches generieren
                       </Button>
                     )}
 
@@ -944,40 +1016,94 @@ export default function ThemaPage({ params }: Props) {
                       <div className="flex-1 h-px bg-border/50" />
                     </div>
 
-                    {/* Individual batch buttons */}
-                    {scanResult.batches.map((batch, idx) => {
-                      const isActive = activeBatchIdx === idx
-                      const isDone = completedBatches.has(idx) || (autoBatchRunning && idx < autoBatchCurrent - 1)
-                      const isRunning = (generating || autoBatchRunning) && isActive
-                      return (
-                        <Button
-                          key={idx}
-                          onClick={() => !autoBatchRunning && !generating && !isDone && handlePrescanBatchStart(batch, idx)}
-                          disabled={generating || autoBatchRunning}
-                          variant="outline"
-                          className={`w-full h-10 gap-2.5 justify-start border-violet-200/60 dark:border-violet-800/40 hover:bg-violet-50 dark:hover:bg-violet-950/20 hover:border-violet-300 dark:hover:border-violet-700 transition-all ${
-                            isActive ? 'bg-violet-50 dark:bg-violet-950/20 border-violet-300 dark:border-violet-700' : ''
-                          } ${isDone ? 'opacity-50' : ''}`}
-                        >
-                          {isRunning ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-violet-600 shrink-0" />
-                          ) : isDone ? (
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0">✓</span>
-                          ) : (
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-[10px] font-bold text-violet-700 dark:text-violet-300 shrink-0">{idx + 1}</span>
-                          )}
-                          <span className="text-sm font-medium flex-1 text-left truncate">{batch.label}</span>
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            S.{batch.von}–{batch.bis}
-                            {batch.karten > 0 && (
-                              <span className="ml-1.5 text-muted-foreground/60">
-                                ~{Math.max(1, Math.round(batchSize * (batch.karten / scanResult.empfehlung.kartenmenge)))} Karten
-                              </span>
+                    {/* Individual batch cards with key concepts checklist */}
+                    <div className="space-y-3 pt-1">
+                      {scanResult.batches.map((batch, idx) => {
+                        const isActive = activeBatchIdx === idx
+                        const isDone = completedBatches.has(idx) || (autoBatchRunning && idx < autoBatchCurrent - 1)
+                        const isRunning = (generating || autoBatchRunning) && isActive
+                        
+                        const concepts = batch.schluesselkonzepte ?? []
+                        const activeConcepts = concepts.filter((_, cIdx) => selectedConcepts[`${idx}_${cIdx}`] !== false)
+                        const isBatchSelected = activeConcepts.length > 0
+
+                        // Calculate adjusted count
+                        const prescanTotal = scanResult.empfehlung.kartenmenge
+                        const baseRatio = prescanTotal > 0 ? batch.karten / prescanTotal : 1 / scanResult.batches.length
+                        const baseBatchCards = Math.max(1, Math.round(batchSize * baseRatio))
+                        const adjustedBatchCards = activeConcepts.length === 0 ? 0 : Math.max(1, Math.round(baseBatchCards * (activeConcepts.length / concepts.length)))
+
+                        return (
+                          <div
+                            key={idx}
+                            className={`rounded-xl border border-violet-100 dark:border-violet-900/50 bg-card/60 p-4 transition-all ${
+                              isBatchSelected ? 'opacity-100 shadow-sm' : 'opacity-50 bg-muted/20'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-3 mb-2.5">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                {isRunning ? (
+                                  <Loader2 className="h-4 w-4 animate-spin text-violet-600 shrink-0" />
+                                ) : isDone ? (
+                                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0">✓</span>
+                                ) : (
+                                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-[10px] font-bold text-violet-700 dark:text-violet-300 shrink-0">{idx + 1}</span>
+                                )}
+                                <div className="text-left min-w-0">
+                                  <p className="text-sm font-semibold truncate text-foreground">{batch.label}</p>
+                                  <p className="text-xs text-muted-foreground">Seiten {batch.von}–{batch.bis}</p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold tabular-nums px-2.5 py-0.5 rounded-full bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-100/50 dark:border-violet-900/50">
+                                  {adjustedBatchCards} {adjustedBatchCards === 1 ? 'Karte' : 'Karten'}
+                                </span>
+
+                                {!autoBatchRunning && !generating && !isDone && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handlePrescanBatchStart(batch, idx)}
+                                    disabled={!isBatchSelected}
+                                    variant="ghost"
+                                    className="h-7 px-2.5 text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/20"
+                                  >
+                                    Generieren
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Checklist of key concepts */}
+                            {concepts.length > 0 && (
+                              <div className="pl-6 space-y-1.5 border-l border-violet-100/50 dark:border-violet-900/30 ml-2.5">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50 mb-1">Schlüsselkonzepte:</p>
+                                {concepts.map((concept, cIdx) => {
+                                  const isChecked = selectedConcepts[`${idx}_${cIdx}`] !== false
+                                  return (
+                                    <label
+                                      key={cIdx}
+                                      className="flex items-start gap-2 text-xs cursor-pointer select-none py-0.5 hover:text-foreground transition-colors text-muted-foreground"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => !autoBatchRunning && !generating && !isDone && toggleConcept(idx, cIdx)}
+                                        disabled={autoBatchRunning || generating || isDone}
+                                        className="mt-0.5 rounded border-violet-200 dark:border-violet-800 text-violet-600 focus:ring-violet-500 h-3.5 w-3.5 accent-violet-600 cursor-pointer disabled:cursor-not-allowed"
+                                      />
+                                      <span className={isChecked ? 'text-foreground font-medium' : 'line-through text-muted-foreground/40'}>
+                                        {concept}
+                                      </span>
+                                    </label>
+                                  )
+                                })}
+                              </div>
                             )}
-                          </span>
-                        </Button>
-                      )
-                    })}
+                          </div>
+                        )
+                      })}
+                    </div>
                   </>
                 ) : (
                   <Button
@@ -1119,9 +1245,24 @@ export default function ThemaPage({ params }: Props) {
 
         {/* ── Tab: Review ── */}
         <TabsContent value="review" className="mt-6 max-w-2xl space-y-4">
-          <button onClick={() => setActiveTab('uebersicht')} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-3 w-3" />Übersicht
-          </button>
+          <div className="flex items-center justify-between gap-4">
+            <button onClick={() => setActiveTab('uebersicht')} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="h-3 w-3" />Übersicht
+            </button>
+            {reviewKarten.length > 0 && (
+              <div className="flex items-center gap-1 bg-muted p-0.5 rounded-lg text-[10px] border border-border/40">
+                {(['alle', 'core', 'detail', 'fokus'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setPriorityFilter(f)}
+                    className={`px-2 py-0.5 rounded-md font-semibold transition-all capitalize ${priorityFilter === f ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {f === 'fokus' ? '🎯 Fokus' : f}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {reviewLoading ? (
             <div className="flex items-center gap-2.5 text-muted-foreground py-12">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -1157,41 +1298,45 @@ export default function ThemaPage({ params }: Props) {
                 )}
               </div>
             </div>
+          ) : activeReviewKarten.length === 0 ? (
+            <div className="py-16 text-center text-sm text-muted-foreground border border-dashed rounded-2xl">
+              Keine neuen Karten entsprechen dem Filter &ldquo;<span className="font-semibold">{priorityFilter}</span>&rdquo;.
+            </div>
           ) : (
             <div className="space-y-3">
-              {reviewKarten.length > 1 && (
+              {activeReviewKarten.length > 1 && (
                 <div className="flex items-center gap-2 justify-end">
                   <Button
                     size="sm"
                     variant="outline"
                     className="gap-1.5 h-8 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
                     onClick={handleBulkAccept}
-                    disabled={bulkLoading || actionLoading}
+                    disabled={actionLoading}
                   >
-                    {bulkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCheck className="h-3.5 w-3.5" />}
-                    Alle annehmen ({reviewKarten.length})
+                    {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCheck className="h-3.5 w-3.5" />}
+                    Alle annehmen ({activeReviewKarten.length})
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     className="gap-1.5 h-8 text-destructive border-destructive/30 hover:bg-destructive/5"
                     onClick={handleBulkReject}
-                    disabled={bulkLoading || actionLoading}
+                    disabled={actionLoading}
                   >
-                    {bulkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                    {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
                     Alle verwerfen
                   </Button>
                 </div>
               )}
               <ReviewCard
-                karte={reviewKarten[reviewIdx]}
+                karte={activeReviewKarten[reviewIdx]}
                 current={reviewIdx + 1}
-                total={reviewKarten.length}
+                total={activeReviewKarten.length}
                 onPrev={() => setReviewIdx((i) => Math.max(0, i - 1))}
-                onNext={() => setReviewIdx((i) => Math.min(reviewKarten.length - 1, i + 1))}
+                onNext={() => setReviewIdx((i) => Math.min(activeReviewKarten.length - 1, i + 1))}
                 onAccept={handleAccept}
                 onReject={handleReject}
-                loading={actionLoading || bulkLoading}
+                loading={actionLoading}
               />
             </div>
           )}
@@ -1204,7 +1349,7 @@ export default function ThemaPage({ params }: Props) {
           </button>
           <div className="flex items-center gap-3">
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setAlleKartenPage(1) }}>
-              <SelectTrigger className="w-44 h-9">
+              <SelectTrigger className="w-40 h-9 shrink-0">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1213,6 +1358,17 @@ export default function ThemaPage({ params }: Props) {
                 <SelectItem value="reviewed">Überprüft</SelectItem>
                 <SelectItem value="verworfen">Verworfen</SelectItem>
                 <SelectItem value="exportiert">Exportiert</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={priorityFilter} onValueChange={(v: any) => { setPriorityFilter(v); setAlleKartenPage(1) }}>
+              <SelectTrigger className="w-36 h-9 shrink-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="alle">Alle Prioritäten</SelectItem>
+                <SelectItem value="core">Core</SelectItem>
+                <SelectItem value="detail">Detail</SelectItem>
+                <SelectItem value="fokus">🎯 Fokus</SelectItem>
               </SelectContent>
             </Select>
             <div className="relative flex-1">
@@ -1232,17 +1388,25 @@ export default function ThemaPage({ params }: Props) {
               <span className="text-sm">Lade Karten...</span>
             </div>
           ) : (() => {
-            const filtered = searchQuery
-              ? alleKarten.filter((k) => {
-                  const q = searchQuery.toLowerCase()
-                  return (
+            const filtered = alleKarten.filter((k) => {
+              const q = searchQuery.toLowerCase()
+              const matchesSearch = searchQuery
+                ? (
                     k.frage?.toLowerCase().includes(q) ||
                     k.antwort?.toLowerCase().includes(q) ||
                     k.cloze_text?.toLowerCase().includes(q) ||
                     k.kontext?.toLowerCase().includes(q)
                   )
-                })
-              : alleKarten
+                : true
+
+              const matchesPriority = priorityFilter === 'alle'
+                ? true
+                : priorityFilter === 'fokus'
+                ? k.tags?.includes('fokus')
+                : k.tags?.includes(priorityFilter)
+
+              return matchesSearch && matchesPriority
+            })
             const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
             const page = Math.min(alleKartenPage, totalPages)
             const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)

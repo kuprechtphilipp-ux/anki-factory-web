@@ -85,7 +85,8 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
   const [initialized, setInitialized] = useState(false)
 
   const [queue, setQueue] = useState<QueueItem[]>([])
-  const [totalInitial, setTotalInitial] = useState(0)
+  const [priorityFilter, setPriorityFilter] = useState<'alle' | 'core' | 'fokus'>('alle')
+  const [totalInitialMap, setTotalInitialMap] = useState<Record<string, number>>({ alle: 0, core: 0, fokus: 0 })
   const [cardKey, setCardKey] = useState(0)
   const [exiting, setExiting] = useState(false)
   const [revealed, setRevealed] = useState(false)
@@ -131,9 +132,17 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
         ...data.neue.map(k => ({ karte: k, source: 'new' as const })),
       ]
       setQueue(q)
-      setTotalInitial(data.total)
 
-      if (data.total === 0) {
+      const countAlle = q.length
+      const countCore = q.filter(i => i.karte.tags?.includes('core')).length
+      const countFokus = q.filter(i => i.karte.tags?.includes('fokus')).length
+      setTotalInitialMap({
+        alle: countAlle,
+        core: countCore,
+        fokus: countFokus
+      })
+
+      if (q.length === 0) {
         const allRes = await fetch(`/api/karten?thema_id=${themaRow.id}&status=reviewed`)
         const all: Karte[] = await allRes.json()
         const future = all
@@ -148,8 +157,17 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
     init()
   }, [kursName, themaName])
 
+  const filteredQueue = queue.filter((item) => {
+    if (priorityFilter === 'alle') return true
+    if (priorityFilter === 'fokus') return item.karte.tags?.includes('fokus')
+    if (priorityFilter === 'core') return item.karte.tags?.includes('core')
+    return true
+  })
+
+  const totalInitial = totalInitialMap[priorityFilter]
+
   useEffect(() => {
-    if (initialized && !loading && totalInitial > 0 && queue.length === 0 && !sessionComplete) {
+    if (initialized && !loading && totalInitial > 0 && filteredQueue.length === 0 && !sessionComplete) {
       setSessionComplete(true)
       if (themaId) {
         fetch(`/api/karten?thema_id=${themaId}&status=reviewed`)
@@ -162,9 +180,9 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
           })
       }
     }
-  }, [initialized, loading, totalInitial, queue.length, sessionComplete, themaId])
+  }, [initialized, loading, totalInitial, filteredQueue.length, sessionComplete, themaId])
 
-  const currentItem = queue[0]
+  const currentItem = filteredQueue[0]
   const currentKarte = currentItem?.karte
 
   const intervals = currentKarte ? computeIntervals(currentKarte) : null
@@ -176,9 +194,9 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
     ? (isCloze ? htmlAnswer(currentKarte.cloze_text ?? currentKarte.antwort) : htmlAnswer(currentKarte.antwort))
     : ''
 
-  const learningCount = queue.filter(i => i.karte.fsrs_state === 1 || i.karte.fsrs_state === 3).length
-  const reviewsCount = queue.filter(i => i.karte.fsrs_state === 2).length
-  const neueCount = queue.filter(i => i.karte.fsrs_state === 0).length
+  const learningCount = filteredQueue.filter(i => i.karte.fsrs_state === 1 || i.karte.fsrs_state === 3).length
+  const reviewsCount = filteredQueue.filter(i => i.karte.fsrs_state === 2).length
+  const neueCount = filteredQueue.filter(i => i.karte.fsrs_state === 0).length
   const progressPct = totalInitial > 0 ? (donePermanent / totalInitial) * 100 : 0
 
   async function handleRate(rating: 1 | 2 | 3 | 4) {
@@ -220,11 +238,11 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
 
       if (isReturning) {
         setQueue(prev => {
-          const [, ...rest] = prev
+          const rest = prev.filter(i => i.karte.id !== currentKarte.id)
           return [...rest, { karte: updated, source: src }]
         })
       } else {
-        setQueue(prev => prev.slice(1))
+        setQueue(prev => prev.filter(i => i.karte.id !== currentKarte.id))
         setDonePermanent(p => p + 1)
         if (wasNew && updated.fsrs_state >= 2) setNewLearned(p => p + 1)
         if (wasReview) setReviewsDone(p => p + 1)
@@ -435,6 +453,28 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
         </div>
       </div>
 
+      {/* Priority Filter */}
+      <div className="flex items-center justify-center gap-1.5 mb-5 bg-muted/65 p-1 rounded-lg max-w-[280px] mx-auto text-[11px] border border-border/50">
+        <button
+          onClick={() => setPriorityFilter('alle')}
+          className={`flex-1 py-1 rounded-md font-semibold transition-all ${priorityFilter === 'alle' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          Alle
+        </button>
+        <button
+          onClick={() => setPriorityFilter('core')}
+          className={`flex-1 py-1 rounded-md font-semibold transition-all ${priorityFilter === 'core' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          Nur Core
+        </button>
+        <button
+          onClick={() => setPriorityFilter('fokus')}
+          className={`flex-1 py-1 rounded-md font-semibold transition-all ${priorityFilter === 'fokus' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          🎯 Fokus
+        </button>
+      </div>
+
       {/* Pills */}
       <div className="flex items-center justify-center gap-2 mb-6">
         {learningCount > 0 && (
@@ -498,9 +538,24 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
               </div>
             )}
 
-            <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/50 mb-5">
-              {isCloze ? 'Lückentext' : 'Frage'}
-            </p>
+            <div className="flex items-center justify-between gap-2 mb-5">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/50">
+                {isCloze ? 'Lückentext' : 'Frage'}
+              </p>
+              {currentKarte?.tags?.includes('fokus') ? (
+                <span className="flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/50 px-2 py-0.5 text-[9px] font-bold">
+                  🎯 Fokus
+                </span>
+              ) : currentKarte?.tags?.includes('core') ? (
+                <span className="flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/50 px-2 py-0.5 text-[9px] font-bold">
+                  Core
+                </span>
+              ) : currentKarte?.tags?.includes('detail') ? (
+                <span className="flex items-center gap-1 rounded-full bg-muted text-muted-foreground/80 border border-border px-2 py-0.5 text-[9px] font-semibold">
+                  Detail
+                </span>
+              ) : null}
+            </div>
 
             <div className="flex-1">
               <p className="text-xl font-medium leading-relaxed whitespace-pre-wrap">{questionText}</p>

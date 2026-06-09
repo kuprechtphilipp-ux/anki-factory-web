@@ -12,7 +12,11 @@ Regeln:
 - Bei Formeln immer mit Intuition ("warum gilt das?")
 - Kein "laut Folie X"
 - WICHTIG: Erkenne die Sprache des Folientexts und erstelle alle Karten (frage, antwort, kontext_erklaerung) konsequent in genau dieser Sprache. Wechsle die Sprache nicht, auch wenn du auf Deutsch angesprochen wirst.
-- Vergib für jede Karte 1-3 passende, kurze Anki-Tags (z.B. "definition", "formel", "beispiel", "klausurrelevant"). Ohne "#" Symbol.
+- WICHTIG ZU TAGS: Jedes tags-Array MUSS als ersten Eintrag entweder "core" oder "detail" enthalten:
+  * "core": Essentielles Grundlagenwissen, Kern-Definitionen, Hauptformeln, absolut notwendig zum Bestehen der Prüfung.
+  * "detail": Hintergrundwissen, Herleitungen, ergänzende Beispiele, Vertiefungen.
+- WICHTIG ZU FOKUS: Kennzeichne zusätzlich maximal 10–15 % der allerwichtigsten, typischsten Prüfungsfragen mit einem zweiten Tag "fokus" (z.B. ["core", "fokus", "definition"]). Sei extrem restriktiv: Nur absolute Schlüsselkarten, die fast sicher in der Prüfung abgefragt werden, erhalten den Tag "fokus".
+- Vergib danach 1-2 weitere passende, kurze Anki-Tags (z.B. "definition", "formel", "beispiel"). Ohne "#" Symbol.
 
 Du erhältst den extrahierten Text der Folien, seitenweise strukturiert.
 Entscheide für jede Information selbst den besten Kartentyp:
@@ -28,7 +32,7 @@ Gib ausschließlich ein JSON-Array zurück, kein Markdown, kein Kommentar:
     "cloze_text": "",
     "kontext_erklaerung": "...",
     "slide_nummer": <int>,
-    "tags": ["tag1"]
+    "tags": ["core", "fokus", "tag1"]
   },
   {
     "typ": "cloze",
@@ -37,16 +41,20 @@ Gib ausschließlich ein JSON-Array zurück, kein Markdown, kein Kommentar:
     "cloze_text": "...",
     "kontext_erklaerung": "...",
     "slide_nummer": <int>,
-    "tags": ["tag1"]
+    "tags": ["core", "tag1"]
   }
 ]`
 
-const LOD_INSTRUCTIONS: Record<string, string> = {
-  Gering:
-    'Pareto 80/20 Regel anwenden! Sei EXTREM restriktiv. Der User lernt kurz vor der Klausur und will nur die 20% der High-Level Konzepte, die 80% des Ergebnisses bringen. Fasse stark zusammen. Erstelle für 10 Folien maximal 1-3 Karten. Ignoriere alle kleinen Details, Beispiele oder tiefen Herleitungen.',
-  Mittel:
-    'Erstelle eine moderate Anzahl an Karten für die wichtigsten Konzepte. Finde eine gute Balance aus Details und Übersichtlichkeit.',
-  Hoch: 'Extrahiere jedes Detail. Erstelle für jede noch so kleine Informationsebene, Definition, Aufzählung oder Fußnote eine eigene atomare Karte. Die Anzahl der Karten ist nicht limitiert.',
+function getLodInstructions(lod: string, limit: number): string {
+  switch (lod) {
+    case 'Gering':
+      return `Pareto 80/20 Regel anwenden! Sei EXTREM restriktiv. Der User lernt kurz vor der Klausur und will nur die wichtigsten High-Level Konzepte. Erstelle insgesamt maximal ${limit} Karten für diesen Abschnitt. Ignoriere kleine Details, Beispiele oder Herleitungen.`
+    case 'Hoch':
+      return `Extrahiere jedes Detail. Erstelle für jede noch so kleine Informationsebene, Definition, Aufzählung oder Fußnote eine eigene atomare Karte, aber halte dich an das Limit von maximal ${limit} Karten für diesen Abschnitt.`
+    case 'Mittel':
+    default:
+      return `Erstelle eine moderate Anzahl an Karten für die wichtigsten Konzepte. Finde eine gute Balance aus Details und Übersichtlichkeit. Erstelle insgesamt maximal ${limit} Karten für diesen Abschnitt.`
+  }
 }
 
 interface RawCard {
@@ -106,14 +114,16 @@ export async function POST(req: Request) {
     const pageTo = (formData.get('page_to') as string | null) || null
     const useVision = (formData.get('vision') as string) === 'true'
 
+    const batchSize = parseInt((formData.get('batch_size') as string) ?? '20') || 20
+    const conceptsRaw = formData.get('concepts') as string | null
+    const conceptsList = conceptsRaw ? (JSON.parse(conceptsRaw) as string[]) : null
+
     const pdfBuffer = Buffer.from(await file.arrayBuffer())
 
     const dynamicSystemPrompt =
       SYSTEM_PROMPT +
       '\n\nDETAILGRAD-ANWEISUNG:\n' +
-      (LOD_INSTRUCTIONS[lod] ?? LOD_INSTRUCTIONS['Mittel'])
-
-    const batchSize = parseInt((formData.get('batch_size') as string) ?? '20') || 20
+      getLodInstructions(lod, batchSize)
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -123,6 +133,9 @@ export async function POST(req: Request) {
       // Vision mode: send full PDF as base64, Claude processes text + images
       const pdfBase64 = pdfBuffer.toString('base64')
       let userText = `Analysiere alle Folien in diesem PDF und erstelle ca. ${batchSize} Flashcards. Erstelle nicht mehr als ${batchSize} Karten — passe die Tiefe und Granularität an, um diese Zahl zu erreichen. Berücksichtige sowohl Text als auch Grafiken, Diagramme und Bilder.`
+      if (conceptsList && conceptsList.length > 0) {
+        userText += `\n\nFokussiere dich AUSSCHLIESSLICH auf die folgenden Schlüsselkonzepte und erstelle für jedes Konzept entsprechende Karten. Ignoriere andere Themen vollkommen:\n${conceptsList.map(c => `- ${c}`).join('\n')}`
+      }
       if (pageFrom && pageTo) userText += ` Analysiere NUR die Seiten ${pageFrom} bis ${pageTo}.`
       else if (pageFrom) userText += ` Beginne ab Seite ${pageFrom}.`
       else if (pageTo) userText += ` Analysiere nur bis einschließlich Seite ${pageTo}.`
@@ -149,7 +162,17 @@ export async function POST(req: Request) {
         .map((text, i) => `--- Seite ${fromIdx + i + 1} ---\n${text.trim()}`)
         .join('\n\n')
 
-      userContent = `Analysiere den folgenden Folientext (Seiten ${fromIdx + 1}–${toIdx + 1}) und erstelle ca. ${batchSize} Flashcards. Erstelle nicht mehr als ${batchSize} Karten — passe die Tiefe und Granularität an, um diese Zahl zu erreichen.\n\n${pageText}`
+      if (conceptsList && conceptsList.length > 0) {
+        userContent = `Analysiere den folgenden Folientext (Seiten ${fromIdx + 1}–${toIdx + 1}) und erstelle ca. ${batchSize} Flashcards. Erstelle nicht mehr als ${batchSize} Karten — passe die Tiefe und Granularität an, um diese Zahl zu erreichen.
+
+Fokussiere dich AUSSCHLIESSLICH auf die folgenden Schlüsselkonzepte und erstelle für jedes Konzept entsprechende Karten. Ignoriere andere Themen vollkommen:
+${conceptsList.map(c => `- ${c}`).join('\n')}
+
+Folientext:
+${pageText}`
+      } else {
+        userContent = `Analysiere den folgenden Folientext (Seiten ${fromIdx + 1}–${toIdx + 1}) und erstelle ca. ${batchSize} Flashcards. Erstelle nicht mehr als ${batchSize} Karten — passe die Tiefe und Granularität an, um diese Zahl zu erreichen.\n\n${pageText}`
+      }
     }
 
     let allCards: RawCard[] = []
@@ -170,6 +193,16 @@ export async function POST(req: Request) {
       const raw = (message.content[0] as { type: 'text'; text: string }).text
       try {
         allCards = parseJson(raw)
+        
+        // Server-side Downsampling Guardrail: Ensure we do not return more cards than batchSize
+        if (allCards.length > batchSize && batchSize > 0) {
+          const downsampled: RawCard[] = []
+          for (let i = 0; i < batchSize; i++) {
+            const idx = Math.floor((i * allCards.length) / batchSize)
+            downsampled.push(allCards[idx])
+          }
+          allCards = downsampled
+        }
       } catch {
         console.error('[generieren] JSON-Parse-Fehler:', raw.slice(0, 200))
         return NextResponse.json(
