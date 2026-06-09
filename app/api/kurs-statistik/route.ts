@@ -77,6 +77,7 @@ export async function GET(req: Request) {
         tRetCount++
       }
     }
+    const mature = tk.filter(k => k.fsrs_state === 2 && k.fsrs_stability > 21).length
     return {
       name: t.name,
       id: t.id,
@@ -84,6 +85,7 @@ export async function GET(req: Request) {
       total: tk.length,
       neu: neuByThema[t.id] ?? 0,
       retention: tRetCount > 0 ? tRetTotal / tRetCount : 0,
+      mature,
     }
   })
 

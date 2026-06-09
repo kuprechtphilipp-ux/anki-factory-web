@@ -110,6 +110,7 @@ export interface KursThemaStats {
   total: number
   neu: number
   retention: number
+  mature: number
 }
 
 export interface KursStatistik {

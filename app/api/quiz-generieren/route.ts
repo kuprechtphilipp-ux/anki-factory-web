@@ -52,15 +52,15 @@ export async function POST(req: Request) {
     return `${i + 1}. [ID: ${k.id}] Frage: ${k.frage}\nAntwort: ${k.antwort}`
   }).join('\n\n')
 
-  const systemPrompt = `Du bist ein Prüfungsfragen-Generator. Erstelle Multiple-Choice-Fragen aus den gegebenen Flashcards.
-Regeln:
-- Genau 4 Antwortoptionen pro Frage (A, B, C, D)
-- Genau 1 richtige Antwort
-- Die 3 falschen Optionen müssen plausibel klingen (aus dem gleichen Themengebiet)
-- Fragen auf dem gleichen Sprachniveau wie die Karten
-- Keine Fragen die trivial durch die Formulierung beantwortet werden können
-- Gib NUR ein JSON-Array zurück, kein Markdown, keine Erklärungen außerhalb des JSON:
-[{"frage":"...","optionen":["A: ...","B: ...","C: ...","D: ..."],"richtig":0,"erklaerung":"Kurze Erklärung","karte_id":123}]`
+  const systemPrompt = `You are a quiz generator. Create multiple-choice questions from the given flashcards.
+Rules:
+- CRITICAL: Use exactly the same language as the flashcard content. If cards are in English, write in English. If in German, write in German. Match the language precisely.
+- Exactly 4 answer options per question (A, B, C, D)
+- Exactly 1 correct answer
+- The 3 wrong options must sound plausible (from the same subject area)
+- No questions that can be trivially answered by their wording
+- Return ONLY a JSON array, no markdown, no explanations outside the JSON:
+[{"frage":"...","optionen":["A: ...","B: ...","C: ...","D: ..."],"richtig":0,"erklaerung":"Short explanation in the same language as the cards","karte_id":123}]`
 
   const msg = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -68,7 +68,7 @@ Regeln:
     system: systemPrompt,
     messages: [{
       role: 'user',
-      content: `Erstelle genau ${anzahl} Multiple-Choice-Fragen aus diesen ${sample.length} Flashcards:\n\n${cardsText}`,
+      content: `Create exactly ${anzahl} multiple-choice questions from these ${sample.length} flashcards. Use the same language as the cards:\n\n${cardsText}`,
     }],
   })
 

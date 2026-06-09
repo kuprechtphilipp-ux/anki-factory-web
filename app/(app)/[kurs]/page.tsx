@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus } from 'lucide-react'
+import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { KursStatistik, KursThemaStats } from '@/lib/types'
 
@@ -16,18 +16,39 @@ function DayLabel(dayOffset: number): string {
   return d.toLocaleDateString('de-DE', { weekday: 'short' })
 }
 
-function ThemaCard({
-  thema,
-  kursName,
-  reviewedCount,
-}: {
-  thema: KursThemaStats
-  kursName: string
-  reviewedCount: number
-}) {
-  const retentionPct = Math.round(thema.retention * 100)
+function RingMetric({ label, value, trackColor, fillColor }: { label: string; value: number; trackColor: string; fillColor: string }) {
+  const r = 14
+  const circ = 2 * Math.PI * r
+  const dash = Math.max(0, Math.min(1, value / 100)) * circ
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width="36" height="36" viewBox="0 0 36 36">
+        <circle cx="18" cy="18" r={r} fill="none" stroke={trackColor} strokeWidth="3.5" />
+        {value > 0 && (
+          <circle
+            cx="18" cy="18" r={r} fill="none"
+            stroke={fillColor} strokeWidth="3.5"
+            strokeDasharray={`${dash} ${circ}`}
+            strokeLinecap="round"
+            transform="rotate(-90 18 18)"
+          />
+        )}
+        <text x="18" y="22" textAnchor="middle" fontSize="8" fontWeight="700" fill="currentColor" className="fill-foreground">
+          {value}%
+        </text>
+      </svg>
+      <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/60 leading-none">{label}</span>
+    </div>
+  )
+}
+
+function ThemaCard({ thema, kursName }: { thema: KursThemaStats; kursName: string }) {
   const total = thema.total
   const enc = encodeURIComponent
+
+  const gelerntPct = (total + thema.neu) > 0 ? Math.round(total / (total + thema.neu) * 100) : 0
+  const retentionPct = Math.round(thema.retention * 100)
+  const reifePct = total > 0 ? Math.round(thema.mature / total * 100) : 0
 
   const borderColor =
     total === 0
@@ -37,8 +58,6 @@ function ThemaCard({
       : thema.neu > 0
       ? 'border-l-amber-400'
       : 'border-l-emerald-500'
-
-  const deckPct = total > 0 ? Math.round((total / Math.max(total, 50)) * 100) : 0
 
   return (
     <div className={`rounded-2xl border border-border/50 bg-card shadow-card border-l-4 ${borderColor} p-4 space-y-3`}>
@@ -58,15 +77,14 @@ function ThemaCard({
 
       {total > 0 ? (
         <>
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground/60">
-              <span>{total} Karten</span>
-              {retentionPct > 0 && <span>~{retentionPct}% Retention</span>}
-            </div>
-            <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
-              <div className="h-full bg-primary/60 rounded-full" style={{ width: `${Math.min(100, deckPct)}%` }} />
-            </div>
+          {/* Ring metrics */}
+          <div className="flex items-center justify-around pt-1 pb-0.5">
+            <RingMetric label="Gelernt" value={gelerntPct} trackColor="hsl(var(--muted))" fillColor="hsl(var(--primary))" />
+            <RingMetric label="Retention" value={retentionPct} trackColor="hsl(var(--muted))" fillColor="hsl(142 71% 45%)" />
+            <RingMetric label="Reife" value={reifePct} trackColor="hsl(var(--muted))" fillColor="hsl(238 84% 67%)" />
           </div>
+
+          {/* Action buttons */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <Link
               href={`/${enc(kursName)}/${enc(thema.name)}/lernen`}
@@ -76,6 +94,13 @@ function ThemaCard({
               Lernen
             </Link>
             <Link
+              href={`/${enc(kursName)}/${enc(thema.name)}/drill`}
+              className="inline-flex items-center gap-1 rounded-lg border border-amber-200/60 dark:border-amber-800/40 bg-amber-50/60 dark:bg-amber-950/10 hover:bg-amber-100/60 dark:hover:bg-amber-950/20 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400 transition-colors"
+            >
+              <Zap className="h-3 w-3" />
+              Drill
+            </Link>
+            <Link
               href={`/${enc(kursName)}/${enc(thema.name)}/quiz`}
               className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-card hover:bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
@@ -83,11 +108,18 @@ function ThemaCard({
               Quiz
             </Link>
             <Link
-              href={`/${enc(kursName)}/${enc(thema.name)}`}
-              className="inline-flex items-center gap-1 rounded-lg border border-violet-200/50 dark:border-violet-800/30 hover:bg-violet-50/50 dark:hover:bg-violet-950/20 px-2.5 py-1 text-xs font-medium text-violet-700 dark:text-violet-400 transition-colors"
+              href={`/${enc(kursName)}/${enc(thema.name)}/schriftlich`}
+              className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-card hover:bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Sparkles className="h-3 w-3" />
-              Generieren
+              <PenLine className="h-3 w-3" />
+              Schriftlich
+            </Link>
+            <Link
+              href={`/${enc(kursName)}/${enc(thema.name)}`}
+              title="Karten generieren"
+              className="ml-auto inline-flex items-center justify-center rounded-lg border border-violet-200/50 dark:border-violet-800/30 hover:bg-violet-50/50 dark:hover:bg-violet-950/20 p-1.5 text-violet-600 dark:text-violet-400 transition-colors"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
             </Link>
           </div>
         </>
@@ -103,8 +135,6 @@ function ThemaCard({
           </Link>
         </div>
       )}
-      {/* suppress unused var warning */}
-      {reviewedCount > -1 && null}
     </div>
   )
 }
@@ -210,7 +240,7 @@ export default function KursDashboard({ params }: Props) {
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Themen</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {stats.themen.map((thema) => (
-              <ThemaCard key={thema.id} thema={thema} kursName={kursName} reviewedCount={thema.total} />
+              <ThemaCard key={thema.id} thema={thema} kursName={kursName} />
             ))}
           </div>
         </div>

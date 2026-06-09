@@ -20,6 +20,32 @@ import type { Karte, KartTyp, PrescanResult, PrescanBatch, AktivitaetTag } from 
 
 const PAGE_SIZE = 20
 
+function RingMetric({ label, value, fillColor }: { label: string; value: number; fillColor: string }) {
+  const r = 16
+  const circ = 2 * Math.PI * r
+  const dash = Math.max(0, Math.min(1, value / 100)) * circ
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <svg width="44" height="44" viewBox="0 0 44 44">
+        <circle cx="22" cy="22" r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth="3.5" />
+        {value > 0 && (
+          <circle
+            cx="22" cy="22" r={r} fill="none"
+            stroke={fillColor} strokeWidth="3.5"
+            strokeDasharray={`${dash} ${circ}`}
+            strokeLinecap="round"
+            transform="rotate(-90 22 22)"
+          />
+        )}
+        <text x="22" y="26" textAnchor="middle" fontSize="9" fontWeight="700" fill="currentColor">
+          {value}%
+        </text>
+      </svg>
+      <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/60 leading-none">{label}</span>
+    </div>
+  )
+}
+
 interface Props {
   params: { kurs: string; thema: string }
 }
@@ -141,6 +167,15 @@ export default function ThemaPage({ params }: Props) {
     }, 0)
     return Math.round((sum / eligible.length) * 100)
   }, [reviewedCards])
+
+  const gelerntPct = useMemo(() => {
+    const total = (reviewedCount ?? 0) + (neuCount ?? 0)
+    return total > 0 ? Math.round((reviewedCount ?? 0) / total * 100) : 0
+  }, [reviewedCount, neuCount])
+
+  const reifePct = useMemo(() => {
+    return reviewedCards.length > 0 ? Math.round(maturity.solid / reviewedCards.length * 100) : 0
+  }, [maturity.solid, reviewedCards.length])
 
   const bannerState = useMemo(() => {
     if ((reviewedCount ?? 0) === 0 && (neuCount ?? 0) === 0) return 'D'
@@ -798,6 +833,20 @@ export default function ThemaPage({ params }: Props) {
             </div>
           )}
 
+          {/* ── Performance Metriken ── */}
+          {reviewedCards.length > 0 && (
+            <div className="rounded-2xl border border-border/50 bg-card/50 px-5 py-4 shadow-card">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-4">Performance</p>
+              <div className="flex items-center justify-around">
+                <RingMetric label="Gelernt" value={gelerntPct} fillColor="hsl(var(--primary))" />
+                <div className="w-px h-10 bg-border/50" />
+                <RingMetric label="Retention" value={retentionEst ?? 0} fillColor="hsl(142 71% 45%)" />
+                <div className="w-px h-10 bg-border/50" />
+                <RingMetric label="Reife" value={reifePct} fillColor="hsl(238 84% 67%)" />
+              </div>
+            </div>
+          )}
+
           {/* ── Lernmodi ── */}
           <div className="space-y-3">
             {/* Hero: Lernen */}
@@ -854,15 +903,18 @@ export default function ThemaPage({ params }: Props) {
                 </div>
               </Link>
 
-              <div className="flex flex-col gap-2.5 rounded-xl border border-border/40 bg-muted/30 p-4 opacity-50 cursor-not-allowed select-none">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                  <Layers className="h-4 w-4 text-muted-foreground/50" />
+              <Link
+                href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/schriftlich`}
+                className="group flex flex-col gap-2.5 rounded-xl border border-emerald-200/50 dark:border-emerald-700/30 bg-gradient-to-b from-emerald-50/70 to-transparent dark:from-emerald-950/15 p-4 hover:border-emerald-300/70 transition-all shadow-card hover:-translate-y-0.5"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                  <PenLine className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-muted-foreground">Probe</p>
-                  <p className="text-xs text-muted-foreground/60 mt-0.5 leading-snug">Bald verfügbar</p>
+                  <p className="text-sm font-semibold">Schriftlich</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">KI-Feedback</p>
                 </div>
-              </div>
+              </Link>
             </div>
           </div>
 
