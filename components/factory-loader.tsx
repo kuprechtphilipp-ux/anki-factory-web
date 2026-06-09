@@ -1,169 +1,192 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Sparkles, Brain, Cpu, Layers } from 'lucide-react'
+import { Sparkles, Check, Brain } from 'lucide-react'
 
-// Scientific study tips
 const STUDY_TIPS = [
-  'Active Recall: Dein Gehirn lernt am effektivsten, wenn du dich aktiv abfragst, statt Folien nur passiv durchzulesen.',
-  'Spaced Repetition: Lerne in größer werdenden Abständen. Das verhindert das Vergessen und spart bis zu 50% der Lernzeit.',
-  'Der FSRS-Algorithmus deiner App berechnet den optimalen Wiederholungszeitpunkt, genau bevor du eine Karte vergisst.',
-  'Schlaf festigt Wissen: Während des Schlafs werden neue Synapsen gebildet und das Gelernte ins Langzeitgedächtnis übertragen.',
-  'Pareto-Prinzip (80/20): 80% der Klausurpunkte stammen meist aus 20% des Stoffs. Konzentriere dich vor allem auf die Core-Karten.',
-  'Der Zeigarnik-Effekt: Unerledigte Aufgaben bleiben besser im Kopf. Mach ruhig Pausen mitten in einem schwierigen Kapitel!',
-  'Erklärungsmethode (Feynman-Technik): Wenn du ein Konzept einer anderen Person (oder dir selbst) einfach erklären kannst, hast du es wirklich verstanden.'
+  'Active Recall: Dein Gehirn lernt am effektivsten, wenn du dich aktiv abfragst — nicht durch passives Durchlesen.',
+  'Spaced Repetition spart bis zu 50% der Lernzeit: Karten kurz vor dem Vergessen zu wiederholen ist weitaus effizienter als massen-lernen.',
+  'Der FSRS-Algorithmus berechnet für jede Karte den exakten Moment, bevor du sie vergisst — und plant genau dort die Wiederholung.',
+  'Schlaf festigt Wissen: Im Tiefschlaf überträgt das Gehirn neu Gelerntes ins Langzeitgedächtnis. Lerne also lieber abends als nachts.',
+  'Pareto-Prinzip: 80% der Klausurpunkte stammen oft aus 20% des Stoffs. Fokus-Karten markieren genau diesen Kernstoff.',
+  'Feynman-Technik: Erkläre ein Konzept in einfachen Worten. Wenn du strauchlerst, ist das die Lücke in deinem Verständnis.',
+  'Interleaving: Mische verschiedene Themen beim Lernen. Monotones Wiederholen einer Kategorie erzeugt Scheinkompetenz.',
 ]
 
-// Dynamic generation phases
-const GENERATION_PHASES = [
-  { text: 'PDF-Struktur einlesen & Seiten analysieren...', icon: Layers },
-  { text: 'Didaktische Gewichtung der Folien bewerten...', icon: Brain },
-  { text: 'Klausurrelevante Schlüsselkonzepte filtern...', icon: Sparkles },
-  { text: 'Didaktische Basic & Cloze Fragen formulieren...', icon: Cpu },
-  { text: 'Core-, Detail- und Fokus-Prioritäten klassifizieren...', icon: Sparkles },
-  { text: 'Kartenanzahl optimieren & finale Filter anwenden...', icon: Layers }
+const PHASES = [
+  { label: 'PDF lesen & Text extrahieren' },
+  { label: 'Inhalt analysieren & strukturieren' },
+  { label: 'Schlüsselkonzepte identifizieren' },
+  { label: 'Karten formulieren & verfassen' },
+  { label: 'Qualität prüfen & optimieren' },
 ]
+
+const PHASE_THRESHOLDS = [0, 18, 36, 57, 78]
 
 interface Props {
   progress?: number
   isAutoBatch?: boolean
   currentBatch?: number
   totalBatches?: number
+  batchLabel?: string
+  pagesFrom?: number
+  pagesTo?: number
+  targetCards?: number
 }
 
-export function FactoryLoader({ progress = 0, isAutoBatch = false, currentBatch = 1, totalBatches = 1 }: Props) {
+export function FactoryLoader({
+  progress = 0,
+  isAutoBatch = false,
+  currentBatch = 1,
+  totalBatches = 1,
+  batchLabel,
+  pagesFrom,
+  pagesTo,
+  targetCards,
+}: Props) {
   const [tipIdx, setTipIdx] = useState(0)
-  const [phaseIdx, setPhaseIdx] = useState(0)
+  const [prevTipIdx, setPrevTipIdx] = useState(0)
+  const [tipVisible, setTipVisible] = useState(true)
 
-  // Rotate study tips
   useEffect(() => {
-    const tipInterval = setInterval(() => {
-      setTipIdx((prev) => (prev + 1) % STUDY_TIPS.length)
-    }, 6000)
-    return () => clearInterval(tipInterval)
-  }, [])
+    const interval = setInterval(() => {
+      setTipVisible(false)
+      setTimeout(() => {
+        setPrevTipIdx(tipIdx)
+        setTipIdx(prev => (prev + 1) % STUDY_TIPS.length)
+        setTipVisible(true)
+      }, 400)
+    }, 7000)
+    return () => clearInterval(interval)
+  }, [tipIdx])
 
-  // Rotate generation phases
-  useEffect(() => {
-    const phaseInterval = setInterval(() => {
-      setPhaseIdx((prev) => (prev + 1) % GENERATION_PHASES.length)
-    }, 4500)
-    return () => clearInterval(phaseInterval)
-  }, [])
+  const currentPhaseIdx = PHASE_THRESHOLDS.reduce(
+    (last, threshold, idx) => (progress >= threshold ? idx : last),
+    0
+  )
 
-  const CurrentPhaseIcon = GENERATION_PHASES[phaseIdx].icon
+  const metaLine = (() => {
+    const parts: string[] = []
+    if (isAutoBatch && totalBatches > 1) parts.push(`Batch ${currentBatch} von ${totalBatches}`)
+    if (pagesFrom && pagesTo) parts.push(`Seiten ${pagesFrom}–${pagesTo}`)
+    if (targetCards) parts.push(`~${targetCards} Karten`)
+    return parts.join(' · ')
+  })()
 
   return (
-    <div className="flex flex-col items-center justify-center p-6 sm:p-10 w-full max-w-lg mx-auto bg-card/40 border border-border/40 rounded-2xl shadow-card backdrop-blur-sm animate-fade-in">
-      
-      {/* ── Factory Animation Section ── */}
-      <div className="relative w-full h-32 flex items-center justify-center overflow-hidden mb-6">
-        
-        {/* Conveyor Belt Track */}
-        <div className="absolute bottom-6 w-3/4 h-2 bg-muted rounded-full border border-border/50">
-          {/* Conveyor rollers */}
-          <div className="absolute inset-0 flex justify-between px-2 -top-1">
-            <div className="w-4 h-4 bg-muted-foreground/30 rounded-full animate-spin [animation-duration:3s]" />
-            <div className="w-4 h-4 bg-muted-foreground/30 rounded-full animate-spin [animation-duration:3s]" />
-            <div className="w-4 h-4 bg-muted-foreground/30 rounded-full animate-spin [animation-duration:3s]" />
-            <div className="w-4 h-4 bg-muted-foreground/30 rounded-full animate-spin [animation-duration:3s]" />
+    <div className="w-full overflow-hidden rounded-2xl border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/80 via-card to-indigo-50/20 dark:from-violet-950/30 dark:via-card dark:to-indigo-950/10 shadow-lg">
+
+      {/* Top accent line */}
+      <div className="h-[3px] w-full bg-gradient-to-r from-violet-500 via-indigo-400 to-violet-500 opacity-70" />
+
+      <div className="p-5 space-y-5">
+
+        {/* ── Header ── */}
+        <div className="flex items-start gap-3.5">
+          <div className="relative shrink-0 mt-0.5">
+            <div className="absolute inset-0 rounded-full bg-violet-400/30 dark:bg-violet-500/20 animate-ping [animation-duration:2s]" />
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/60 dark:to-indigo-900/60 border border-violet-200/70 dark:border-violet-700/50 shadow-sm">
+              <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-300" />
+            </div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground leading-snug">
+              {isAutoBatch && totalBatches > 1
+                ? `Batch ${currentBatch} von ${totalBatches} wird generiert`
+                : 'Karten werden generiert'}
+            </p>
+            {batchLabel && (
+              <p className="text-xs font-medium text-violet-700 dark:text-violet-300 mt-0.5 truncate">
+                {batchLabel}
+              </p>
+            )}
+            {metaLine && (
+              <p className="text-xs text-muted-foreground mt-0.5">{metaLine}</p>
+            )}
           </div>
         </div>
 
-        {/* Sliding Knowledge Block (raw data) */}
-        <div className="absolute bottom-8 left-1/4 translate-x-[-50%] animate-factory-block flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40">
-          <Layers className="h-4 w-4 text-indigo-500 animate-pulse" />
+        {/* ── Phase stepper ── */}
+        <div className="space-y-2.5">
+          {PHASES.map((phase, idx) => {
+            const isDone = idx < currentPhaseIdx
+            const isActive = idx === currentPhaseIdx
+            const isPending = idx > currentPhaseIdx
+
+            return (
+              <div
+                key={idx}
+                className={`flex items-center gap-3 transition-all duration-500 ${
+                  isPending ? 'opacity-25' : isDone ? 'opacity-60' : 'opacity-100'
+                }`}
+              >
+                {/* Indicator */}
+                {isDone ? (
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50 border border-emerald-200/60 dark:border-emerald-700/50">
+                    <Check className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400 stroke-[2.5]" />
+                  </div>
+                ) : isActive ? (
+                  <div className="relative shrink-0">
+                    <div className="absolute inset-0 rounded-full bg-violet-400/40 dark:bg-violet-600/30 animate-ping [animation-duration:1.6s]" />
+                    <div className="relative h-5 w-5 rounded-full bg-violet-100 dark:bg-violet-900/60 border-2 border-violet-500 dark:border-violet-400 flex items-center justify-center">
+                      <div className="h-1.5 w-1.5 rounded-full bg-violet-500 dark:bg-violet-400" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-5 w-5 shrink-0 rounded-full border-2 border-muted-foreground/20 bg-transparent" />
+                )}
+
+                {/* Label */}
+                <span className={`text-xs leading-tight transition-colors duration-300 ${
+                  isActive
+                    ? 'text-violet-700 dark:text-violet-300 font-semibold'
+                    : 'text-muted-foreground'
+                }`}>
+                  {phase.label}
+                </span>
+              </div>
+            )
+          })}
         </div>
 
-        {/* The Card Press Machine */}
-        <div className="absolute bottom-7 left-1/2 -translate-x-1/2 flex flex-col items-center">
-          {/* Press stamp */}
-          <div className="h-10 w-12 bg-gradient-to-b from-primary to-primary-foreground border border-primary/20 rounded-md shadow animate-factory-press flex items-center justify-center z-10">
-            <Cpu className="h-4 w-4 text-white animate-pulse" />
-          </div>
-          {/* Press base */}
-          <div className="h-4 w-16 bg-muted border border-border/60 rounded-t-sm" />
-        </div>
-
-        {/* Outcoming stamped Card (stamped Flashcard) */}
-        <div className="absolute bottom-8 left-3/4 translate-x-[-50%] animate-factory-card flex h-10 w-8 items-center justify-center rounded border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/20 dark:to-card shadow-sm">
-          <Sparkles className="h-3 w-3 text-amber-500 animate-bounce" />
-        </div>
-
-        {/* Decorative Synapses Pulsing */}
-        <div className="absolute top-2 flex gap-12 text-primary/20 dark:text-primary/10">
-          <Brain className="h-10 w-10 animate-pulse [animation-duration:2s]" />
-          <Brain className="h-12 w-12 animate-pulse [animation-duration:2.5s] delay-300" />
-        </div>
-      </div>
-
-      {/* ── Active Status Info ── */}
-      <div className="text-center space-y-3 w-full">
-        <div className="flex items-center justify-center gap-2 text-primary">
-          <CurrentPhaseIcon className="h-4 w-4 animate-spin [animation-duration:4s]" />
-          <span className="text-sm font-semibold tracking-wide transition-all duration-300">
-            {GENERATION_PHASES[phaseIdx].text}
-          </span>
-        </div>
-
-        {/* Progress bar / Auto-batch info */}
-        <div className="space-y-1.5 pt-1">
-          <div className="flex justify-between items-center text-xs text-muted-foreground">
-            <span>
-              {isAutoBatch 
-                ? `Batch ${currentBatch} von ${totalBatches}` 
-                : 'Karten werden gedruckt'}
+        {/* ── Progress bar ── */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50">
+              Fortschritt
             </span>
-            <span className="font-semibold tabular-nums text-primary">{Math.round(progress)}%</span>
+            <span className="text-xs font-bold tabular-nums text-violet-700 dark:text-violet-300">
+              {Math.round(progress)}%
+            </span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted border border-border/40">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60 border border-border/30">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-primary to-indigo-400 transition-all duration-500 ease-out"
-              style={{ width: `${progress}%` }}
+              className="h-full rounded-full bg-gradient-to-r from-violet-500 via-indigo-400 to-violet-400 transition-all duration-700 ease-out"
+              style={{
+                width: `${progress}%`,
+                boxShadow: progress > 0 ? '0 0 10px rgba(139,92,246,0.5)' : 'none',
+              }}
             />
           </div>
         </div>
-      </div>
 
-      {/* ── Scientific Tips Section (Educational Carousel) ── */}
-      <div className="mt-8 pt-5 border-t border-border/40 w-full min-h-[90px] flex flex-col justify-center">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1.5 text-center">
-          💡 didaktischer Lerntipp:
-        </p>
-        <p className="text-[11.5px] text-muted-foreground leading-relaxed text-center italic transition-all duration-500 ease-in-out">
-          &ldquo;{STUDY_TIPS[tipIdx]}&rdquo;
-        </p>
-      </div>
+        {/* ── Study tip ── */}
+        <div className="pt-1 border-t border-border/40 space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <Brain className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/40">
+              Lerntipp
+            </p>
+          </div>
+          <p
+            className="text-[11.5px] text-muted-foreground leading-relaxed italic transition-opacity duration-400"
+            style={{ opacity: tipVisible ? 1 : 0 }}
+          >
+            &ldquo;{STUDY_TIPS[tipVisible ? tipIdx : prevTipIdx]}&rdquo;
+          </p>
+        </div>
 
-      {/* Tailwind Animations injected inline */}
-      <style jsx global>{`
-        @keyframes factory-press {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(12px); filter: brightness(1.2); }
-        }
-        @keyframes factory-block {
-          0% { left: 0%; opacity: 0; }
-          10% { opacity: 1; }
-          45% { left: 45%; opacity: 1; transform: translateX(-50%) rotate(0deg); }
-          50% { left: 50%; opacity: 0; transform: translateX(-50%) scale(0.8); }
-          100% { left: 50%; opacity: 0; }
-        }
-        @keyframes factory-card {
-          0%, 50% { left: 50%; opacity: 0; transform: translateX(-50%) scale(0.8) rotate(0deg); }
-          55% { left: 55%; opacity: 1; transform: translateX(-50%) scale(1) rotate(5deg); }
-          90% { opacity: 1; }
-          100% { left: 100%; opacity: 0; transform: translateX(-50%) rotate(15deg); }
-        }
-        .animate-factory-press {
-          animation: factory-press 2s infinite ease-in-out;
-        }
-        .animate-factory-block {
-          animation: factory-block 2s infinite linear;
-        }
-        .animate-factory-card {
-          animation: factory-card 2s infinite linear;
-        }
-      `}</style>
+      </div>
     </div>
   )
 }

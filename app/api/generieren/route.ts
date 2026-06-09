@@ -45,15 +45,14 @@ Gib ausschließlich ein JSON-Array zurück, kein Markdown, kein Kommentar:
   }
 ]`
 
-function getLodInstructions(lod: string, limit: number): string {
-  switch (lod) {
-    case 'Gering':
-      return `Pareto 80/20 Regel anwenden! Sei EXTREM restriktiv. Der User lernt kurz vor der Klausur und will nur die wichtigsten High-Level Konzepte. Erstelle insgesamt maximal ${limit} Karten für diesen Abschnitt. Ignoriere kleine Details, Beispiele oder Herleitungen.`
-    case 'Hoch':
-      return `Extrahiere jedes Detail. Erstelle für jede noch so kleine Informationsebene, Definition, Aufzählung oder Fußnote eine eigene atomare Karte, aber halte dich an das Limit von maximal ${limit} Karten für diesen Abschnitt.`
-    case 'Mittel':
-    default:
-      return `Erstelle eine moderate Anzahl an Karten für die wichtigsten Konzepte. Finde eine gute Balance aus Details und Übersichtlichkeit. Erstelle insgesamt maximal ${limit} Karten für diesen Abschnitt.`
+function getKartentypInstructions(clozeProzent: number, limit: number): string {
+  const basicProzent = 100 - clozeProzent
+  if (clozeProzent >= 60) {
+    return `KARTENTYP-MIX: Erstelle ~${clozeProzent}% Cloze-Karten und ~${basicProzent}% Basic-Karten. Cloze eignet sich optimal für Definitionen, Fachbegriffe, Aufzählungen und Prozessschritte — nutze ihn dort konsequent. Maximal ${limit} Karten insgesamt.`
+  } else if (clozeProzent <= 30) {
+    return `KARTENTYP-MIX: Erstelle ~${basicProzent}% Basic-Karten und ~${clozeProzent}% Cloze-Karten. Nutze Basic für konzeptuelle Verständnisfragen, Formeln mit Intuition ("warum gilt das?") und Kausalzusammenhänge. Maximal ${limit} Karten insgesamt.`
+  } else {
+    return `KARTENTYP-MIX: Ausgewogener Mix – ~${clozeProzent}% Cloze für Schlüsselbegriffe und Definitionen, ~${basicProzent}% Basic für konzeptuelle Fragen und Zusammenhänge. Maximal ${limit} Karten insgesamt.`
   }
 }
 
@@ -100,7 +99,7 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData()
     const file = formData.get('pdf') as File | null
-    const lod = (formData.get('lod') as string) ?? 'Mittel'
+    const clozeProzent = Math.min(80, Math.max(20, parseInt((formData.get('cloze_anteil') as string) ?? '50') || 50))
     const themaId = formData.get('thema_id')
 
     if (!file) {
@@ -122,8 +121,8 @@ export async function POST(req: Request) {
 
     const dynamicSystemPrompt =
       SYSTEM_PROMPT +
-      '\n\nDETAILGRAD-ANWEISUNG:\n' +
-      getLodInstructions(lod, batchSize)
+      '\n\nKARTENTYP-ANWEISUNG:\n' +
+      getKartentypInstructions(clozeProzent, batchSize)
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 

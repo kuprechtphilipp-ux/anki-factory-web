@@ -35,7 +35,7 @@ export default function ThemaPage({ params }: Props) {
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [batchSize, setBatchSize] = useState(20)
-  const [lod, setLod] = useState('Mittel')
+  const [clozeMix, setClozeMix] = useState(50)
   const [generating, setGenerating] = useState(false)
   const [genProgress, setGenProgress] = useState(0)
   const [lastGenCount, setLastGenCount] = useState<number | null>(null)
@@ -73,6 +73,10 @@ export default function ThemaPage({ params }: Props) {
   const [autoBatchRunning, setAutoBatchRunning] = useState(false)
   const [autoBatchCurrent, setAutoBatchCurrent] = useState(0)
   const [autoBatchTotal, setAutoBatchTotal] = useState(0)
+  const [currentBatchLabel, setCurrentBatchLabel] = useState<string | undefined>()
+  const [currentBatchPagesFrom, setCurrentBatchPagesFrom] = useState<number | undefined>()
+  const [currentBatchPagesTo, setCurrentBatchPagesTo] = useState<number | undefined>()
+  const [currentBatchTargetCards, setCurrentBatchTargetCards] = useState<number | undefined>()
 
   const [visionMode, setVisionMode] = useState(false)
   const [completedBatches, setCompletedBatches] = useState<Set<number>>(() => new Set<number>())
@@ -178,7 +182,7 @@ export default function ThemaPage({ params }: Props) {
       const data = json as PrescanResult
       setScanResult(data)
       // Pre-fill settings from recommendation
-      setLod(data.empfehlung.lod)
+      setClozeMix(data.empfehlung.cloze_anteil)
       setBatchSize(data.empfehlung.kartenmenge)
 
       // Initialize selected concepts
@@ -199,6 +203,9 @@ export default function ThemaPage({ params }: Props) {
 
   function handlePrescanBatchStart(batch: PrescanBatch, idx: number) {
     setActiveBatchIdx(idx)
+    setCurrentBatchLabel(batch.label)
+    setCurrentBatchPagesFrom(batch.von)
+    setCurrentBatchPagesTo(batch.bis)
     handleGenerieren(String(batch.von), String(batch.bis), true, idx)
   }
 
@@ -221,10 +228,14 @@ export default function ThemaPage({ params }: Props) {
 
         setAutoBatchCurrent(i + 1)
         setActiveBatchIdx(i)
+        setCurrentBatchLabel(batch.label)
+        setCurrentBatchPagesFrom(batch.von)
+        setCurrentBatchPagesTo(batch.bis)
 
         const baseRatio = prescanTotal > 0 ? batch.karten / prescanTotal : 1 / batches.length
         const baseBatchCards = Math.max(1, Math.round(batchSize * baseRatio))
         const adjustedBatchCards = Math.max(1, Math.round(baseBatchCards * (activeConcepts.length / concepts.length)))
+        setCurrentBatchTargetCards(adjustedBatchCards)
 
         const count = await runGenerieren(String(batch.von), String(batch.bis), adjustedBatchCards, activeConcepts)
         if (count === null) return
@@ -232,7 +243,7 @@ export default function ThemaPage({ params }: Props) {
         if (batches.length > 1) toast.success(`Batch ${i + 1}/${batches.length}: ${count} Karten gespeichert`)
       }
       setLastGenCount(totalCount)
-      setLastGenLod(lod)
+      setLastGenLod(`${clozeMix}% Cloze`)
       setPdfFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
       resetPrescan()
@@ -279,7 +290,7 @@ export default function ThemaPage({ params }: Props) {
     const form = new FormData()
     form.append('pdf', pdfFile)
     form.append('thema_id', String(themaId))
-    form.append('lod', lod)
+    form.append('cloze_anteil', String(clozeMix))
     form.append('batch_size', String(overrideBatchSize ?? batchSize))
     form.append('vision', visionMode ? 'true' : 'false')
     if (from) form.append('page_from', from)
@@ -354,7 +365,7 @@ export default function ThemaPage({ params }: Props) {
 
       setGenProgress(100)
       setLastGenCount(count)
-      setLastGenLod(lod)
+      setLastGenLod(`${clozeMix}% Cloze`)
 
       if (isPrescanBatch) {
         // Keep PDF + scan result alive for remaining batches
@@ -854,16 +865,23 @@ export default function ThemaPage({ params }: Props) {
 
               {/* Recommendation body */}
               <div className="px-5 py-4 space-y-3">
-                {/* Insight text */}
+                {/* Insight texts */}
                 <p className="text-xs text-muted-foreground leading-relaxed italic">
                   &ldquo;{scanResult.empfehlung.begruendung}&rdquo;
+                </p>
+                <p className="text-xs text-muted-foreground/80 leading-relaxed">
+                  {scanResult.empfehlung.kartentyp_begruendung}
                 </p>
 
                 {/* Settings summary chips */}
                 <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 rounded-full bg-violet-50 dark:bg-violet-950/30 border border-violet-200/60 dark:border-violet-800/40 px-3 py-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Fachtyp</span>
+                    <span className="text-xs font-semibold text-violet-700 dark:text-violet-300">{scanResult.fachtyp_label}</span>
+                  </div>
                   <div className="flex items-center gap-1.5 rounded-full bg-card border border-border/60 px-3 py-1.5">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Detailgrad</span>
-                    <span className="text-xs font-semibold text-foreground">{scanResult.empfehlung.lod}</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mix</span>
+                    <span className="text-xs font-semibold text-foreground">{clozeMix}% Cloze</span>
                   </div>
                   <div className="flex items-center gap-1.5 rounded-full bg-card border border-border/60 px-3 py-1.5">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Karten</span>
@@ -889,17 +907,17 @@ export default function ThemaPage({ params }: Props) {
                 {settingsExpanded && (
                   <div className="grid grid-cols-2 gap-4 pt-1 animate-fade-in">
                     <div className="space-y-2">
-                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detailgrad</Label>
-                      <Select value={lod} onValueChange={setLod} disabled={generating}>
-                        <SelectTrigger className="h-9 bg-card">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Gering"><div className="py-0.5"><div className="font-medium">Gering</div><div className="text-xs text-muted-foreground">Pareto 80/20</div></div></SelectItem>
-                          <SelectItem value="Mittel"><div className="py-0.5"><div className="font-medium">Mittel</div><div className="text-xs text-muted-foreground">Balance</div></div></SelectItem>
-                          <SelectItem value="Hoch"><div className="py-0.5"><div className="font-medium">Hoch</div><div className="text-xs text-muted-foreground">Alles</div></div></SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kartentyp-Mix</Label>
+                        <span className="text-xs font-semibold text-primary tabular-nums">{clozeMix}% Cloze</span>
+                      </div>
+                      <div className="pt-2">
+                        <Slider value={[clozeMix]} onValueChange={([v]) => setClozeMix(v)} min={10} max={90} step={10} disabled={generating} className="w-full" />
+                      </div>
+                      <div className="flex justify-between text-[10px] text-muted-foreground/50 font-medium">
+                        <span>Lückentext</span>
+                        <span>Frage/Antwort</span>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
@@ -951,6 +969,10 @@ export default function ThemaPage({ params }: Props) {
                       isAutoBatch={autoBatchRunning}
                       currentBatch={autoBatchRunning ? autoBatchCurrent : (activeBatchIdx !== null ? activeBatchIdx + 1 : 1)}
                       totalBatches={autoBatchTotal}
+                      batchLabel={currentBatchLabel}
+                      pagesFrom={currentBatchPagesFrom}
+                      pagesTo={currentBatchPagesTo}
+                      targetCards={currentBatchTargetCards}
                     />
                   ) : (
                     <>
@@ -1083,17 +1105,17 @@ export default function ThemaPage({ params }: Props) {
               {/* Settings */}
               <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/50 border border-border/50">
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detailgrad</Label>
-                  <Select value={lod} onValueChange={setLod}>
-                    <SelectTrigger className="h-9 bg-card">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Gering"><div className="py-0.5"><div className="font-medium">Gering</div><div className="text-xs text-muted-foreground">Pareto 80/20</div></div></SelectItem>
-                      <SelectItem value="Mittel"><div className="py-0.5"><div className="font-medium">Mittel</div><div className="text-xs text-muted-foreground">Balance</div></div></SelectItem>
-                      <SelectItem value="Hoch"><div className="py-0.5"><div className="font-medium">Hoch</div><div className="text-xs text-muted-foreground">Alles</div></div></SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kartentyp-Mix</Label>
+                    <span className="text-xs font-semibold tabular-nums text-primary">{clozeMix}% Cloze</span>
+                  </div>
+                  <div className="pt-2">
+                    <Slider value={[clozeMix]} onValueChange={([v]) => setClozeMix(v)} min={10} max={90} step={10} className="w-full" />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-muted-foreground/50 font-medium">
+                    <span>Lückentext</span>
+                    <span>Frage/Antwort</span>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -1170,7 +1192,13 @@ export default function ThemaPage({ params }: Props) {
 
           {/* ── Progress bar (during generation, only when no prescan UI is shown) ── */}
           {generating && scanStep !== 'result' && (
-            <FactoryLoader progress={genProgress} />
+            <FactoryLoader
+              progress={genProgress}
+              batchLabel={currentBatchLabel}
+              pagesFrom={currentBatchPagesFrom}
+              pagesTo={currentBatchPagesTo}
+              targetCards={currentBatchTargetCards}
+            />
           )}
 
           {/* ── Success ── */}

@@ -74,13 +74,16 @@ export interface PrescanBatch {
 
 export interface PrescanResult {
   thema: string
+  fachtyp: 'definitionen' | 'konzepte' | 'formeln'
+  fachtyp_label: string
   seitenanzahl: number
   textdichte: 'gering' | 'mittel' | 'hoch'
   komplexitaet: 'gering' | 'mittel' | 'hoch'
   sprache: string
   empfehlung: {
-    lod: string
     kartenmenge: number
+    cloze_anteil: number
+    kartentyp_begruendung: string
     begruendung: string
   }
   batches: PrescanBatch[]

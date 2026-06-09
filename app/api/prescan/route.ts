@@ -15,14 +15,17 @@ Analysiere das PDF strukturell und gib eine JSON-Empfehlung zurück. Erstelle KE
 Gib NUR dieses JSON-Objekt zurück, kein Markdown, kein Text davor oder danach:
 {
   "thema": "kurzer Titel des Themas (max 5 Wörter)",
+  "fachtyp": "definitionen|konzepte|formeln",
+  "fachtyp_label": "z.B. 'Betriebswirtschaft / Begriffe' oder 'Statistik / Formeln'",
   "seitenanzahl": <int>,
   "textdichte": "gering|mittel|hoch",
   "komplexitaet": "gering|mittel|hoch",
   "sprache": "de|en|andere",
   "empfehlung": {
-    "lod": "Gering|Mittel|Hoch",
     "kartenmenge": <int zwischen 10 und 50>,
-    "begruendung": "1-2 prägnante Sätze warum diese Einstellungen"
+    "cloze_anteil": <int zwischen 20 und 80>,
+    "kartentyp_begruendung": "1 prägnanter Satz warum dieser Kartentyp-Mix",
+    "begruendung": "1-2 prägnante Sätze zur empfohlenen Kartenmenge und Strategie"
   },
   "batches": [
     {
@@ -34,6 +37,11 @@ Gib NUR dieses JSON-Objekt zurück, kein Markdown, kein Text davor oder danach:
     }
   ]
 }
+
+Fachtyp-Regeln:
+- "definitionen": Viele Fachbegriffe, Definitionen, Prozesse (BWL, Jura, Medizin, Pharmakologie) → cloze_anteil 60–80
+- "konzepte": Theorien, Modelle, Zusammenhänge, Argumentationen (Psychologie, VWL, Geschichte, Soziologie) → cloze_anteil 35–55
+- "formeln": Mathematische Formeln, Berechnungen, Algorithmen, Beweise (Mathe, Statistik, Physik, Informatik) → cloze_anteil 20–35
 
 Batch-Regel: Splitte das PDF in sinnvolle Batches von maximal 20 Seiten. Wenn das PDF ≤ 22 Seiten hat, erstelle genau 1 Batch für das gesamte Dokument (von 1 bis seitenanzahl).
 Verteile die empfohlene kartenmenge inhaltlich gewichtet auf die Batches — dichtere oder konzeptuell reichere Abschnitte bekommen mehr Karten. Die Summe aller Batch-karten soll der empfohlenen kartenmenge entsprechen.
