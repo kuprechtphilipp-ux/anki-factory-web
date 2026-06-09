@@ -155,12 +155,18 @@ Berücksichtige diese Präferenzen — aber überschreibe sie nicht wenn der Inh
     })
 
     if (message.stop_reason === 'max_tokens') {
-      throw new Error('Antwort wurde abgeschnitten (PDF zu gross oder zu viele Batches). Versuche ein kleineres PDF oder teile es in Abschnitte auf.')
+      throw new Error('Antwort wurde abgeschnitten (PDF zu gross). Versuche ein kleineres PDF oder teile es in Abschnitte auf.')
     }
 
     const raw = (message.content[0] as { type: 'text'; text: string }).text
     const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
-    const result = JSON.parse(cleaned)
+    // Extract outermost JSON object — handles trailing text that Haiku sometimes appends after the JSON
+    const jsonStart = cleaned.indexOf('{')
+    const jsonEnd = cleaned.lastIndexOf('}')
+    if (jsonStart === -1 || jsonEnd === -1 || jsonEnd < jsonStart) {
+      throw new Error('Kein gültiges JSON-Objekt in der Antwort gefunden')
+    }
+    const result = JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1))
 
     return NextResponse.json({
       ...result,
