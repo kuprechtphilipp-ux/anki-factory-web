@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { FSRS, generatorParameters } from 'ts-fsrs'
 import { karteToFsrsCard } from '@/lib/fsrs'
 import { Button } from '@/components/ui/button'
-import { Loader2, ArrowLeft, BookOpen } from 'lucide-react'
+import { Loader2, ArrowLeft, BookOpen, Layers, Flame, Target } from 'lucide-react'
 import type { Karte, FsrsState } from '@/lib/types'
 
 const clientFsrs = new FSRS(generatorParameters())
@@ -92,6 +92,11 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
   const [revealed, setRevealed] = useState(false)
   const [returningCard, setReturningCard] = useState(false)
   const [ratingLoading, setRatingLoading] = useState(false)
+  const [isTouchDevice, setIsTouchDevice] = useState(false)
+
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  }, [])
 
   // Swipe animation state
   const cardRef = useRef<HTMLDivElement>(null)
@@ -454,24 +459,39 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
       </div>
 
       {/* Priority Filter */}
-      <div className="flex items-center justify-center gap-1.5 mb-5 bg-muted/65 p-1 rounded-lg max-w-[280px] mx-auto text-[11px] border border-border/50">
+      <div className="flex items-center justify-center p-1 rounded-xl max-w-[320px] mx-auto mb-7 bg-background/60 dark:bg-muted/30 backdrop-blur-md border border-border/40 shadow-sm relative z-20">
         <button
           onClick={() => setPriorityFilter('alle')}
-          className={`flex-1 py-1 rounded-md font-semibold transition-all ${priorityFilter === 'alle' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          className={`flex items-center justify-center gap-1.5 flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${
+            priorityFilter === 'alle'
+              ? 'bg-primary/10 text-primary border border-primary/10 shadow-sm font-semibold scale-105'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent'
+          }`}
         >
+          <Layers className="h-3.5 w-3.5" />
           Alle
         </button>
         <button
           onClick={() => setPriorityFilter('core')}
-          className={`flex-1 py-1 rounded-md font-semibold transition-all ${priorityFilter === 'core' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          className={`flex items-center justify-center gap-1.5 flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${
+            priorityFilter === 'core'
+              ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/10 shadow-sm font-semibold scale-105'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent'
+          }`}
         >
-          Nur Core
+          <Flame className="h-3.5 w-3.5" />
+          Core
         </button>
         <button
           onClick={() => setPriorityFilter('fokus')}
-          className={`flex-1 py-1 rounded-md font-semibold transition-all ${priorityFilter === 'fokus' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          className={`flex items-center justify-center gap-1.5 flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${
+            priorityFilter === 'fokus'
+              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/10 shadow-sm font-semibold scale-105'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent'
+          }`}
         >
-          🎯 Fokus
+          <Target className="h-3.5 w-3.5 animate-pulse" />
+          Fokus
         </button>
       </div>
 
@@ -618,9 +638,15 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
                 </button>
               ))}
             </div>
-            <p className="text-center text-[11px] text-muted-foreground/40">
-              ← wischen = Nochmal &nbsp;·&nbsp; Gut = wischen →
-            </p>
+            <div className="text-center text-[11px] text-muted-foreground/40">
+              {isTouchDevice ? (
+                <p>← wischen = Nochmal &nbsp;·&nbsp; Gut = wischen →</p>
+              ) : (
+                <p className="flex items-center justify-center gap-1 text-[10px]">
+                  Tipp: Nutze <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border/80 text-[9px] font-mono font-semibold shadow-sm">Leertaste</kbd> zum Aufdecken und die Ziffern <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border/80 text-[9px] font-mono font-semibold shadow-sm">1</kbd> <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border/80 text-[9px] font-mono font-semibold shadow-sm">2</kbd> <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border/80 text-[9px] font-mono font-semibold shadow-sm">3</kbd> <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border/80 text-[9px] font-mono font-semibold shadow-sm">4</kbd> zum Bewerten
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>

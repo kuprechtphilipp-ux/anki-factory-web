@@ -1194,16 +1194,25 @@ export default function ThemaPage({ params }: Props) {
               <ArrowLeft className="h-3 w-3" />Übersicht
             </button>
             {reviewKarten.length > 0 && (
-              <div className="flex items-center gap-1 bg-muted p-0.5 rounded-lg text-[10px] border border-border/40">
-                {(['alle', 'core', 'detail', 'fokus'] as const).map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setPriorityFilter(f)}
-                    className={`px-2 py-0.5 rounded-md font-semibold transition-all capitalize ${priorityFilter === f ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                  >
-                    {f === 'fokus' ? '🎯 Fokus' : f}
-                  </button>
-                ))}
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-background/60 dark:bg-muted/30 backdrop-blur-md border border-border/40 shadow-sm relative z-20 text-[11px]">
+                {(['alle', 'core', 'detail', 'fokus'] as const).map(f => {
+                  let activeClass = 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent'
+                  if (priorityFilter === f) {
+                    if (f === 'alle') activeClass = 'bg-primary/10 text-primary border border-primary/10 shadow-sm font-semibold scale-105'
+                    else if (f === 'core') activeClass = 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/10 shadow-sm font-semibold scale-105'
+                    else if (f === 'detail') activeClass = 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/10 shadow-sm font-semibold scale-105'
+                    else if (f === 'fokus') activeClass = 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/10 shadow-sm font-semibold scale-105'
+                  }
+                  return (
+                    <button
+                      key={f}
+                      onClick={() => setPriorityFilter(f)}
+                      className={`px-2.5 py-1 rounded-lg font-medium transition-all duration-200 capitalize ${activeClass}`}
+                    >
+                      {f === 'fokus' ? '🎯 Fokus' : f}
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
