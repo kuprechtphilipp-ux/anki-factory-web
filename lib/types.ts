@@ -41,6 +41,50 @@ export interface Karte {
   created_at: string
 }
 
+export interface GenerierProfil {
+  id: number
+  bevorzugter_detailgrad: string
+  bevorzugte_kartenmenge: number
+  bevorzugter_kartentyp: string
+  feedback_count: number
+  notizen: string[]
+  last_updated: string
+}
+
+export interface DeckFeedback {
+  id?: number
+  thema_id?: number | null
+  rating?: number | null
+  detailgrad_feedback?: string | null
+  kartenmenge_feedback?: string | null
+  kartentyp_feedback?: string | null
+  freitext?: string | null
+  karten_count?: number | null
+  lod_used?: string | null
+  created_at?: string
+}
+
+export interface PrescanBatch {
+  von: number
+  bis: number
+  label: string
+}
+
+export interface PrescanResult {
+  thema: string
+  seitenanzahl: number
+  textdichte: 'gering' | 'mittel' | 'hoch'
+  komplexitaet: 'gering' | 'mittel' | 'hoch'
+  sprache: string
+  empfehlung: {
+    lod: string
+    kartenmenge: number
+    begruendung: string
+  }
+  batches: PrescanBatch[]
+  hatProfil: boolean
+}
+
 export type Database = {
   public: {
     Tables: {

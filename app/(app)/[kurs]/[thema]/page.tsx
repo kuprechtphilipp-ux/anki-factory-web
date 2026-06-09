@@ -12,9 +12,10 @@ import { ReviewCard } from '@/components/review-card'
 import { KarteListItem } from '@/components/karte-list-item'
 import { toast } from 'sonner'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, X, Plus, PenLine, ChevronLeft, ChevronRight, ArrowLeft, List } from 'lucide-react'
+import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, X, Plus, PenLine, ChevronLeft, ChevronRight, ArrowLeft, List, ScanSearch, Wand2, ChevronDown, ChevronUp, Layers, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
-import type { Karte, KartTyp } from '@/lib/types'
+import { FeedbackModal } from '@/components/feedback-modal'
+import type { Karte, KartTyp, PrescanResult, PrescanBatch } from '@/lib/types'
 
 const PAGE_SIZE = 20
 
@@ -62,6 +63,17 @@ export default function ThemaPage({ params }: Props) {
   const [newKontext, setNewKontext] = useState('')
   const [newTags, setNewTags] = useState('')
   const [creatingKarte, setCreatingKarte] = useState(false)
+
+  // Pre-scan state
+  const [scanStep, setScanStep] = useState<'idle' | 'scanning' | 'result'>('idle')
+  const [scanResult, setScanResult] = useState<PrescanResult | null>(null)
+  const [scanError, setScanError] = useState<string | null>(null)
+  const [settingsExpanded, setSettingsExpanded] = useState(false)
+  const [activeBatchIdx, setActiveBatchIdx] = useState<number | null>(null)
+
+  // Feedback modal state
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [lastGenLod, setLastGenLod] = useState('Mittel')
 
   const [dueCount, setDueCount] = useState<number | null>(null)
   const [neuCount, setNeuCount] = useState<number | null>(null)
@@ -126,6 +138,47 @@ export default function ThemaPage({ params }: Props) {
     return () => clearInterval(interval)
   }, [generating])
 
+  async function handlePrescan() {
+    if (!pdfFile) return
+    setScanStep('scanning')
+    setScanError(null)
+    setScanResult(null)
+    try {
+      const form = new FormData()
+      form.append('pdf', pdfFile)
+      const res = await fetch('/api/prescan', { method: 'POST', body: form })
+      const json = await res.json()
+      if (!res.ok || json.error) {
+        setScanError(json.error ?? 'Pre-Scan fehlgeschlagen')
+        setScanStep('idle')
+        return
+      }
+      setScanResult(json as PrescanResult)
+      // Pre-fill settings from recommendation
+      setLod(json.empfehlung.lod)
+      setBatchSize(json.empfehlung.kartenmenge)
+      setScanStep('result')
+    } catch (e) {
+      setScanError(e instanceof Error ? e.message : 'Unbekannter Fehler')
+      setScanStep('idle')
+    }
+  }
+
+  function handlePrescanBatchStart(batch: PrescanBatch) {
+    setPageFrom(String(batch.von))
+    setPageTo(String(batch.bis))
+    setActiveBatchIdx(scanResult?.batches.findIndex(b => b.von === batch.von) ?? null)
+    handleGenerieren()
+  }
+
+  function resetPrescan() {
+    setScanStep('idle')
+    setScanResult(null)
+    setScanError(null)
+    setSettingsExpanded(false)
+    setActiveBatchIdx(null)
+  }
+
   async function handleGenerieren() {
     if (!pdfFile || themaId == null) return
     if (pageFrom && parseInt(pageFrom) < 1) { toast.error('"Von Seite" muss ≥ 1 sein'); return }
@@ -168,13 +221,21 @@ export default function ThemaPage({ params }: Props) {
 
       setGenProgress(100)
       setLastGenCount(count)
+      setLastGenLod(lod)
       setPdfFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
+      resetPrescan()
       toast.success(`${count} Karten generiert und gespeichert`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unbekannter Fehler')
     } finally {
       setGenerating(false)
+    }
+  }
+
+  function maybeTriggerFeedback(remaining: number) {
+    if (remaining === 0 && lastGenCount != null && lastGenCount > 0) {
+      setTimeout(() => setFeedbackOpen(true), 600)
     }
   }
 
@@ -192,6 +253,7 @@ export default function ThemaPage({ params }: Props) {
       const next = reviewKarten.filter((_, i) => i !== reviewIdx)
       setReviewKarten(next)
       setReviewIdx(Math.max(0, Math.min(reviewIdx, next.length - 1)))
+      maybeTriggerFeedback(next.length)
     } finally {
       setActionLoading(false)
     }
@@ -211,6 +273,7 @@ export default function ThemaPage({ params }: Props) {
       const next = reviewKarten.filter((_, i) => i !== reviewIdx)
       setReviewKarten(next)
       setReviewIdx(Math.max(0, Math.min(reviewIdx, next.length - 1)))
+      maybeTriggerFeedback(next.length)
     } finally {
       setActionLoading(false)
     }
@@ -218,6 +281,7 @@ export default function ThemaPage({ params }: Props) {
 
   async function handleBulkAccept() {
     setBulkLoading(true)
+    const count = reviewKarten.length
     try {
       await Promise.all(
         reviewKarten.map((k) =>
@@ -228,9 +292,10 @@ export default function ThemaPage({ params }: Props) {
           })
         )
       )
-      toast.success(`${reviewKarten.length} Karten übernommen`)
+      toast.success(`${count} Karten übernommen`)
       setReviewKarten([])
       setReviewIdx(0)
+      maybeTriggerFeedback(0)
     } finally {
       setBulkLoading(false)
     }
@@ -238,6 +303,7 @@ export default function ThemaPage({ params }: Props) {
 
   async function handleBulkReject() {
     setBulkLoading(true)
+    const count = reviewKarten.length
     try {
       await Promise.all(
         reviewKarten.map((k) =>
@@ -248,9 +314,10 @@ export default function ThemaPage({ params }: Props) {
           })
         )
       )
-      toast.success(`${reviewKarten.length} Karten verworfen`)
+      toast.success(`${count} Karten verworfen`)
       setReviewKarten([])
       setReviewIdx(0)
+      maybeTriggerFeedback(0)
     } finally {
       setBulkLoading(false)
     }
@@ -305,6 +372,14 @@ export default function ThemaPage({ params }: Props) {
 
   return (
     <div className="max-w-3xl">
+      <FeedbackModal
+        open={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        themaId={themaId}
+        kartenCount={lastGenCount ?? 0}
+        lodUsed={lastGenLod}
+      />
+
       {/* Breadcrumb + Title */}
       <div className="mb-7">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">{kursName}</p>
@@ -471,6 +546,7 @@ export default function ThemaPage({ params }: Props) {
           <button onClick={() => setActiveTab('uebersicht')} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-1">
             <ArrowLeft className="h-3 w-3" />Übersicht
           </button>
+
           {/* PDF Upload */}
           <div className="space-y-2">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">PDF hochladen</Label>
@@ -482,7 +558,7 @@ export default function ThemaPage({ params }: Props) {
                   ? 'border-primary/50 bg-primary/5'
                   : 'border-border hover:border-primary/40 hover:bg-gradient-to-b hover:from-primary/5 hover:to-transparent'
               }`}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => !pdfFile && fileInputRef.current?.click()}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => {
@@ -495,20 +571,27 @@ export default function ThemaPage({ params }: Props) {
                     return
                   }
                   setPdfFile(file)
+                  resetPrescan()
                 }
               }}
             >
               {pdfFile ? (
-                <div className="flex items-center justify-center gap-2.5 text-sm">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
-                    <FileText className="h-4 w-4 text-primary" />
+                <div className="flex items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 shrink-0">
+                      <FileText className="h-4.5 w-4.5 text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium text-sm truncate max-w-[200px]">{pdfFile.name}</p>
+                      <p className="text-xs text-muted-foreground">{(pdfFile.size / 1024 / 1024).toFixed(1)} MB</p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <p className="font-medium text-sm">{pdfFile.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(pdfFile.size / 1024 / 1024).toFixed(1)} MB
-                    </p>
-                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; resetPrescan() }}
+                    className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -518,8 +601,7 @@ export default function ThemaPage({ params }: Props) {
                   <div>
                     <p className="text-sm font-medium hidden sm:block">PDF hier ablegen</p>
                     <p className="text-sm font-medium sm:hidden">PDF auswählen</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">oder klicken zum Auswählen</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 sm:hidden">Antippen zum Auswählen</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">oder klicken zum Auswählen · max. 20 MB</p>
                   </div>
                 </div>
               )}
@@ -536,92 +618,264 @@ export default function ThemaPage({ params }: Props) {
                     return
                   }
                   setPdfFile(file)
+                  resetPrescan()
                 }}
               />
             </div>
           </div>
 
-          {/* Settings row */}
-          <div className={`grid gap-4 p-4 rounded-xl bg-muted/50 border border-border/50 ${pdfFile ? 'grid-cols-2' : 'grid-cols-2'}`}>
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detailgrad</Label>
-              <Select value={lod} onValueChange={setLod} disabled={generating}>
-                <SelectTrigger className="h-9 bg-card">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Gering">
-                    <div className="py-0.5">
-                      <div className="font-medium">Gering</div>
-                      <div className="text-xs text-muted-foreground">Pareto 80/20</div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="Mittel">
-                    <div className="py-0.5">
-                      <div className="font-medium">Mittel</div>
-                      <div className="text-xs text-muted-foreground">Balance</div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="Hoch">
-                    <div className="py-0.5">
-                      <div className="font-medium">Hoch</div>
-                      <div className="text-xs text-muted-foreground">Alles</div>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Max. Karten</Label>
-                <span className="text-sm font-semibold tabular-nums text-primary">{batchSize}</span>
+          {/* ── Pre-Scan: Scanning state ── */}
+          {scanStep === 'scanning' && (
+            <div className="rounded-2xl border border-violet-200/70 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/80 to-transparent dark:from-violet-950/20 p-5 space-y-4 animate-fade-in">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 shrink-0">
+                  <ScanSearch className="h-4.5 w-4.5 text-violet-600 dark:text-violet-400 animate-pulse" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Claude analysiert dein Dokument...</p>
+                  <p className="text-xs text-muted-foreground">Ermittle optimale Einstellungen</p>
+                </div>
               </div>
-              <div className="pt-2">
-                <Slider
-                  value={[batchSize]}
-                  onValueChange={([v]) => setBatchSize(v)}
-                  min={5} max={50} step={5}
-                  disabled={generating}
-                  className="w-full"
-                />
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-violet-200/50 dark:bg-violet-900/30">
+                <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-violet-500 to-violet-400 animate-pulse" />
               </div>
-              <p className="text-[10px] text-muted-foreground">Zielanzahl Flashcards</p>
             </div>
+          )}
 
-            {pdfFile && (
-              <>
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Von Seite</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    placeholder="1"
-                    value={pageFrom}
-                    onChange={(e) => setPageFrom(e.target.value)}
+          {/* ── Pre-Scan Error ── */}
+          {scanError && scanStep === 'idle' && (
+            <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 animate-fade-in">
+              <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+              <div className="space-y-1 text-sm">
+                <p className="font-medium text-destructive">Pre-Scan fehlgeschlagen</p>
+                <p className="text-xs text-muted-foreground">{scanError}</p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Pre-Scan Result ── */}
+          {scanStep === 'result' && scanResult && !generating && (
+            <div className="rounded-2xl border border-violet-200/70 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/60 to-transparent dark:from-violet-950/15 overflow-hidden animate-fade-in">
+              {/* Result header */}
+              <div className="px-5 pt-4 pb-3 border-b border-violet-200/40 dark:border-violet-800/30">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/30 shrink-0">
+                      <Wand2 className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{scanResult.thema}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[11px] text-muted-foreground">{scanResult.seitenanzahl} Seiten</span>
+                        <span className="text-muted-foreground/30">·</span>
+                        <span className={`text-[11px] font-medium ${
+                          scanResult.textdichte === 'hoch' ? 'text-amber-600 dark:text-amber-400' :
+                          scanResult.textdichte === 'gering' ? 'text-emerald-600 dark:text-emerald-400' :
+                          'text-muted-foreground'
+                        }`}>
+                          {scanResult.textdichte === 'hoch' ? 'Textlastig' : scanResult.textdichte === 'gering' ? 'Kompakt' : 'Mitteldicht'}
+                        </span>
+                        {scanResult.hatProfil && (
+                          <>
+                            <span className="text-muted-foreground/30">·</span>
+                            <span className="text-[11px] text-violet-600 dark:text-violet-400 font-medium">Personalisiert</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={resetPrescan}
+                    className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Recommendation body */}
+              <div className="px-5 py-4 space-y-3">
+                {/* Insight text */}
+                <p className="text-xs text-muted-foreground leading-relaxed italic">
+                  &ldquo;{scanResult.empfehlung.begruendung}&rdquo;
+                </p>
+
+                {/* Settings summary chips */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 rounded-full bg-card border border-border/60 px-3 py-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Detailgrad</span>
+                    <span className="text-xs font-semibold text-foreground">{scanResult.empfehlung.lod}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 rounded-full bg-card border border-border/60 px-3 py-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Karten</span>
+                    <span className="text-xs font-semibold text-foreground">~{scanResult.empfehlung.kartenmenge}</span>
+                  </div>
+                  {scanResult.batches.length > 0 && (
+                    <div className="flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 px-3 py-1.5">
+                      <Layers className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                      <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">{scanResult.batches.length} Batches</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Adjust settings toggle */}
+                <button
+                  onClick={() => setSettingsExpanded(v => !v)}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {settingsExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  Einstellungen {settingsExpanded ? 'ausblenden' : 'anpassen'}
+                </button>
+
+                {settingsExpanded && (
+                  <div className="grid grid-cols-2 gap-4 pt-1 animate-fade-in">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detailgrad</Label>
+                      <Select value={lod} onValueChange={setLod} disabled={generating}>
+                        <SelectTrigger className="h-9 bg-card">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Gering"><div className="py-0.5"><div className="font-medium">Gering</div><div className="text-xs text-muted-foreground">Pareto 80/20</div></div></SelectItem>
+                          <SelectItem value="Mittel"><div className="py-0.5"><div className="font-medium">Mittel</div><div className="text-xs text-muted-foreground">Balance</div></div></SelectItem>
+                          <SelectItem value="Hoch"><div className="py-0.5"><div className="font-medium">Hoch</div><div className="text-xs text-muted-foreground">Alles</div></div></SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Max. Karten</Label>
+                        <span className="text-sm font-semibold tabular-nums text-primary">{batchSize}</span>
+                      </div>
+                      <div className="pt-2">
+                        <Slider value={[batchSize]} onValueChange={([v]) => setBatchSize(v)} min={5} max={50} step={5} disabled={generating} className="w-full" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Von Seite</Label>
+                      <Input type="number" min={1} placeholder="1" value={pageFrom} onChange={(e) => setPageFrom(e.target.value)} disabled={generating} className="h-9 bg-card" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bis Seite</Label>
+                      <Input type="number" min={1} placeholder="Ende" value={pageTo} onChange={(e) => setPageTo(e.target.value)} disabled={generating} className="h-9 bg-card" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Batch CTA buttons or single generate */}
+              <div className="px-5 pb-5 space-y-2">
+                {scanResult.batches.length > 0 ? (
+                  <>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Batches generieren</p>
+                    {scanResult.batches.map((batch, idx) => (
+                      <Button
+                        key={idx}
+                        onClick={() => handlePrescanBatchStart(batch)}
+                        disabled={generating}
+                        variant="outline"
+                        className={`w-full h-10 gap-2.5 justify-start border-violet-200/60 dark:border-violet-800/40 hover:bg-violet-50 dark:hover:bg-violet-950/20 hover:border-violet-300 dark:hover:border-violet-700 ${activeBatchIdx === idx ? 'bg-violet-50 dark:bg-violet-950/20' : ''}`}
+                      >
+                        {generating && activeBatchIdx === idx ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-violet-600" />
+                        ) : (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-[10px] font-bold text-violet-700 dark:text-violet-300 shrink-0">{idx + 1}</span>
+                        )}
+                        <span className="text-sm font-medium flex-1 text-left truncate">{batch.label}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">S.{batch.von}–{batch.bis}</span>
+                      </Button>
+                    ))}
+                  </>
+                ) : (
+                  <Button
+                    onClick={handleGenerieren}
                     disabled={generating}
-                    className="h-9 bg-card"
-                  />
+                    className="w-full h-10 gap-2 bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
+                  >
+                    {generating ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" />Generiere...</>
+                    ) : (
+                      <><Sparkles className="h-4 w-4" />Jetzt generieren</>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Default state: Settings + action buttons ── */}
+          {scanStep === 'idle' && !generating && (
+            <>
+              {/* Settings */}
+              <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/50 border border-border/50">
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detailgrad</Label>
+                  <Select value={lod} onValueChange={setLod}>
+                    <SelectTrigger className="h-9 bg-card">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Gering"><div className="py-0.5"><div className="font-medium">Gering</div><div className="text-xs text-muted-foreground">Pareto 80/20</div></div></SelectItem>
+                      <SelectItem value="Mittel"><div className="py-0.5"><div className="font-medium">Mittel</div><div className="text-xs text-muted-foreground">Balance</div></div></SelectItem>
+                      <SelectItem value="Hoch"><div className="py-0.5"><div className="font-medium">Hoch</div><div className="text-xs text-muted-foreground">Alles</div></div></SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bis Seite</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    placeholder="Ende"
-                    value={pageTo}
-                    onChange={(e) => setPageTo(e.target.value)}
-                    disabled={generating}
-                    className="h-9 bg-card"
-                  />
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Max. Karten</Label>
+                    <span className="text-sm font-semibold tabular-nums text-primary">{batchSize}</span>
+                  </div>
+                  <div className="pt-2">
+                    <Slider value={[batchSize]} onValueChange={([v]) => setBatchSize(v)} min={5} max={50} step={5} className="w-full" />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Zielanzahl Flashcards</p>
                 </div>
-              </>
-            )}
-          </div>
+                {pdfFile && (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Von Seite</Label>
+                      <Input type="number" min={1} placeholder="1" value={pageFrom} onChange={(e) => setPageFrom(e.target.value)} className="h-9 bg-card" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bis Seite</Label>
+                      <Input type="number" min={1} placeholder="Ende" value={pageTo} onChange={(e) => setPageTo(e.target.value)} className="h-9 bg-card" />
+                    </div>
+                  </>
+                )}
+              </div>
 
-          {/* Progress */}
+              {/* Action buttons */}
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  onClick={handlePrescan}
+                  disabled={!pdfFile}
+                  variant="outline"
+                  className="h-10 gap-2 border-violet-200/70 dark:border-violet-800/40 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/20 hover:border-violet-300 dark:hover:border-violet-700 disabled:opacity-40"
+                >
+                  <ScanSearch className="h-4 w-4" />
+                  Analysieren
+                </Button>
+                <Button
+                  onClick={handleGenerieren}
+                  disabled={!pdfFile}
+                  className="h-10 gap-2 shadow-sm"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Direkt starten
+                </Button>
+              </div>
+              {pdfFile && (
+                <p className="text-[11px] text-center text-muted-foreground -mt-2">
+                  Analysieren empfiehlt optimale Einstellungen · Direkt starten nutzt aktuelle Einstellungen
+                </p>
+              )}
+            </>
+          )}
+
+          {/* ── Progress bar (during generation) ── */}
           {generating && (
-            <div className="space-y-2 rounded-xl bg-primary/5 border border-primary/20 px-4 py-3">
+            <div className="space-y-2 rounded-xl bg-primary/5 border border-primary/20 px-4 py-3 animate-fade-in">
               <div className="flex items-center gap-2 text-sm text-primary">
                 <Sparkles className="h-3.5 w-3.5 animate-pulse" />
                 <span>Generiere Flashcards mit Claude AI...</span>
@@ -635,8 +889,8 @@ export default function ThemaPage({ params }: Props) {
             </div>
           )}
 
-          {/* Success */}
-          {lastGenCount != null && !generating && (
+          {/* ── Success ── */}
+          {lastGenCount != null && !generating && scanStep === 'idle' && (
             <div className="flex items-center justify-between rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-4 py-3 text-sm animate-fade-in">
               <span className="text-emerald-800 dark:text-emerald-200">
                 <span className="font-semibold">{lastGenCount}</span> Karten gespeichert
@@ -647,24 +901,6 @@ export default function ThemaPage({ params }: Props) {
               </Button>
             </div>
           )}
-
-          <Button
-            onClick={handleGenerieren}
-            disabled={!pdfFile || generating}
-            className="w-full h-10 gap-2 shadow-sm"
-          >
-            {generating ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Generiere...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Flashcards generieren
-              </>
-            )}
-          </Button>
         </TabsContent>
 
         {/* ── Tab: Review ── */}
