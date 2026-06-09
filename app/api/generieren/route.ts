@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import pdf from 'pdf-parse'
 
-export const maxDuration = 60 // Vercel Hobby max; Pro würde 300s erlauben
+export const maxDuration = 300 // Pro: 300s, Hobby: hard-capped at 60s
 
 const SYSTEM_PROMPT = `Du bist ein Elite-Tutor und Didaktik-Experte.
 Regeln:
@@ -13,11 +14,10 @@ Regeln:
 - WICHTIG: Erkenne die Sprache des Folientexts und erstelle alle Karten (frage, antwort, kontext_erklaerung) konsequent in genau dieser Sprache. Wechsle die Sprache nicht, auch wenn du auf Deutsch angesprochen wirst.
 - Vergib für jede Karte 1-3 passende, kurze Anki-Tags (z.B. "definition", "formel", "beispiel", "klausurrelevant"). Ohne "#" Symbol.
 
-Du siehst das vollständige PDF mit allen Folien — Text UND Grafiken/Bilder. Nutze beides:
+Du erhältst den extrahierten Text der Folien, seitenweise strukturiert.
 Entscheide für jede Information selbst den besten Kartentyp:
 - 'basic': Klassische Frage/Antwort Karte.
 - 'cloze': Lückentext. Nutze dies für wichtige Definitionen oder Aufzählungen. Syntax: "Die Hauptstadt von {{c1::Frankreich}} ist {{c2::Paris}}."
-Beschreibe Diagramme und Grafiken textlich in der Frage oder Antwort, wenn sie für das Verständnis wichtig sind.
 
 Gib ausschließlich ein JSON-Array zurück, kein Markdown, kein Kommentar:
 [
@@ -67,6 +67,23 @@ function parseJson(raw: string): RawCard[] {
   return JSON.parse(cleaned)
 }
 
+// Extract text per page using pdf-parse pagerender callback
+async function extractPageTexts(buffer: Buffer): Promise<string[]> {
+  const pages: string[] = []
+
+  await pdf(buffer, {
+    pagerender(pageData: { getTextContent: () => Promise<{ items: Array<{ str: string }> }> }) {
+      return pageData.getTextContent().then((content) => {
+        const text = content.items.map((item) => item.str).join(' ')
+        pages.push(text)
+        return text
+      })
+    },
+  } as Parameters<typeof pdf>[1])
+
+  return pages
+}
+
 export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY nicht gesetzt' }, { status: 500 })
@@ -89,7 +106,25 @@ export async function POST(req: Request) {
     const pageTo = (formData.get('page_to') as string | null) || null
 
     const pdfBuffer = Buffer.from(await file.arrayBuffer())
-    const pdfBase64 = pdfBuffer.toString('base64')
+
+    // Extract text per page — avoids sending full binary PDF to Claude each batch
+    let pageTexts: string[] = []
+    try {
+      pageTexts = await extractPageTexts(pdfBuffer)
+    } catch {
+      // Fallback: extract full text if per-page extraction fails
+      const fallback = await pdf(pdfBuffer)
+      pageTexts = [fallback.text]
+    }
+
+    const totalPages = pageTexts.length
+    const fromIdx = pageFrom ? Math.max(0, parseInt(pageFrom) - 1) : 0
+    const toIdx = pageTo ? Math.min(totalPages - 1, parseInt(pageTo) - 1) : totalPages - 1
+
+    const relevantPages = pageTexts.slice(fromIdx, toIdx + 1)
+    const pageText = relevantPages
+      .map((text, i) => `--- Seite ${fromIdx + i + 1} ---\n${text.trim()}`)
+      .join('\n\n')
 
     const dynamicSystemPrompt =
       SYSTEM_PROMPT +
@@ -98,14 +133,7 @@ export async function POST(req: Request) {
 
     const batchSize = parseInt((formData.get('batch_size') as string) ?? '20') || 20
 
-    let userText = `Analysiere alle Folien in diesem PDF und erstelle ca. ${batchSize} Flashcards. Erstelle nicht mehr als ${batchSize} Karten — passe die Tiefe und Granularität an, um diese Zahl zu erreichen. Berücksichtige dabei sowohl den Text als auch alle Grafiken, Diagramme und Bilder.`
-    if (pageFrom && pageTo) {
-      userText += ` Analysiere NUR die Seiten ${pageFrom} bis ${pageTo}. Ignoriere alle anderen Seiten.`
-    } else if (pageFrom) {
-      userText += ` Beginne ab Seite ${pageFrom}. Ignoriere alle vorherigen Seiten.`
-    } else if (pageTo) {
-      userText += ` Analysiere nur bis einschließlich Seite ${pageTo}. Ignoriere alle nachfolgenden Seiten.`
-    }
+    const userText = `Analysiere den folgenden Folientext (Seiten ${fromIdx + 1}–${toIdx + 1}) und erstelle ca. ${batchSize} Flashcards. Erstelle nicht mehr als ${batchSize} Karten — passe die Tiefe und Granularität an, um diese Zahl zu erreichen.\n\n${pageText}`
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -119,20 +147,7 @@ export async function POST(req: Request) {
         messages: [
           {
             role: 'user',
-            content: [
-              {
-                type: 'document',
-                source: {
-                  type: 'base64',
-                  media_type: 'application/pdf',
-                  data: pdfBase64,
-                },
-              } as Anthropic.DocumentBlockParam,
-              {
-                type: 'text',
-                text: userText,
-              },
-            ],
+            content: userText,
           },
         ],
       })
