@@ -337,18 +337,19 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
               {wrongIds.size} zum Wiederholen
             </span>
           )}
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-bold text-foreground tabular-nums">{answered}</span>
-            <span className="text-sm text-muted-foreground">/ {totalCards}</span>
-            <svg width="32" height="32" className="-rotate-90">
-              <circle cx="16" cy="16" r="13" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-semibold text-foreground tabular-nums">
+              {answered}<span className="text-muted-foreground font-normal mx-0.5">/</span>{totalCards}
+            </span>
+            <svg width="28" height="28" className="-rotate-90 shrink-0">
+              <circle cx="14" cy="14" r="11" fill="none" stroke="hsl(var(--muted))" strokeWidth="2.5" />
               <circle
-                cx="16" cy="16" r="13"
+                cx="14" cy="14" r="11"
                 fill="none"
                 stroke="hsl(var(--primary))"
-                strokeWidth="3"
-                strokeDasharray={`${2 * Math.PI * 13}`}
-                strokeDashoffset={`${2 * Math.PI * 13 * (1 - progressPct / 100)}`}
+                strokeWidth="2.5"
+                strokeDasharray={`${2 * Math.PI * 11}`}
+                strokeDashoffset={`${2 * Math.PI * 11 * (1 - progressPct / 100)}`}
                 className="transition-all duration-300"
               />
             </svg>

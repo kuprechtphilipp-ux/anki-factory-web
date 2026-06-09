@@ -244,20 +244,22 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
       )}
       style={{ width: `${width}px`, maxWidth: 'calc(100vw - 16px)' }}
     >
-      {/* Logo */}
-      <div className="flex h-14 items-center gap-2.5 border-b border-border/50 px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-          <GraduationCap className="h-4.5 w-4.5 h-[18px] w-[18px] text-primary-foreground" />
+      {/* Logo — safe-area wrapper extends behind iOS status bar */}
+      <div className="shrink-0 border-b border-border/50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        <div className="flex h-14 items-center gap-2.5 px-4">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+            <GraduationCap className="h-[18px] w-[18px] text-primary-foreground" />
+          </div>
+          <span className="font-semibold gradient-text tracking-tight">Anki Factory</span>
+          {/* Close button — mobile only */}
+          <button
+            onClick={onClose}
+            className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors lg:hidden"
+            aria-label="Sidebar schließen"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-        <span className="font-semibold gradient-text tracking-tight">Anki Factory</span>
-        {/* Close button — mobile only */}
-        <button
-          onClick={onClose}
-          className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors lg:hidden"
-          aria-label="Sidebar schließen"
-        >
-          <X className="h-4 w-4" />
-        </button>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3 px-2" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>

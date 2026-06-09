@@ -57,27 +57,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       />
 
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <header className="flex h-14 shrink-0 items-center border-b border-border/50 bg-card/60 px-4 backdrop-blur-sm">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="mr-2 lg:hidden"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Menü öffnen"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <div className="flex-1" />
-          <button
-            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
-            className="hidden sm:flex items-center gap-2 rounded-lg border border-border/60 bg-muted/50 hover:bg-muted px-3 py-1.5 text-xs text-muted-foreground transition-colors mr-2"
-            title="Suche (⌘K)"
-          >
-            <Search className="h-3.5 w-3.5" />
-            <span>Suche</span>
-            <kbd className="ml-1 rounded border border-border/60 bg-card px-1 text-[10px] font-mono">⌘K</kbd>
-          </button>
-          <ThemeToggle />
+        {/* Header: extends behind iOS status bar via padding-top safe-area-inset-top */}
+        <header
+          className="shrink-0 border-b border-border/50 bg-card/60 backdrop-blur-sm"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        >
+          <div className="flex h-14 items-center px-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="mr-2 lg:hidden"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Menü öffnen"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <div className="flex-1" />
+            <button
+              onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
+              className="hidden sm:flex items-center gap-2 rounded-lg border border-border/60 bg-muted/50 hover:bg-muted px-3 py-1.5 text-xs text-muted-foreground transition-colors mr-2"
+              title="Suche (⌘K)"
+            >
+              <Search className="h-3.5 w-3.5" />
+              <span>Suche</span>
+              <kbd className="ml-1 rounded border border-border/60 bg-card px-1 text-[10px] font-mono">⌘K</kbd>
+            </button>
+            <ThemeToggle />
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">{children}</main>
         <CommandPalette />
