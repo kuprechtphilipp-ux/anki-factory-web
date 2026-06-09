@@ -27,8 +27,9 @@ Gib NUR dieses JSON-Objekt zurück, kein Markdown, kein Text davor oder danach:
   "batches": []
 }
 
-Batch-Regel: Wenn mehr als 22 Seiten → splitte in sinnvolle Batches von max. 20 Seiten:
-"batches": [{"von": 1, "bis": 20, "label": "kurze thematische Beschreibung"}, ...]
+Batch-Regel: Wenn mehr als 22 Seiten → splitte in sinnvolle Batches von max. 20 Seiten.
+Verteile die empfohlene kartenmenge inhaltlich gewichtet auf die Batches — dichtere oder konzeptuell reichere Abschnitte bekommen mehr Karten. Die Summe aller Batch-karten soll ungefähr der kartenmenge entsprechen.
+"batches": [{"von": 1, "bis": 20, "label": "kurze thematische Beschreibung", "karten": 12}, ...]
 Bei ≤ 22 Seiten: batches bleibt ein leeres Array.`
 
 export async function POST(req: Request) {

@@ -68,6 +68,7 @@ export interface PrescanBatch {
   von: number
   bis: number
   label: string
+  karten: number
 }
 
 export interface PrescanResult {

@@ -184,11 +184,13 @@ export default function ThemaPage({ params }: Props) {
     setAutoBatchTotalCount(0)
     let totalCount = 0
     try {
-      const perBatchSize = Math.ceil(batchSize / batches.length)
+      const prescanTotal = scanResult.empfehlung.kartenmenge
       for (let i = 0; i < batches.length; i++) {
         const batch = batches[i]
         setAutoBatchCurrent(i + 1)
         setActiveBatchIdx(i)
+        const ratio = prescanTotal > 0 ? batch.karten / prescanTotal : 1 / batches.length
+        const perBatchSize = Math.max(1, Math.round(batchSize * ratio))
         const count = await runGenerieren(String(batch.von), String(batch.bis), perBatchSize)
         if (count === null) return
         totalCount += count
@@ -277,11 +279,14 @@ export default function ThemaPage({ params }: Props) {
     setGenerating(true)
     setLastGenCount(null)
     try {
-      // Distribute total card budget evenly across all batches
-      const numBatches = isPrescanBatch && scanResult && scanResult.batches.length > 1
-        ? scanResult.batches.length
-        : 1
-      const perBatchSize = Math.ceil(batchSize / numBatches)
+      // Use prescan's per-batch card recommendation, scaled to the user's total budget
+      let perBatchSize = batchSize
+      if (isPrescanBatch && scanResult && scanResult.batches.length > 1 && batchIdx !== undefined) {
+        const batch = scanResult.batches[batchIdx]
+        const prescanTotal = scanResult.empfehlung.kartenmenge
+        const ratio = prescanTotal > 0 ? batch.karten / prescanTotal : 1 / scanResult.batches.length
+        perBatchSize = Math.max(1, Math.round(batchSize * ratio))
+      }
       const count = await runGenerieren(overrideFrom, overrideTo, perBatchSize)
       if (count === null || count === 0) return
 
@@ -890,7 +895,12 @@ export default function ThemaPage({ params }: Props) {
                           />
                         </div>
                         <p className="text-[11px] text-muted-foreground">
-                          Ziel: ~{Math.ceil(batchSize / scanResult.batches.length)} Karten für diesen Abschnitt
+                          {(() => {
+                            const batch = scanResult.batches[activeBatchIdx]
+                            const prescanTotal = scanResult.empfehlung.kartenmenge
+                            const ratio = prescanTotal > 0 ? batch.karten / prescanTotal : 1 / scanResult.batches.length
+                            return `Ziel: ~${Math.max(1, Math.round(batchSize * ratio))} Karten für diesen Abschnitt`
+                          })()}
                         </p>
                       </div>
                     )}
@@ -957,7 +967,14 @@ export default function ThemaPage({ params }: Props) {
                             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-[10px] font-bold text-violet-700 dark:text-violet-300 shrink-0">{idx + 1}</span>
                           )}
                           <span className="text-sm font-medium flex-1 text-left truncate">{batch.label}</span>
-                          <span className="text-xs text-muted-foreground shrink-0">S.{batch.von}–{batch.bis}</span>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            S.{batch.von}–{batch.bis}
+                            {batch.karten > 0 && (
+                              <span className="ml-1.5 text-muted-foreground/60">
+                                ~{Math.max(1, Math.round(batchSize * (batch.karten / scanResult.empfehlung.kartenmenge)))} Karten
+                              </span>
+                            )}
+                          </span>
                         </Button>
                       )
                     })}
