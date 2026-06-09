@@ -6,8 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { FSRS, generatorParameters } from 'ts-fsrs'
 import { karteToFsrsCard } from '@/lib/fsrs'
 import { Button } from '@/components/ui/button'
-import { Loader2, ArrowLeft, BookOpen, Pencil } from 'lucide-react'
-import { InlineEditSheet } from '@/components/inline-edit-sheet'
+import { Loader2, ArrowLeft, BookOpen } from 'lucide-react'
 import type { Karte, FsrsState } from '@/lib/types'
 
 const clientFsrs = new FSRS(generatorParameters())
@@ -70,6 +69,13 @@ interface SrsData {
   total: number
 }
 
+const RATINGS = [
+  { r: 1 as const, label: 'Nochmal', border: 'border-rose-200 text-rose-600 dark:border-rose-800 dark:text-rose-400', hover: 'hover:bg-rose-500 hover:border-rose-500 hover:text-white dark:hover:bg-rose-600 dark:hover:border-rose-600' },
+  { r: 2 as const, label: 'Schwer', border: 'border-amber-200 text-amber-600 dark:border-amber-800 dark:text-amber-400', hover: 'hover:bg-amber-500 hover:border-amber-500 hover:text-white dark:hover:bg-amber-600 dark:hover:border-amber-600' },
+  { r: 3 as const, label: 'Gut', border: 'border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-400', hover: 'hover:bg-blue-500 hover:border-blue-500 hover:text-white dark:hover:bg-blue-600 dark:hover:border-blue-600' },
+  { r: 4 as const, label: 'Einfach', border: 'border-emerald-200 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400', hover: 'hover:bg-emerald-500 hover:border-emerald-500 hover:text-white dark:hover:bg-emerald-600 dark:hover:border-emerald-600' },
+]
+
 export default function LernenPage({ params }: { params: { kurs: string; thema: string } }) {
   const kursName = decodeURIComponent(params.kurs)
   const themaName = decodeURIComponent(params.thema)
@@ -85,11 +91,11 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
   const [revealed, setRevealed] = useState(false)
   const [returningCard, setReturningCard] = useState(false)
   const [ratingLoading, setRatingLoading] = useState(false)
-  const [editingKarte, setEditingKarte] = useState<Karte | null>(null)
 
-  // Touch swipe
-  const touchStartX = useRef<number | null>(null)
-  const touchStartY = useRef<number | null>(null)
+  // Swipe animation state
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [swipeOverlay, setSwipeOverlay] = useState<{ color: 'green' | 'red'; opacity: number } | null>(null)
+  const swipeExitRef = useRef(false)
 
   const sessionStartRef = useRef(Date.now())
   const [donePermanent, setDonePermanent] = useState(0)
@@ -98,10 +104,15 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
   const [sessionComplete, setSessionComplete] = useState(false)
   const [nextDue, setNextDue] = useState<string | null>(null)
 
-  // Stable refs for keyboard handler
+  // Stable refs
   const revealedRef = useRef(false)
   revealedRef.current = revealed
   const handleRateRef = useRef<(r: 1 | 2 | 3 | 4) => void>(() => {})
+
+  // Touch tracking
+  const touchStartX = useRef<number | null>(null)
+  const touchStartY = useRef<number | null>(null)
+  const swipingRef = useRef(false)
 
   useEffect(() => {
     async function init() {
@@ -137,7 +148,6 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
     init()
   }, [kursName, themaName])
 
-  // Detect session complete
   useEffect(() => {
     if (initialized && !loading && totalInitial > 0 && queue.length === 0 && !sessionComplete) {
       setSessionComplete(true)
@@ -191,13 +201,21 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
       const wasReview = currentKarte.fsrs_state === 2 || currentKarte.fsrs_state === 3
       const src = currentItem.source
 
+      const wasSwipe = swipeExitRef.current
+      swipeExitRef.current = false
+
       if (isReturning) setReturningCard(true)
-      setExiting(true)
 
-      await new Promise<void>(r => setTimeout(r, isReturning ? 650 : 280))
-
-      setReturningCard(false)
-      setExiting(false)
+      if (!wasSwipe) {
+        setExiting(true)
+        await new Promise<void>(r => setTimeout(r, isReturning ? 650 : 280))
+        setReturningCard(false)
+        setExiting(false)
+      } else {
+        await new Promise<void>(r => setTimeout(r, 30))
+        setReturningCard(false)
+        setExiting(false)
+      }
 
       if (isReturning) {
         setQueue(prev => {
@@ -218,27 +236,87 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
     }
   }
 
-  // Keep ref current every render
   handleRateRef.current = handleRate
 
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
+    swipingRef.current = false
+    if (cardRef.current) {
+      cardRef.current.style.transition = 'none'
+    }
+  }
+
+  function onTouchMove(e: React.TouchEvent) {
+    if (!touchStartX.current || !touchStartY.current) return
+    if (!revealedRef.current) return
+
+    const dx = e.touches[0].clientX - touchStartX.current
+    const dy = e.touches[0].clientY - touchStartY.current
+
+    if (!swipingRef.current && Math.abs(dy) > Math.abs(dx)) return
+    swipingRef.current = true
+
+    if (cardRef.current) {
+      cardRef.current.style.transform = `translateX(${dx}px) rotate(${dx * 0.04}deg)`
+    }
+
+    const opacity = Math.min(0.75, Math.abs(dx) / 80)
+    if (opacity > 0.04) {
+      setSwipeOverlay({ color: dx > 0 ? 'green' : 'red', opacity })
+    } else {
+      setSwipeOverlay(null)
+    }
   }
 
   function onTouchEnd(e: React.TouchEvent) {
     if (touchStartX.current === null || touchStartY.current === null) return
     const dx = e.changedTouches[0].clientX - touchStartX.current
-    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current)
+    const dy = e.changedTouches[0].clientY - touchStartY.current
     touchStartX.current = null
     touchStartY.current = null
-    if (Math.abs(dx) < 60 || dy > 100) return // too small or mostly vertical
-    if (!revealedRef.current) { setRevealed(true); return }
-    if (dx > 0) handleRateRef.current(3)  // swipe right = Gut
-    else handleRateRef.current(1)          // swipe left = Nochmal
+
+    if (!revealedRef.current) {
+      if (cardRef.current) {
+        cardRef.current.style.transition = 'transform 0.25s ease-out'
+        cardRef.current.style.transform = ''
+      }
+      setSwipeOverlay(null)
+      // Swipe up or tap reveals; horizontal swipe also reveals
+      if (!swipingRef.current || dy < -30 || Math.abs(dx) > 30) {
+        setRevealed(true)
+      }
+      swipingRef.current = false
+      return
+    }
+
+    const isHardSwipe = swipingRef.current && Math.abs(dx) >= 80 && Math.abs(dy) < 120
+    swipingRef.current = false
+
+    if (isHardSwipe) {
+      if (cardRef.current) {
+        cardRef.current.style.transition = 'transform 0.28s ease-out, opacity 0.28s ease-out'
+        cardRef.current.style.transform = dx > 0
+          ? 'translateX(150vw) rotate(25deg)'
+          : 'translateX(-150vw) rotate(-25deg)'
+        cardRef.current.style.opacity = '0'
+      }
+      setExiting(true)
+      swipeExitRef.current = true
+      const rating: 1 | 3 = dx > 0 ? 3 : 1  // right = Gut, left = Nochmal
+      setTimeout(() => {
+        setSwipeOverlay(null)
+        handleRateRef.current(rating)
+      }, 270)
+    } else {
+      if (cardRef.current) {
+        cardRef.current.style.transition = 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)'
+        cardRef.current.style.transform = ''
+      }
+      setSwipeOverlay(null)
+    }
   }
 
-  // Keyboard shortcuts — registered once, reads via refs
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === ' ' && !revealedRef.current) {
@@ -255,13 +333,6 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
 
   const backHref = `/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}`
   const minutesLearned = Math.max(1, Math.floor((Date.now() - sessionStartRef.current) / 60_000))
-
-  const RATINGS = [
-    { r: 1 as const, label: 'Nochmal', border: 'border-rose-200 text-rose-600 dark:border-rose-800 dark:text-rose-400', hover: 'hover:bg-rose-500 hover:border-rose-500 hover:text-white dark:hover:bg-rose-600 dark:hover:border-rose-600' },
-    { r: 2 as const, label: 'Schwer', border: 'border-amber-200 text-amber-600 dark:border-amber-800 dark:text-amber-400', hover: 'hover:bg-amber-500 hover:border-amber-500 hover:text-white dark:hover:bg-amber-600 dark:hover:border-amber-600' },
-    { r: 3 as const, label: 'Gut', border: 'border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-400', hover: 'hover:bg-blue-500 hover:border-blue-500 hover:text-white dark:hover:bg-blue-600 dark:hover:border-blue-600' },
-    { r: 4 as const, label: 'Einfach', border: 'border-emerald-200 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400', hover: 'hover:bg-emerald-500 hover:border-emerald-500 hover:text-white dark:hover:bg-emerald-600 dark:hover:border-emerald-600' },
-  ]
 
   // ── Loading ──
   if (loading) {
@@ -281,12 +352,6 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
 
   // ── No cards ──
   if (initialized && totalInitial === 0) {
-    const drillHref = `/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/drill`
-    const nextDueDate = nextDue ? new Date(nextDue) : null
-    const diffMs = nextDueDate ? nextDueDate.getTime() - Date.now() : 0
-    const diffMins = Math.ceil(diffMs / 60_000)
-    const countdown = diffMs <= 0 ? 'Jetzt' : diffMins < 60 ? `in ${diffMins} Min.` : diffMins < 1440 ? `in ${Math.ceil(diffMins / 60)} Std.` : `in ${Math.ceil(diffMins / 1440)} Tagen`
-
     return (
       <div className="flex flex-col h-full max-w-2xl mx-auto">
         <div className="mb-8">
@@ -294,35 +359,18 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
             <ArrowLeft className="h-3.5 w-3.5" />{themaName}
           </Link>
         </div>
-        <div className="flex flex-1 flex-col items-center justify-center text-center max-w-sm mx-auto space-y-5 animate-fade-in">
-          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40">
-            <span className="text-4xl select-none">✓</span>
-          </div>
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Alles erledigt für heute</h2>
-            <p className="text-muted-foreground leading-relaxed mt-2 text-sm">Keine Karten fällig — gut gemacht!</p>
-          </div>
+        <div className="flex flex-1 flex-col items-center justify-center text-center max-w-sm mx-auto space-y-5">
+          <h2 className="text-2xl font-semibold tracking-tight">Alles erledigt</h2>
+          <p className="text-muted-foreground leading-relaxed">Keine Karten fällig für heute.</p>
           {nextDue && (
-            <div className="w-full rounded-xl bg-muted/50 border border-border/50 px-5 py-4 text-sm">
-              <p className="text-muted-foreground text-[10px] uppercase tracking-wider font-semibold mb-1">Nächste Wiederholung</p>
-              <p className="font-semibold text-lg">{countdown}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {nextDueDate?.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
-              </p>
+            <div className="rounded-xl bg-muted/60 border border-border/50 px-5 py-3 text-sm">
+              <p className="text-muted-foreground text-xs uppercase tracking-wider font-semibold mb-1">Nächste Wiederholung</p>
+              <p className="font-medium">{new Date(nextDue).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</p>
             </div>
           )}
-          <div className="flex flex-col sm:flex-row gap-2 w-full">
-            <Button asChild variant="default" className="flex-1 gap-2">
-              <Link href={drillHref}>
-                <BookOpen className="h-4 w-4" />Drill starten
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="flex-1 gap-2">
-              <Link href={backHref}>
-                <ArrowLeft className="h-4 w-4" />Zurück
-              </Link>
-            </Button>
-          </div>
+          <Button asChild variant="outline" className="gap-2">
+            <Link href={backHref}><BookOpen className="h-4 w-4" />Zurück zum Thema</Link>
+          </Button>
         </div>
       </div>
     )
@@ -372,16 +420,6 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
   // ── Active session ──
   return (
     <div className="flex flex-col max-w-2xl mx-auto">
-      <InlineEditSheet
-        karte={editingKarte}
-        onClose={() => setEditingKarte(null)}
-        onSave={(updated) => {
-          setQueue(prev => prev.map(item =>
-            item.karte.id === updated.id ? { ...item, karte: updated } : item
-          ))
-          setEditingKarte(null)
-        }}
-      />
       {/* Back + progress row */}
       <div className="flex items-center gap-3 mb-7">
         <Link
@@ -419,20 +457,29 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
       <div
         key={cardKey}
         onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        className={`transition-all duration-300 ${exiting ? 'opacity-0 translate-y-1' : 'animate-fade-in'}`}
+        className={`transition-opacity duration-200 touch-pan-y select-none ${exiting ? 'opacity-0' : 'animate-fade-in'}`}
       >
-        {/* Main card */}
-        <div className="relative bg-card rounded-2xl border border-border/50 shadow-card overflow-hidden flex flex-col min-h-[320px]">
-          {/* Edit button */}
-          <button
-            onClick={() => setEditingKarte(currentKarte ?? null)}
-            className="absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-            title="Karte bearbeiten"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-          {/* Image */}
+        {/* Card — ref for imperative swipe transforms */}
+        <div
+          ref={cardRef}
+          className="relative bg-card rounded-2xl border border-border/50 shadow-card overflow-hidden flex flex-col min-h-[300px] sm:min-h-[320px]"
+        >
+          {/* Swipe overlay — only shown after reveal */}
+          {swipeOverlay && revealed && (
+            <div
+              className={`absolute inset-0 rounded-2xl pointer-events-none z-10 flex items-center justify-center gap-2 ${
+                swipeOverlay.color === 'green' ? 'bg-blue-500' : 'bg-rose-500'
+              }`}
+              style={{ opacity: swipeOverlay.opacity }}
+            >
+              <span className="text-white font-bold text-xl">
+                {swipeOverlay.color === 'green' ? '👍 Gut' : '↩ Nochmal'}
+              </span>
+            </div>
+          )}
+
           {currentKarte?.image_b64 && (
             <div className="border-b border-border/50 bg-muted/20 px-8 pt-6 pb-4">
               <img
@@ -443,25 +490,20 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
             </div>
           )}
 
-          {/* Content */}
           <div className="p-5 sm:p-10 flex flex-col flex-1">
-            {/* Returning badge */}
             {returningCard && (
               <div className="absolute top-4 right-4 rounded-full px-2.5 py-1 text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 animate-pulse">
                 Kommt zurück
               </div>
             )}
 
-            {/* Label */}
             <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/50 mb-5">
               {isCloze ? 'Lückentext' : 'Frage'}
             </p>
 
-            {/* Question */}
             <div className="flex-1">
               <p className="text-xl font-medium leading-relaxed whitespace-pre-wrap">{questionText}</p>
 
-              {/* Answer reveal */}
               {revealed && (
                 <div className="mt-6 pt-6 border-t border-border/40 animate-fade-in">
                   <p
@@ -477,14 +519,12 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
               )}
             </div>
 
-            {/* Slide number */}
             {currentKarte?.slide_nr && (
               <p className="text-xs text-muted-foreground/40 text-right mt-4">Folie {currentKarte.slide_nr}</p>
             )}
           </div>
         </div>
 
-        {/* Reveal / Rating */}
         {!revealed ? (
           <div className="flex items-stretch gap-3 mt-5">
             <Button
@@ -506,7 +546,7 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
                   key={r}
                   onClick={() => handleRate(r)}
                   disabled={ratingLoading || exiting}
-                  className={`flex flex-col items-center gap-1 rounded-xl border-2 py-3.5 px-1 sm:px-2 text-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${border} ${hover}`}
+                  className={`flex flex-col items-center gap-1 rounded-xl border-2 py-3.5 px-1 sm:px-2 text-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed min-h-[60px] ${border} ${hover}`}
                 >
                   <span className="text-[10px] text-muted-foreground/60 leading-none">
                     {intervals?.[r] ?? '—'}
@@ -522,8 +562,8 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
                 </button>
               ))}
             </div>
-            <p className="sm:hidden text-center text-[10px] text-muted-foreground/40">
-              ← wischen = Nochmal &nbsp;·&nbsp; wischen = Gut →
+            <p className="text-center text-[11px] text-muted-foreground/40">
+              ← wischen = Nochmal &nbsp;·&nbsp; Gut = wischen →
             </p>
           </div>
         )}

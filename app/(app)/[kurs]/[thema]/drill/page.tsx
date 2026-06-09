@@ -4,8 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
-import { Loader2, ArrowLeft, RotateCcw, BookOpen, Pencil } from 'lucide-react'
-import { InlineEditSheet } from '@/components/inline-edit-sheet'
+import { Loader2, ArrowLeft, RotateCcw, BookOpen, Check, X } from 'lucide-react'
 import type { Karte } from '@/lib/types'
 
 function shuffle<T>(arr: T[]): T[] {
@@ -45,17 +44,22 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
   const [revealed, setRevealed] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [sessionComplete, setSessionComplete] = useState(false)
-  const [editingKarte, setEditingKarte] = useState<Karte | null>(null)
 
-  // Stable refs for keyboard
+  // Swipe animation state
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [swipeOverlay, setSwipeOverlay] = useState<{ color: 'green' | 'red'; opacity: number } | null>(null)
+  const swipeExitRef = useRef(false)
+
+  // Stable refs
   const revealedRef = useRef(false)
   revealedRef.current = revealed
   const handleGewusstRef = useRef<() => void>(() => {})
   const handleNichtGewusstRef = useRef<() => void>(() => {})
 
-  // Touch swipe
+  // Touch tracking
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
+  const swipingRef = useRef(false)
 
   useEffect(() => {
     async function init() {
@@ -88,9 +92,17 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
   const progressPct = totalCards > 0 ? (answered / totalCards) * 100 : 0
 
   async function advance(isReturning: boolean) {
-    setExiting(true)
-    await new Promise<void>(r => setTimeout(r, 250))
-    setExiting(false)
+    const wasSwipe = swipeExitRef.current
+    swipeExitRef.current = false
+
+    if (!wasSwipe) {
+      setExiting(true)
+      await new Promise<void>(r => setTimeout(r, 250))
+      setExiting(false)
+    } else {
+      await new Promise<void>(r => setTimeout(r, 30))
+      setExiting(false)
+    }
 
     if (isReturning) {
       setDeck(prev => {
@@ -149,6 +161,28 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
+    swipingRef.current = false
+    if (cardRef.current) {
+      cardRef.current.style.transition = 'none'
+    }
+  }
+
+  function onTouchMove(e: React.TouchEvent) {
+    if (!touchStartX.current || !touchStartY.current) return
+    if (!revealedRef.current) return
+
+    const dx = e.touches[0].clientX - touchStartX.current
+    const dy = e.touches[0].clientY - touchStartY.current
+
+    if (!swipingRef.current && Math.abs(dy) > Math.abs(dx)) return
+    swipingRef.current = true
+
+    if (cardRef.current) {
+      cardRef.current.style.transform = `translateX(${dx}px) rotate(${dx * 0.05}deg)`
+    }
+
+    const opacity = Math.min(0.75, Math.abs(dx) / 80)
+    setSwipeOverlay(opacity > 0.04 ? { color: dx > 0 ? 'green' : 'red', opacity } : null)
   }
 
   function onTouchEnd(e: React.TouchEvent) {
@@ -157,10 +191,43 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
     const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current)
     touchStartX.current = null
     touchStartY.current = null
-    if (Math.abs(dx) < 60 || dy > 100) return
-    if (!revealedRef.current) { setRevealed(true); return }
-    if (dx > 0) handleGewusstRef.current()     // swipe right = Gewusst
-    else handleNichtGewusstRef.current()         // swipe left = Nicht gewusst
+
+    if (!revealedRef.current) {
+      if (cardRef.current) {
+        cardRef.current.style.transition = 'transform 0.25s ease-out'
+        cardRef.current.style.transform = ''
+      }
+      setSwipeOverlay(null)
+      if (!swipingRef.current) setRevealed(true)
+      swipingRef.current = false
+      return
+    }
+
+    const isHardSwipe = swipingRef.current && Math.abs(dx) >= 80 && dy < 120
+    swipingRef.current = false
+
+    if (isHardSwipe) {
+      if (cardRef.current) {
+        cardRef.current.style.transition = 'transform 0.28s ease-out, opacity 0.28s ease-out'
+        cardRef.current.style.transform = dx > 0
+          ? 'translateX(150vw) rotate(30deg)'
+          : 'translateX(-150vw) rotate(-30deg)'
+        cardRef.current.style.opacity = '0'
+      }
+      setExiting(true)
+      swipeExitRef.current = true
+      setTimeout(() => {
+        setSwipeOverlay(null)
+        if (dx > 0) handleGewusstRef.current()
+        else handleNichtGewusstRef.current()
+      }, 270)
+    } else {
+      if (cardRef.current) {
+        cardRef.current.style.transition = 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)'
+        cardRef.current.style.transform = ''
+      }
+      setSwipeOverlay(null)
+    }
   }
 
   useEffect(() => {
@@ -259,14 +326,6 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
   // ── Active drill ──
   return (
     <div className="flex flex-col max-w-2xl mx-auto">
-      <InlineEditSheet
-        karte={editingKarte}
-        onClose={() => setEditingKarte(null)}
-        onSave={(updated) => {
-          setDeck(prev => prev.map(k => k.id === updated.id ? updated : k))
-          setEditingKarte(null)
-        }}
-      />
       {/* Header */}
       <div className="flex items-center justify-between mb-7">
         <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -281,7 +340,6 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
           <div className="flex items-center gap-2">
             <span className="text-xl font-bold text-foreground tabular-nums">{answered}</span>
             <span className="text-sm text-muted-foreground">/ {totalCards}</span>
-            {/* Circle progress */}
             <svg width="32" height="32" className="-rotate-90">
               <circle cx="16" cy="16" r="13" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
               <circle
@@ -302,18 +360,37 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
       <div
         key={cardKey}
         onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        className={`transition-all duration-300 ${exiting ? 'opacity-0 translate-y-1' : 'animate-fade-in'}`}
+        className={`transition-opacity duration-200 touch-pan-y select-none ${exiting ? 'opacity-0' : 'animate-fade-in'}`}
       >
-        <div className="relative bg-card rounded-2xl border border-border/50 shadow-card overflow-hidden flex flex-col min-h-[320px]">
-          {/* Edit button */}
-          <button
-            onClick={() => setEditingKarte(current ?? null)}
-            className="absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-            title="Karte bearbeiten"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
+        {/* Card — ref for imperative swipe transforms */}
+        <div
+          ref={cardRef}
+          className="relative bg-card rounded-2xl border border-border/50 shadow-card overflow-hidden flex flex-col min-h-[300px] sm:min-h-[320px]"
+        >
+          {/* Swipe overlay */}
+          {swipeOverlay && (
+            <div
+              className={`absolute inset-0 rounded-2xl pointer-events-none z-10 flex items-center justify-center gap-2 ${
+                swipeOverlay.color === 'green' ? 'bg-emerald-500' : 'bg-rose-500'
+              }`}
+              style={{ opacity: swipeOverlay.opacity }}
+            >
+              {swipeOverlay.color === 'green' ? (
+                <>
+                  <Check className="h-8 w-8 text-white" strokeWidth={3} />
+                  <span className="text-white font-bold text-xl">Gewusst</span>
+                </>
+              ) : (
+                <>
+                  <X className="h-8 w-8 text-white" strokeWidth={3} />
+                  <span className="text-white font-bold text-xl">Nicht gewusst</span>
+                </>
+              )}
+            </div>
+          )}
+
           {current?.image_b64 && (
             <div className="border-b border-border/50 bg-muted/20 px-8 pt-6 pb-4">
               <img
@@ -372,30 +449,30 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
               <button
                 onClick={handleNichtGewusst}
                 disabled={actionLoading || exiting}
-                className="flex flex-col items-center gap-1 rounded-xl border-2 py-4 px-4 text-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-rose-200 text-rose-600 hover:bg-rose-500 hover:border-rose-500 hover:text-white dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:border-rose-600"
+                className="flex flex-col items-center gap-1.5 rounded-xl border-2 py-4 px-4 text-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-rose-200 text-rose-600 hover:bg-rose-500 hover:border-rose-500 hover:text-white dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:border-rose-600 min-h-[60px]"
               >
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
                   <>
                     <span className="text-base font-semibold leading-none">Nicht gewusst</span>
-                    <span className="hidden sm:block text-[10px] text-current/60 leading-none mt-0.5">[1]</span>
+                    <span className="hidden sm:block text-[10px] text-current/60 leading-none">[1]</span>
                   </>
                 )}
               </button>
               <button
                 onClick={handleGewusst}
                 disabled={actionLoading || exiting}
-                className="flex flex-col items-center gap-1 rounded-xl border-2 py-4 px-4 text-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-emerald-200 text-emerald-600 hover:bg-emerald-500 hover:border-emerald-500 hover:text-white dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:border-emerald-600"
+                className="flex flex-col items-center gap-1.5 rounded-xl border-2 py-4 px-4 text-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-emerald-200 text-emerald-600 hover:bg-emerald-500 hover:border-emerald-500 hover:text-white dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:border-emerald-600 min-h-[60px]"
               >
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
                   <>
                     <span className="text-base font-semibold leading-none">Gewusst</span>
-                    <span className="hidden sm:block text-[10px] text-current/60 leading-none mt-0.5">[4]</span>
+                    <span className="hidden sm:block text-[10px] text-current/60 leading-none">[4]</span>
                   </>
                 )}
               </button>
             </div>
-            <p className="sm:hidden text-center text-[10px] text-muted-foreground/40">
-              ← wischen = Nicht gewusst &nbsp;·&nbsp; wischen = Gewusst →
+            <p className="text-center text-[11px] text-muted-foreground/50">
+              ← wischen = Nicht gewusst &nbsp;·&nbsp; Gewusst = wischen →
             </p>
           </div>
         )}

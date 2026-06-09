@@ -241,7 +241,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
         "transition-transform duration-300 ease-in-out",
         !open && "-translate-x-full lg:translate-x-0"
       )}
-      style={{ width: `${width}px` }}
+      style={{ width: `${width}px`, maxWidth: 'calc(100vw - 16px)' }}
     >
       {/* Logo */}
       <div className="flex h-14 items-center gap-2.5 border-b border-border/50 px-4">

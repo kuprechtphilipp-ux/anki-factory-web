@@ -1,8 +1,9 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
+import { PwaRegister } from '@/components/pwa-register'
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -12,7 +13,28 @@ const geistSans = localFont({
 
 export const metadata: Metadata = {
   title: 'Anki Factory',
-  description: 'Flashcards mit AI und Spaced Repetition',
+  description: 'AI-powered Flashcards für Prüfungsvorbereitung',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Anki Factory',
+  },
+  icons: {
+    apple: '/apple-touch-icon.png',
+    icon: '/icons/icon-192.png',
+  },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  minimumScale: 1,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#6d28d9' },
+    { media: '(prefers-color-scheme: dark)', color: '#6d28d9' },
+  ],
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -22,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
           <Toaster />
+          <PwaRegister />
         </ThemeProvider>
       </body>
     </html>
