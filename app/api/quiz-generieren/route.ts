@@ -7,8 +7,19 @@ export const maxDuration = 60
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-function sampleRandom<T>(arr: T[], n: number): T[] {
-  return [...arr].sort(() => Math.random() - 0.5).slice(0, n)
+function shuffle<T>(arr: T[]): T[] {
+  return [...arr].sort(() => Math.random() - 0.5)
+}
+
+function cardToText(k: Karte): string {
+  if (k.typ === 'cloze' && k.cloze_text) {
+    const answer = Array.from(k.cloze_text.matchAll(/\{\{c\d+::([^}]+)\}\}/g)).map(m => m[1]).join('; ')
+    const question = k.cloze_text.replace(/\{\{c\d+::([^}]+)\}\}/g, '[...]')
+    return `Lückentext: ${question}\nAntwort: ${answer}`
+  }
+  const parts = [`Frage: ${k.frage}`, `Antwort: ${k.antwort}`]
+  if (k.kontext) parts.push(`Kontext: ${k.kontext}`)
+  return parts.join('\n')
 }
 
 export async function POST(req: Request) {
@@ -20,10 +31,26 @@ export async function POST(req: Request) {
     schwierigkeit?: 'leicht' | 'mittel' | 'schwer'
   }
 
+  // Resolve thema/kurs names for context
+  let themaName = ''
+  let kursNameResolved = kurs_name ?? ''
+
   let query = supabase.from('karte').select('*').eq('status', 'reviewed')
 
   if (thema_id) {
     query = query.eq('thema_id', Number(thema_id))
+    const { data: themaRow } = await supabase
+      .from('thema')
+      .select('name, kurs_id')
+      .eq('id', Number(thema_id))
+      .single()
+    if (themaRow) {
+      themaName = themaRow.name
+      if (!kursNameResolved) {
+        const { data: kursRow } = await supabase.from('kurs').select('name').eq('id', themaRow.kurs_id).single()
+        kursNameResolved = kursRow?.name ?? ''
+      }
+    }
   } else if (kurs_name) {
     const { data: kursRow } = await supabase.from('kurs').select('id').eq('name', kurs_name).single()
     if (!kursRow) return NextResponse.json({ error: 'Kurs nicht gefunden' }, { status: 404 })
@@ -39,49 +66,76 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const karten = (data ?? []) as Karte[]
-
   if (karten.length < 4) {
     return NextResponse.json({ error: 'Mindestens 4 Karten im Deck nötig' }, { status: 422 })
   }
 
-  const sample = sampleRandom(karten, Math.min(anzahl * 2, karten.length))
+  // Split deck: source cards (one question each) + distractor pool (content for wrong answers)
+  const pool = shuffle(karten).slice(0, 80)
+  const sourceKarten = pool.slice(0, Math.min(anzahl, pool.length))
+  const distractorPool = pool.slice(sourceKarten.length)
 
-  const cardsText = sample.map((k, i) => {
-    if (k.typ === 'cloze' && k.cloze_text) {
-      return `${i + 1}. [ID: ${k.id}] Lückentext: ${k.cloze_text}`
-    }
-    return `${i + 1}. [ID: ${k.id}] Frage: ${k.frage}\nAntwort: ${k.antwort}`
-  }).join('\n\n')
+  const sourceText = sourceKarten
+    .map((k, i) => `CARD ${i + 1} [ID: ${k.id}]\n${cardToText(k)}`)
+    .join('\n\n')
+
+  const distractorText = distractorPool.length > 0
+    ? distractorPool.map((k, i) => `[${i + 1}] ${cardToText(k)}`).join('\n\n')
+    : '(keine weiteren Karten)'
+
+  const topicContext = [themaName, kursNameResolved].filter(Boolean).join(' · ')
 
   const schwierigkeitInstruktion = {
-    leicht: `DISTRACTOR RULE (Leicht): Wrong answers come from a related but clearly distinct area of the subject. A student with basic knowledge can identify them as wrong.`,
-    mittel: `DISTRACTOR RULE (Mittel): Wrong answers must sound like they could plausibly appear in a textbook or lecture on the same topic. They should use correct domain terminology. A student who has skimmed the material but not studied deeply should find all options believable.`,
-    schwer: `DISTRACTOR RULE (Schwer/Hard): Wrong answers must be from the exact same sub-category as the correct answer. Each wrong answer differs from the correct one by exactly ONE critical detail — a swapped relationship, a reversed direction of causality, a wrong number, a negation, or a subtly incorrect qualifier. Exploit common misconceptions. A student who superficially understood the topic WILL pick a wrong answer.`,
+    leicht: `DIFFICULTY — Leicht: Wrong answers come from a clearly adjacent area of the topic. A student with basic knowledge can rule them out.`,
+    mittel: `DIFFICULTY — Mittel: Wrong answers are built from real content in the DISTRACTOR POOL. They use correct terminology and sound plausible. A student who skimmed the material should hesitate before choosing.`,
+    schwer: `DIFFICULTY — Schwer: Wrong answers are built from real content in the DISTRACTOR POOL and differ from the correct answer by exactly ONE critical detail — a reversed relationship, wrong direction of causality, swapped terms, off-by-one concept, or a common misconception. A student who studied superficially WILL pick a wrong answer.`,
   }[schwierigkeit]
 
-  const systemPrompt = `You are an expert quiz generator. Create multiple-choice questions from the given flashcards.
+  const systemPrompt = `You are an expert exam question designer. Your goal is to create questions that test genuine conceptual understanding — the kind that appears in university exams — not simple recall of flashcard text.
 
-UNIVERSAL RULES (apply to every question regardless of difficulty):
-1. LANGUAGE: Use exactly the same language as the flashcard content. Match it precisely — do not translate.
-2. OPTION LENGTH PARITY: All 4 answer options MUST be approximately the same length and level of detail. The correct answer must NOT be noticeably longer, more complete, or better-structured than the wrong ones. If the correct answer is a long sentence, all distractors must also be long sentences of similar complexity.
-3. NO OBVIOUS FILLERS: Wrong answers must never sound absurd, trivially false, or like placeholder text. Every option must read as something a real course or textbook could plausibly state.
-4. NO GIVEAWAY PATTERNS: Never make the correct answer the only one that uses specific terminology from the card. Never use "only X", "never X", or "always X" as obviously wrong traps. The correct answer must not stand out by being the most complete or best-worded option.
-5. ANSWER COUNT: Exactly 4 options per question (A, B, C, D). Exactly 1 correct answer.
-6. QUESTION QUALITY: The question must test real understanding, not just pattern-matching to the wording of the card.
+TOPIC CONTEXT: "${topicContext}"
+
+YOUR TASK:
+Generate exactly ${anzahl} multiple-choice questions, one per SOURCE CARD. Each question must:
+
+1. TEST TRANSFER, NOT RECALL: Do not simply restate the card question. Reframe the concept from a different angle — application, consequence, cause, example, or contrast. A student who memorized the card word-for-word should not have an automatic advantage.
+
+2. VARY QUESTION TYPES: Rotate between these types across the quiz:
+   - "Was erklärt am besten, warum...?" / "Which best explains why...?"
+   - "Welches Beispiel illustriert...?" / "Which example illustrates...?"
+   - "Was wäre eine direkte Konsequenz von...?" / "What would be a direct consequence of...?"
+   - "Worin unterscheidet sich X von Y?" / "How does X differ from Y?"
+   - "Welche Aussage zu [Konzept] ist korrekt?" / "Which statement about [concept] is correct?"
+   - "Ein Forscher tut X. Welchem Prinzip folgt er?" / "A researcher does X. Which principle does this follow?"
+
+3. BUILD WRONG ANSWERS FROM THE DISTRACTOR POOL: Use content from the DISTRACTOR POOL cards to construct the 3 wrong options — do not invent plausible-sounding text. This means wrong answers are real concepts from the same course that a student might confuse with the correct answer.
+
+4. OPTION LENGTH PARITY: All 4 options must be the same length and detail level. The correct answer must NOT stand out by being longer, more complete, or better worded.
+
+5. NO GIVEAWAY PATTERNS: The correct answer must not be the only option using specific terminology from the source card. No "only X / never X / always X" traps. No obviously absurd options.
+
+6. LANGUAGE: Match the language of the cards exactly. Do not translate.
 
 ${schwierigkeitInstruktion}
 
-Return ONLY a JSON array, no markdown, no text outside the JSON:
-[{"frage":"...","optionen":["A: ...","B: ...","C: ...","D: ..."],"richtig":0,"erklaerung":"Short explanation why the correct answer is right, in the same language as the cards","karte_id":123}]`
+Return ONLY a valid JSON array — no markdown, no explanation outside the JSON:
+[{"frage":"...","optionen":["A: ...","B: ...","C: ...","D: ..."],"richtig":0,"erklaerung":"One sentence: why the correct answer is right and why it matters. Same language as the cards.","karte_id":123}]`
+
+  const userMessage = `SOURCE CARDS (generate one question per card):
+
+${sourceText}
+
+---
+
+DISTRACTOR POOL (use this content to build wrong answer options — do not generate questions for these cards):
+
+${distractorText}`
 
   const msg = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 4096,
+    model: 'claude-sonnet-4-6',
+    max_tokens: 8192,
     system: systemPrompt,
-    messages: [{
-      role: 'user',
-      content: `Create exactly ${anzahl} multiple-choice questions from these ${sample.length} flashcards. Use the same language as the cards:\n\n${cardsText}`,
-    }],
+    messages: [{ role: 'user', content: userMessage }],
   })
 
   const raw = msg.content[0].type === 'text' ? msg.content[0].text : ''
