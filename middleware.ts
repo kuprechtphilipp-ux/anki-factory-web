@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 const AUTH_ROUTES = ['/login', '/signup', '/auth/callback']
+const PUBLIC_ROUTES = ['/']
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request })
@@ -31,8 +32,9 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   const isAuthRoute = AUTH_ROUTES.includes(pathname)
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname)
 
-  if (!user && !isAuthRoute) {
+  if (!user && !isAuthRoute && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
