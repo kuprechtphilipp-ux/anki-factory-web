@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
+import { GoogleAuthButton } from '@/components/google-auth-button'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -117,6 +118,12 @@ export default function SignupPage() {
             Konto erstellen
           </Button>
         </form>
+        <div className="my-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs uppercase tracking-widest text-muted-foreground/70">oder</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+        <GoogleAuthButton inviteCode={inviteCode} />
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Bereits ein Konto?{' '}
           <Link href="/login" className="text-primary underline-offset-4 hover:underline">
