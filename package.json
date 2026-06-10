@@ -6,11 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate-image": "node --env-file=.env.local scripts/generate-image.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
     "@base-ui/react": "^1.5.0",
+    "@fal-ai/client": "^1.10.1",
     "@radix-ui/react-dialog": "^1.1.16",
     "@radix-ui/react-label": "^2.1.9",
     "@radix-ui/react-progress": "^1.1.9",
@@ -25,6 +27,7 @@
     "@types/pdf-parse": "^1.1.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
     "next": "14.2.35",
     "next-themes": "^0.4.6",

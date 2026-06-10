@@ -165,7 +165,26 @@ anki-factory-web/
 NEXT_PUBLIC_SUPABASE_URL=https://ovtpgwrrxscuvbprghhp.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92dHBnd3JyeHNjdXZicHJnaGhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzEzNTUsImV4cCI6MjA5NjUwNzM1NX0.m-j9x6K9BMQwX4pzZioqzQa9LeJNoaU5MaCL1YRibWQ
 ANTHROPIC_API_KEY=                # Aus bestehendem .env der Streamlit-App
+FAL_KEY=                           # fal.ai API Key, für Bildgenerierung (siehe unten)
 ```
+
+---
+
+## Bildgenerierung (fal.ai)
+
+Für die Landing Page und andere visuelle Inhalte steht ein Skript zur KI-Bildgenerierung über fal.ai (FLUX) zur Verfügung.
+
+### Befehl
+```bash
+npm run generate-image -- "<PROMPT>" "<DATEINAME>"
+```
+
+### Regeln für Claude Code
+1. Wenn der User ein Bild, Icon, Hintergrund oder eine Grafik für die Website verlangt (z. B. für die Landing Page), nutze eigenständig diesen Befehl, um es zu generieren.
+2. Formuliere den Prompt auf Englisch für beste Ergebnisse (z. B. `"modern tech startup hero section illustration, isometric, blue and neon colors"`).
+3. Das Skript speichert das Ergebnis automatisch unter `public/images/<DATEINAME>` (z. B. `.png`).
+4. Binde das Bild danach direkt mit dem Pfad `/images/<dateiname>` in den JSX/CSS-Code ein.
+5. Voraussetzung: `FAL_KEY` muss in `.env.local` gesetzt sein (Account auf fal.ai, kleines Guthaben aufladen).
 
 ---
 
