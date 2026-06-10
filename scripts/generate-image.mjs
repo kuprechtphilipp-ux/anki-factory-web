@@ -2,10 +2,10 @@ import { fal } from '@fal-ai/client'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const [, , prompt, filename] = process.argv
+const [, , prompt, filename, imageSize] = process.argv
 
 if (!prompt || !filename) {
-  console.error('Verwendung: npm run generate-image -- "<prompt>" "<dateiname.png>"')
+  console.error('Verwendung: npm run generate-image -- "<prompt>" "<dateiname.png>" [image_size]')
   console.error('Beispiel:   npm run generate-image -- "modern tech startup hero illustration, isometric, blue and neon colors" "hero.png"')
   process.exit(1)
 }
@@ -22,7 +22,7 @@ console.log(`Generiere Bild für: "${prompt}"...`)
 const result = await fal.subscribe('fal-ai/flux/schnell', {
   input: {
     prompt,
-    image_size: 'landscape_16_9',
+    image_size: imageSize || 'landscape_16_9',
     num_inference_steps: 4,
   },
 })
