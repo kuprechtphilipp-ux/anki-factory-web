@@ -132,6 +132,45 @@ export interface KursStatistik {
   themen: KursThemaStats[]
 }
 
+export interface ThemaBreakdownRow {
+  kurs_name: string
+  thema_name: string
+  thema_id: number
+  due: number
+  neu: number
+  total: number
+  retention: number
+  last_drill: number | null
+  last_quiz: number | null
+  last_schriftlich: number | null
+}
+
+export interface SessionTrendPoint {
+  score_pct: number
+  created_at: string
+}
+
+export interface StatsData {
+  streak: number
+  bestStreak: number
+  totalReviews: number
+  todayReviews: number
+  retentionRate: number
+  heatmap: { date: string; count: number }[]
+  totalCards: number
+  weekTotal: number
+  avgCardsPerDay: number
+  themenBreakdown: ThemaBreakdownRow[]
+  forecast30: number[]
+  performanceTrends: {
+    drill: SessionTrendPoint[]
+    quiz: SessionTrendPoint[]
+    schriftlich: SessionTrendPoint[]
+  }
+  fsrsVerteilung: { new: number; learning: number; review: number; relearning: number }
+  typVerteilung: { basic: number; cloze: number }
+}
+
 export type Database = {
   public: {
     Tables: {

@@ -1,22 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Loader2, Flame, TrendingUp, Star, Calendar, Brain, Target } from 'lucide-react'
-
-interface StatsData {
-  streak: number
-  bestStreak: number
-  totalReviews: number
-  todayReviews: number
-  retentionRate: number
-  heatmap: { date: string; count: number }[]
-  totalCards: number
-  weekTotal: number
-  avgCardsPerDay: number
-}
+import Link from 'next/link'
+import { Loader2, Flame, TrendingUp, TrendingDown, Minus, Star, Calendar, Brain, Target, ChevronUp, ChevronDown } from 'lucide-react'
+import type { StatsData, ThemaBreakdownRow, SessionTrendPoint } from '@/lib/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
 const DAYS = ['Mo', '', 'Mi', '', 'Fr', '', 'So']
+
+function DayLabel(dayOffset: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + dayOffset)
+  return d.toLocaleDateString('de-DE', { weekday: 'short' })
+}
 
 function getHeatmapColor(count: number): string {
   if (count === 0) return 'bg-muted/60'
@@ -48,6 +44,300 @@ function StatCard({
         <p className="text-3xl font-bold tracking-tight">{value}</p>
         <p className="text-sm text-muted-foreground mt-0.5">{label}</p>
       </div>
+    </div>
+  )
+}
+
+// ── D: Donut-Chart (mehrere Segmente) ──
+function Donut({ segments }: { segments: { label: string; value: number; color: string }[] }) {
+  const total = segments.reduce((s, x) => s + x.value, 0)
+  const r = 15.915
+  const circ = 2 * Math.PI * r
+  let cumulative = 0
+
+  return (
+    <svg viewBox="0 0 36 36" className="h-24 w-24 shrink-0">
+      <circle cx="18" cy="18" r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth="4" />
+      {total > 0 && segments.map((seg, i) => {
+        if (seg.value === 0) return null
+        const pct = seg.value / total
+        const dash = pct * circ
+        const offset = -(cumulative / total) * circ
+        cumulative += seg.value
+        return (
+          <circle
+            key={i}
+            cx="18" cy="18" r={r} fill="none"
+            stroke={seg.color} strokeWidth="4"
+            strokeDasharray={`${dash} ${circ - dash}`}
+            strokeDashoffset={offset}
+            transform="rotate(-90 18 18)"
+          />
+        )
+      })}
+      <text x="18" y="20.5" textAnchor="middle" fontSize="6.5" fontWeight="700" className="fill-foreground">
+        {total}
+      </text>
+    </svg>
+  )
+}
+
+function DonutCard({ title, segments }: { title: string; segments: { label: string; value: number; color: string }[] }) {
+  const total = segments.reduce((s, x) => s + x.value, 0)
+  return (
+    <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-3">{title}</p>
+      {total === 0 ? (
+        <p className="text-sm text-muted-foreground py-6 text-center">Keine Daten vorhanden.</p>
+      ) : (
+        <div className="flex items-center gap-4">
+          <Donut segments={segments} />
+          <div className="flex-1 space-y-1.5">
+            {segments.map((seg, i) => (
+              <div key={i} className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: seg.color }} />
+                  {seg.label}
+                </span>
+                <span className="font-medium tabular-nums">
+                  {seg.value} <span className="text-muted-foreground">({total > 0 ? Math.round((seg.value / total) * 100) : 0}%)</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── B: FSRS-Forecast Bar-Chart ──
+function ForecastChart({ forecast30 }: { forecast30: number[] }) {
+  const [days, setDays] = useState<7 | 30>(7)
+  const data = forecast30.slice(0, days)
+  const maxBar = Math.max(...data, 1)
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">FSRS-Forecast — fällige Karten</p>
+        <div className="flex items-center gap-1 rounded-lg border border-border/50 p-0.5">
+          {([7, 30] as const).map((d) => (
+            <button
+              key={d}
+              onClick={() => setDays(d)}
+              className={`rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
+                days === d ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {d} Tage
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card">
+        <div className="flex items-end gap-[3px] h-24">
+          {data.map((count, i) => (
+            <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
+              <div
+                className="w-full rounded-t-sm transition-all"
+                style={{
+                  height: `${Math.max(2, (count / maxBar) * 72)}px`,
+                  background: count > 0
+                    ? (i === 0 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.4)')
+                    : 'hsl(var(--muted))',
+                }}
+                title={`${count} Karten`}
+              />
+              {days === 7 && (
+                <span className="text-[9px] font-medium text-muted-foreground/60 leading-none">{DayLabel(i)}</span>
+              )}
+            </div>
+          ))}
+        </div>
+        {days === 30 && (
+          <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground/50">
+            <span>Heute</span>
+            <span>+30 Tage</span>
+          </div>
+        )}
+        <div className="mt-2 flex items-center gap-3 text-[10px] text-muted-foreground/50">
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-primary inline-block" />Heute</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-primary/40 inline-block" />Folgetage</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── C: Performance-Sparkline ──
+function Sparkline({ label, data, color }: { label: string; data: SessionTrendPoint[]; color: string }) {
+  const w = 120
+  const h = 36
+
+  const avg = (arr: SessionTrendPoint[]) => arr.length > 0 ? arr.reduce((s, d) => s + d.score_pct, 0) / arr.length : null
+
+  const last5 = data.slice(-5)
+  const prev5 = data.slice(-10, -5)
+  const avgLast = avg(last5)
+  const avgPrev = avg(prev5)
+  const trend = avgLast != null && avgPrev != null && prev5.length > 0 ? avgLast - avgPrev : null
+
+  const points = data.map((d, i) => {
+    const x = data.length > 1 ? (i / (data.length - 1)) * w : w / 2
+    const y = h - (Math.max(0, Math.min(100, d.score_pct)) / 100) * h
+    return `${x},${y}`
+  }).join(' ')
+
+  return (
+    <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium">{label}</span>
+        {avgLast != null && <span className="text-lg font-bold tabular-nums">{Math.round(avgLast)}%</span>}
+      </div>
+      {data.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-3">Noch keine Sessions.</p>
+      ) : (
+        <>
+          <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-9" preserveAspectRatio="none">
+            <polyline points={points} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+          </svg>
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            {trend == null ? (
+              <span>{data.length} Session{data.length !== 1 ? 's' : ''}</span>
+            ) : trend > 1 ? (
+              <span className="flex items-center gap-1 text-emerald-500"><TrendingUp className="h-3 w-3" />+{trend.toFixed(0)}% vs. davor</span>
+            ) : trend < -1 ? (
+              <span className="flex items-center gap-1 text-rose-500"><TrendingDown className="h-3 w-3" />{trend.toFixed(0)}% vs. davor</span>
+            ) : (
+              <span className="flex items-center gap-1"><Minus className="h-3 w-3" />± vs. davor</span>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ── A: Kurs/Thema-Breakdown Tabelle ──
+type SortKey = 'kurs_name' | 'thema_name' | 'due' | 'neu' | 'total' | 'retention'
+
+function SortableTh({
+  label, sortKey, currentKey, dir, onClick, align,
+}: {
+  label: string
+  sortKey: SortKey
+  currentKey: SortKey
+  dir: 'asc' | 'desc'
+  onClick: (key: SortKey) => void
+  align?: 'right'
+}) {
+  return (
+    <th
+      className={`px-3 py-2 font-semibold cursor-pointer select-none whitespace-nowrap ${align === 'right' ? 'text-right' : 'text-left'}`}
+      onClick={() => onClick(sortKey)}
+    >
+      <span className={`inline-flex items-center gap-0.5 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
+        {label}
+        {currentKey === sortKey && (dir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+      </span>
+    </th>
+  )
+}
+
+function ThemenBreakdownTable({ rows }: { rows: ThemaBreakdownRow[] }) {
+  const [sortKey, setSortKey] = useState<SortKey>('due')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('desc')
+    }
+  }
+
+  const sorted = [...rows].sort((a, b) => {
+    const av = a[sortKey]
+    const bv = b[sortKey]
+    if (typeof av === 'string' && typeof bv === 'string') {
+      return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+    }
+    return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number)
+  })
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Kurs/Thema-Breakdown</p>
+      {rows.length === 0 ? (
+        <div className="rounded-2xl border border-border/50 bg-muted/20 p-8 text-center text-sm text-muted-foreground">
+          Noch keine Themen vorhanden.
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-border/50 bg-card shadow-card overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
+            <thead>
+              <tr className="border-b border-border/50 text-[10px] uppercase tracking-widest text-muted-foreground/70">
+                <SortableTh label="Kurs" sortKey="kurs_name" currentKey={sortKey} dir={sortDir} onClick={toggleSort} />
+                <SortableTh label="Thema" sortKey="thema_name" currentKey={sortKey} dir={sortDir} onClick={toggleSort} />
+                <SortableTh label="Fällig" sortKey="due" currentKey={sortKey} dir={sortDir} onClick={toggleSort} align="right" />
+                <SortableTh label="Neu" sortKey="neu" currentKey={sortKey} dir={sortDir} onClick={toggleSort} align="right" />
+                <SortableTh label="Total" sortKey="total" currentKey={sortKey} dir={sortDir} onClick={toggleSort} align="right" />
+                <SortableTh label="Retention" sortKey="retention" currentKey={sortKey} dir={sortDir} onClick={toggleSort} align="right" />
+                <th className="px-3 py-2 font-semibold text-left whitespace-nowrap">Letzte Aktivität</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((row) => (
+                <tr key={row.thema_id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
+                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{row.kurs_name}</td>
+                  <td className="px-3 py-2 font-medium whitespace-nowrap">
+                    <Link
+                      href={`/${encodeURIComponent(row.kurs_name)}/${encodeURIComponent(row.thema_name)}`}
+                      className="hover:text-primary transition-colors"
+                    >
+                      {row.thema_name}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {row.due > 0 ? (
+                      <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-bold">{row.due}</span>
+                    ) : (
+                      <span className="text-muted-foreground">0</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{row.neu}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{row.total}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{Math.round(row.retention * 100)}%</td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {row.last_drill == null && row.last_quiz == null && row.last_schriftlich == null && (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                      {row.last_drill != null && (
+                        <span className="rounded bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap">
+                          Drill {row.last_drill}%
+                        </span>
+                      )}
+                      {row.last_quiz != null && (
+                        <span className="rounded bg-indigo-100 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap">
+                          Quiz {row.last_quiz}%
+                        </span>
+                      )}
+                      {row.last_schriftlich != null && (
+                        <span className="rounded bg-violet-100 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap">
+                          Schriftl. {row.last_schriftlich}%
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
@@ -105,6 +395,18 @@ export default function StatistikPage() {
   }
 
   const today = new Date().toISOString().slice(0, 10)
+
+  const fsrsSegments = [
+    { label: 'New', value: stats.fsrsVerteilung.new, color: 'hsl(var(--muted-foreground) / 0.4)' },
+    { label: 'Learning', value: stats.fsrsVerteilung.learning, color: 'hsl(38 92% 50%)' },
+    { label: 'Review', value: stats.fsrsVerteilung.review, color: 'hsl(142 71% 45%)' },
+    { label: 'Relearning', value: stats.fsrsVerteilung.relearning, color: 'hsl(0 72% 60%)' },
+  ]
+
+  const typSegments = [
+    { label: 'Basic', value: stats.typVerteilung.basic, color: 'hsl(var(--primary))' },
+    { label: 'Cloze', value: stats.typVerteilung.cloze, color: 'hsl(258 84% 67%)' },
+  ]
 
   return (
     <div className="max-w-3xl space-y-10">
@@ -279,6 +581,31 @@ export default function StatistikPage() {
           <p className="text-sm text-muted-foreground">Sobald du Karten reviewst, erscheinen hier deine Statistiken.</p>
         </div>
       )}
+
+      {/* D: Karten-Verteilung */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Karten-Verteilung</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <DonutCard title="FSRS-Status (gelernte Karten)" segments={fsrsSegments} />
+          <DonutCard title="Kartentyp" segments={typSegments} />
+        </div>
+      </div>
+
+      {/* B: FSRS-Forecast */}
+      <ForecastChart forecast30={stats.forecast30} />
+
+      {/* C: Performance-Trends */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Performance-Trends — letzte Sessions</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Sparkline label="Drill" data={stats.performanceTrends.drill} color="hsl(38 92% 50%)" />
+          <Sparkline label="Quiz" data={stats.performanceTrends.quiz} color="hsl(238 84% 67%)" />
+          <Sparkline label="Schriftlich" data={stats.performanceTrends.schriftlich} color="hsl(258 84% 67%)" />
+        </div>
+      </div>
+
+      {/* A: Kurs/Thema-Breakdown */}
+      <ThemenBreakdownTable rows={stats.themenBreakdown} />
     </div>
   )
 }
