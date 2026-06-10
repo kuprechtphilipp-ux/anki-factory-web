@@ -9,24 +9,29 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { TabletMockup } from './tablet-mockup'
 
-const cramoSayings = [
-  'Bereit fürs Cramming?',
-  'Noch 3 Karten bis zur Pause ☕',
-  'Dein Gehirn dankt dir später.',
-  'Lernstreak nicht brechen!',
-]
+const CRAMO_GREETING = 'Bereit fürs Cramming?'
 
 export function Hero() {
-  const [sayingIndex, setSayingIndex] = useState(0)
+  const [typedText, setTypedText] = useState('')
   const [isBubbleHovered, setIsBubbleHovered] = useState(false)
 
   useEffect(() => {
-    if (isBubbleHovered) return
-    const id = setInterval(() => {
-      setSayingIndex((i) => (i + 1) % cramoSayings.length)
-    }, 6000)
-    return () => clearInterval(id)
-  }, [isBubbleHovered])
+    let charIndex = 0
+    let intervalId: ReturnType<typeof setInterval>
+
+    const startTyping = setTimeout(() => {
+      intervalId = setInterval(() => {
+        charIndex += 1
+        setTypedText(CRAMO_GREETING.slice(0, charIndex))
+        if (charIndex >= CRAMO_GREETING.length) clearInterval(intervalId)
+      }, 45)
+    }, 700)
+
+    return () => {
+      clearTimeout(startTyping)
+      clearInterval(intervalId)
+    }
+  }, [])
 
   return (
     <section className="relative overflow-hidden pb-16 pt-28 md:pb-20 md:pt-32">
@@ -93,16 +98,10 @@ export function Hero() {
 
               <div className="relative">
                 <motion.div
-                  animate={
-                    isBubbleHovered
-                      ? { x: 14, y: -4, scale: 1.05 }
-                      : { x: [0, 12, 0], y: [0, -8, 0], scale: [1, 1.02, 1] }
-                  }
-                  transition={
-                    isBubbleHovered
-                      ? { duration: 0.4, ease: 'easeOut' }
-                      : { duration: 5, repeat: Infinity, ease: 'easeInOut' }
-                  }
+                  initial={{ opacity: 0, scale: 0.9, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.4, ease: 'easeOut' }}
+                  whileHover={{ scale: 1.03 }}
                   onMouseEnter={() => setIsBubbleHovered(true)}
                   onMouseLeave={() => setIsBubbleHovered(false)}
                   className={cn(
@@ -111,26 +110,33 @@ export function Hero() {
                   )}
                 >
                   <AnimatePresence mode="wait">
-                    <motion.p
-                      key={isBubbleHovered ? 'hover' : sayingIndex}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.7, ease: 'easeInOut' }}
-                      className={cn(
-                        'flex items-center gap-1.5 text-sm font-medium',
-                        isBubbleHovered && 'text-primary'
-                      )}
-                    >
-                      {isBubbleHovered ? (
-                        <>
-                          <Coffee className="h-4 w-4" />
-                          Bring mir Kaffee, bitte!
-                        </>
-                      ) : (
-                        cramoSayings[sayingIndex]
-                      )}
-                    </motion.p>
+                    {isBubbleHovered ? (
+                      <motion.p
+                        key="hover"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.35, ease: 'easeOut' }}
+                        className="flex items-center gap-1.5 text-sm font-medium text-primary"
+                      >
+                        <Coffee className="h-4 w-4" />
+                        Bring mir Kaffee, bitte!
+                      </motion.p>
+                    ) : (
+                      <motion.p
+                        key="greeting"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.35, ease: 'easeOut' }}
+                        className="text-sm font-medium"
+                      >
+                        {typedText}
+                        {typedText.length < CRAMO_GREETING.length && (
+                          <span className="ml-0.5 inline-block h-3.5 w-[2px] animate-pulse bg-current align-middle" />
+                        )}
+                      </motion.p>
+                    )}
                   </AnimatePresence>
                   <span
                     className={cn(
