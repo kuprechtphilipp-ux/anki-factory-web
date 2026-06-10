@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowRight, Flame, BarChart3 } from 'lucide-react'
+import { ArrowRight, Flame, BarChart3, Coffee } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { TabletMockup } from './tablet-mockup'
@@ -77,94 +77,68 @@ export function Hero() {
             <div className="mt-12 flex items-center justify-center gap-6 lg:justify-start lg:pl-3">
               <div className="relative shrink-0">
                 <motion.div
-                  className="relative h-28 w-28 overflow-hidden rounded-full ring-4 ring-card shadow-card sm:h-32 sm:w-32"
+                  className="relative h-28 w-28 overflow-hidden rounded-full shadow-card ring-4 ring-card sm:h-32 sm:w-32"
                   whileHover={{ scale: 1.08 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 15 }}
                 >
                   <Image
-                    src="/icons/Cramo_Icons/Cramo_Hero_Icon.jpeg"
-                    alt="Cramo, das müde Waschbär-Maskottchen mit Kaffeetasse"
+                    src="/images/Cramo_Studying_Banner_Picture.jpeg"
+                    alt="Cramo, das müde Waschbär-Maskottchen mit Kaffeetasse und #Studying-Banner"
                     fill
                     priority
-                    className="scale-[1.15] object-cover"
+                    className="object-cover"
                   />
                 </motion.div>
-
-                {/* LinkedIn-Style "#STUDYING"-Banner */}
-                <svg
-                  viewBox="0 0 100 100"
-                  className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
-                  aria-hidden="true"
-                >
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="48.5"
-                    fill="none"
-                    stroke="hsl(var(--primary))"
-                    strokeOpacity="0.35"
-                    strokeWidth="2"
-                  />
-                  <path
-                    id="cramo-banner-arc"
-                    d="M 20.2 92.6 A 52 52 0 0 0 79.8 92.6"
-                    fill="none"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth="13"
-                    strokeLinecap="round"
-                  />
-                  <text fill="white" fontSize="8.5" fontWeight="700" letterSpacing="0.5">
-                    <textPath href="#cramo-banner-arc" startOffset="50%" textAnchor="middle">
-                      #STUDYING
-                    </textPath>
-                  </text>
-                </svg>
               </div>
 
               <div className="relative">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={sayingIndex}
-                    initial={{ opacity: 0, x: -18, y: 14, scale: 0.92 }}
-                    animate={
-                      isBubbleHovered
-                        ? { opacity: 1, x: 14, y: -2, scale: 1.06 }
-                        : {
-                            opacity: [0, 1, 1, 0],
-                            x: [-18, -2, 16, 32],
-                            y: [14, 2, -6, -16],
-                            scale: [0.92, 1, 1, 0.97],
-                          }
-                    }
-                    exit={{ opacity: 0, transition: { duration: 0.2 } }}
-                    transition={
-                      isBubbleHovered
-                        ? { duration: 0.35, ease: 'easeOut' }
-                        : {
-                            duration: 3.3,
-                            ease: 'linear',
-                            times: [0, 0.15, 0.8, 1],
-                            opacity: { duration: 3.3, times: [0, 0.15, 0.8, 1], ease: 'easeInOut' },
-                          }
-                    }
-                    onMouseEnter={() => setIsBubbleHovered(true)}
-                    onMouseLeave={() => setIsBubbleHovered(false)}
+                <motion.div
+                  animate={
+                    isBubbleHovered
+                      ? { x: 14, y: -4, scale: 1.05 }
+                      : { x: [0, 12, 0], y: [0, -8, 0], scale: [1, 1.02, 1] }
+                  }
+                  transition={
+                    isBubbleHovered
+                      ? { duration: 0.4, ease: 'easeOut' }
+                      : { duration: 5, repeat: Infinity, ease: 'easeInOut' }
+                  }
+                  onMouseEnter={() => setIsBubbleHovered(true)}
+                  onMouseLeave={() => setIsBubbleHovered(false)}
+                  className={cn(
+                    'relative cursor-default whitespace-nowrap rounded-2xl border px-4 py-2.5 shadow-card transition-colors duration-300',
+                    isBubbleHovered ? 'border-primary/40 bg-primary/5' : 'border-border/50 bg-card'
+                  )}
+                >
+                  <AnimatePresence mode="wait">
+                    <motion.p
+                      key={isBubbleHovered ? 'hover' : sayingIndex}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.25, ease: 'easeOut' }}
+                      className={cn(
+                        'flex items-center gap-1.5 text-sm font-medium',
+                        isBubbleHovered && 'text-primary'
+                      )}
+                    >
+                      {isBubbleHovered ? (
+                        <>
+                          <Coffee className="h-4 w-4" />
+                          Bring mir Kaffee, bitte!
+                        </>
+                      ) : (
+                        cramoSayings[sayingIndex]
+                      )}
+                    </motion.p>
+                  </AnimatePresence>
+                  <span
                     className={cn(
-                      'relative cursor-default whitespace-nowrap rounded-2xl border px-4 py-2.5 shadow-card transition-colors',
+                      'absolute -left-[5px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border-b border-l transition-colors duration-300',
                       isBubbleHovered ? 'border-primary/40 bg-primary/5' : 'border-border/50 bg-card'
                     )}
-                  >
-                    <p className="text-sm font-medium">
-                      {isBubbleHovered ? 'Bring mir Kaffee, bitte ☕' : cramoSayings[sayingIndex]}
-                    </p>
-                    <span
-                      className={cn(
-                        'absolute -left-[5px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border-b border-l',
-                        isBubbleHovered ? 'border-primary/40 bg-primary/5' : 'border-border/50 bg-card'
-                      )}
-                    />
-                  </motion.div>
-                </AnimatePresence>
+                  />
+                </motion.div>
               </div>
             </div>
           </motion.div>
