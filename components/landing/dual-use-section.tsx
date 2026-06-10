@@ -2,6 +2,8 @@
 
 import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
+import { RefreshCw } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { LaptopMockup } from './laptop-mockup'
 import { PhoneMockup } from './phone-mockup'
 
@@ -10,8 +12,10 @@ export function DualUseSection() {
   const inView = useInView(ref, { once: true, margin: '-100px' })
 
   return (
-    <section className="py-24 md:py-32">
-      <div className="container">
+    <section className="relative overflow-hidden py-24 md:py-32">
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-3xl" />
+
+      <div className="container relative">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -30,21 +34,46 @@ export function DualUseSection() {
 
         <div
           ref={ref}
-          className="mt-16 grid items-center gap-12 lg:grid-cols-[1.4fr_1fr] lg:gap-8"
+          className="relative mx-auto mt-20 grid max-w-5xl items-center gap-16 lg:grid-cols-2 lg:gap-12"
         >
+          <div className="absolute left-0 right-0 top-1/2 hidden -translate-y-1/2 border-t border-dashed border-border lg:block" />
+          <motion.div
+            className="absolute left-1/2 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 lg:flex"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card shadow-card">
+              <RefreshCw className="h-5 w-5 text-primary" />
+            </div>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, x: -24 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6 }}
+            className="relative"
           >
+            <Badge
+              variant="secondary"
+              className="absolute -top-4 left-6 z-10 rotate-[-3deg] px-3 py-1 text-xs font-semibold shadow-sm"
+            >
+              1 · Vorbereiten
+            </Badge>
             <LaptopMockup />
           </motion.div>
+
           <motion.div
             initial={{ opacity: 0, x: 24 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.15 }}
-            className="flex justify-center"
+            className="relative flex justify-center"
           >
+            <Badge
+              variant="secondary"
+              className="absolute -top-4 right-6 z-10 rotate-3 px-3 py-1 text-xs font-semibold shadow-sm sm:right-10"
+            >
+              2 · Lernen
+            </Badge>
             <PhoneMockup className="scale-90 lg:scale-100" />
           </motion.div>
         </div>

@@ -7,7 +7,7 @@ import { LandingFooter } from './footer'
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen overflow-x-clip bg-background">
       <LandingNavbar />
       <Hero />
       <DualUseSection />
