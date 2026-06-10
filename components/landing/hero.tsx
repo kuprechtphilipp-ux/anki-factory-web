@@ -55,21 +55,22 @@ export function Hero() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="relative mx-auto w-full max-w-sm"
+            className="relative mx-auto aspect-square w-full max-w-[300px] sm:max-w-[340px]"
           >
-            <div className="pointer-events-none absolute inset-x-8 inset-y-6 rounded-[3rem] bg-gradient-to-br from-primary/15 to-violet-300/30 blur-2xl dark:from-primary/10 dark:to-violet-500/10" />
+            <div className="pointer-events-none absolute -inset-6 rounded-full bg-gradient-to-br from-primary/20 to-violet-300/40 blur-3xl dark:from-primary/10 dark:to-violet-500/10" />
 
-            <Image
-              src="/images/cramo-hero-mascot.png"
-              alt="Cramo, das müde Waschbär-Maskottchen, sitzt mit Kaffee und Smartphone auf einem Bücherstapel"
-              width={768}
-              height={1024}
-              priority
-              className="relative mx-auto h-auto w-full max-w-[320px] drop-shadow-xl"
-            />
+            <div className="relative h-full w-full overflow-hidden rounded-full ring-[10px] ring-card shadow-card">
+              <Image
+                src="/icons/Cramo_Icons/Cramo_Hero_Icon.jpeg"
+                alt="Cramo, das müde Waschbär-Maskottchen mit Kaffeetasse"
+                fill
+                priority
+                className="scale-[1.35] object-cover"
+              />
+            </div>
 
             <motion.div
-              className="absolute -left-2 top-4 sm:-left-8"
+              className="absolute -left-4 top-6 sm:-left-10"
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
               whileHover={{ scale: 1.05 }}
@@ -86,7 +87,7 @@ export function Hero() {
             </motion.div>
 
             <motion.div
-              className="absolute -right-2 top-2 flex flex-col items-end gap-1.5 sm:-right-6"
+              className="absolute -right-4 top-2 flex flex-col items-end gap-1.5 sm:-right-10"
               animate={{ y: [0, -8, 0] }}
               transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
               whileHover={{ scale: 1.05 }}
@@ -103,12 +104,12 @@ export function Hero() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="relative mx-auto w-full max-w-md pb-10 pr-6 sm:pb-14 sm:pr-10"
+            className="relative mx-auto w-full max-w-md pb-16 pr-6 sm:pb-20 sm:pr-10"
           >
             <LaptopMockup />
 
             <motion.div
-              className="absolute bottom-0 right-0 origin-bottom-right scale-[0.6] sm:scale-[0.7]"
+              className="absolute bottom-0 right-0 origin-bottom-right scale-[0.42] sm:scale-[0.5]"
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
             >

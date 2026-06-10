@@ -17,8 +17,8 @@ export function PhoneMockup({ className }: { className?: string }) {
       )}
     >
       <div className="absolute left-1/2 top-0 z-10 h-5 w-28 -translate-x-1/2 rounded-b-2xl bg-foreground" />
-      <div className="overflow-hidden rounded-[1.75rem] bg-card">
-        <div className="flex flex-col gap-4 p-4 pt-6">
+      <div className="aspect-[9/19.5] overflow-hidden rounded-[1.75rem] bg-card">
+        <div className="flex h-full flex-col gap-4 p-4 pt-7">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-medium text-muted-foreground">3 / 12</span>
             <span className="rounded-full bg-secondary px-2 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-secondary-foreground">
@@ -56,6 +56,14 @@ export function PhoneMockup({ className }: { className?: string }) {
               </div>
             ))}
           </div>
+
+          <div className="flex-1 space-y-2 pt-2 opacity-30">
+            <div className="h-2 w-full rounded bg-muted-foreground/30" />
+            <div className="h-2 w-5/6 rounded bg-muted-foreground/30" />
+            <div className="h-2 w-2/3 rounded bg-muted-foreground/30" />
+          </div>
+
+          <div className="mx-auto h-1 w-28 rounded-full bg-foreground/15" />
         </div>
       </div>
     </div>
