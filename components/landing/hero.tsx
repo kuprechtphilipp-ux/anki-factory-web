@@ -1,14 +1,30 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowRight, Flame, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { LaptopMockup } from './laptop-mockup'
-import { PhoneMockup } from './phone-mockup'
+import { TabletMockup } from './tablet-mockup'
+
+const cramoSayings = [
+  'Bereit fürs Cramming?',
+  'Noch 3 Karten bis zur Pause ☕',
+  'Dein Gehirn dankt dir später.',
+  'Lernstreak nicht brechen!',
+]
 
 export function Hero() {
+  const [sayingIndex, setSayingIndex] = useState(0)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSayingIndex((i) => (i + 1) % cramoSayings.length)
+    }, 3500)
+    return () => clearInterval(id)
+  }, [])
+
   return (
     <section className="relative overflow-hidden pb-16 pt-28 md:pb-20 md:pt-32">
       <div className="pointer-events-none absolute -right-40 -top-40 h-96 w-96 rounded-full bg-primary/20 blur-3xl" />
@@ -48,63 +64,48 @@ export function Hero() {
                 Bereits registriert? Anmelden
               </Link>
             </div>
+
+            <div className="mt-10 flex items-center justify-center gap-4 lg:justify-start">
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full ring-4 ring-card shadow-card sm:h-20 sm:w-20">
+                <Image
+                  src="/icons/Cramo_Icons/Cramo_Hero_Icon.jpeg"
+                  alt="Cramo, das müde Waschbär-Maskottchen mit Kaffeetasse"
+                  fill
+                  priority
+                  className="scale-[1.35] object-cover"
+                />
+              </div>
+              <div className="relative">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={sayingIndex}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.4 }}
+                    className="relative rounded-2xl border border-border/50 bg-card px-4 py-2.5 shadow-card"
+                  >
+                    <p className="text-sm font-medium whitespace-nowrap">{cramoSayings[sayingIndex]}</p>
+                    <span className="absolute -left-[5px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border-b border-l border-border/50 bg-card" />
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </div>
           </motion.div>
 
-          {/* Product preview: Laptop zum Generieren + Phone zum Lernen, Cramo als Begleiter */}
+          {/* Produkt-Vorschau: Tablet mit Split-Screen Generieren / Lernen */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.15 }}
-            className="relative mx-auto h-[300px] w-full max-w-md sm:h-[400px]"
+            className="relative mx-auto w-full max-w-lg"
           >
-            {/* Laptop */}
-            <div className="absolute left-1/2 top-6 w-[76%] -translate-x-1/2 sm:top-8">
-              <LaptopMockup />
-            </div>
+            <TabletMockup />
 
-            {/* Phone, überlappt vorne rechts */}
             <motion.div
-              className="absolute bottom-0 right-0 origin-bottom-right scale-[0.36] sm:scale-[0.46]"
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
-            >
-              <PhoneMockup className="shadow-2xl" />
-            </motion.div>
-
-            {/* Cramo Avatar */}
-            <motion.div
-              className="absolute -left-2 top-0 h-20 w-20 overflow-hidden rounded-full ring-4 ring-card shadow-card sm:h-28 sm:w-28"
-              animate={{ y: [0, -8, 0] }}
+              className="absolute -left-4 -top-4 sm:-left-8 sm:-top-6"
+              animate={{ y: [0, -10, 0] }}
               transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
-              whileHover={{ scale: 1.05 }}
-            >
-              <Image
-                src="/icons/Cramo_Icons/Cramo_Hero_Icon.jpeg"
-                alt="Cramo, das müde Waschbär-Maskottchen mit Kaffeetasse"
-                fill
-                priority
-                className="scale-[1.35] object-cover"
-              />
-            </motion.div>
-
-            {/* Sprechblase */}
-            <motion.div
-              className="absolute -top-2 right-4 sm:-top-4 sm:right-8"
-              animate={{ y: [0, -6, 0] }}
-              transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
-              whileHover={{ scale: 1.05 }}
-            >
-              <div className="relative rounded-2xl border border-border/50 bg-card px-3 py-2 shadow-card">
-                <p className="text-xs font-medium whitespace-nowrap">Bereit fürs Cramming?</p>
-                <span className="absolute -bottom-[5px] left-8 h-2.5 w-2.5 rotate-45 border-b border-r border-border/50 bg-card" />
-              </div>
-            </motion.div>
-
-            {/* Lernstreak */}
-            <motion.div
-              className="absolute left-0 top-[88px] sm:top-[124px]"
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
               whileHover={{ scale: 1.05 }}
             >
               <div className="flex items-center gap-2.5 rounded-2xl border border-border/50 bg-card px-4 py-3 shadow-card">
@@ -118,9 +119,8 @@ export function Hero() {
               </div>
             </motion.div>
 
-            {/* Lernfortschritt */}
             <motion.div
-              className="absolute bottom-12 left-0 sm:bottom-16"
+              className="absolute -right-4 -bottom-4 sm:-right-8 sm:-bottom-6"
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
               whileHover={{ scale: 1.05 }}
