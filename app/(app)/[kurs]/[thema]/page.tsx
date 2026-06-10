@@ -520,7 +520,10 @@ export default function ThemaPage({ params }: Props) {
       toast.success('Karte übernommen')
       const next = reviewKarten.filter((k) => k.id !== karte.id)
       setReviewKarten(next)
-      
+      setNeuCount((c) => Math.max(0, (c ?? 1) - 1))
+      setReviewedCount((c) => (c ?? 0) + 1)
+      setDueCount((c) => (c ?? 0) + 1)
+
       const filteredNext = activeReviewKarten.filter((k) => k.id !== karte.id)
       setReviewIdx(Math.max(0, Math.min(reviewIdx, filteredNext.length - 1)))
       maybeTriggerFeedback(filteredNext.length)
@@ -543,7 +546,8 @@ export default function ThemaPage({ params }: Props) {
       toast.success('Karte verworfen')
       const next = reviewKarten.filter((k) => k.id !== karte.id)
       setReviewKarten(next)
-      
+      setNeuCount((c) => Math.max(0, (c ?? 1) - 1))
+
       const filteredNext = activeReviewKarten.filter((k) => k.id !== karte.id)
       setReviewIdx(Math.max(0, Math.min(reviewIdx, filteredNext.length - 1)))
       maybeTriggerFeedback(filteredNext.length)
@@ -569,6 +573,9 @@ export default function ThemaPage({ params }: Props) {
       const activeIds = new Set(activeReviewKarten.map((k) => k.id))
       setReviewKarten(prev => prev.filter(k => !activeIds.has(k.id)))
       setReviewIdx(0)
+      setNeuCount((c) => Math.max(0, (c ?? count) - count))
+      setReviewedCount((c) => (c ?? 0) + count)
+      setDueCount((c) => (c ?? 0) + count)
       maybeTriggerFeedback(0)
     } finally {
       setActionLoading(false)
@@ -592,6 +599,7 @@ export default function ThemaPage({ params }: Props) {
       const activeIds = new Set(activeReviewKarten.map((k) => k.id))
       setReviewKarten(prev => prev.filter(k => !activeIds.has(k.id)))
       setReviewIdx(0)
+      setNeuCount((c) => Math.max(0, (c ?? count) - count))
       maybeTriggerFeedback(0)
     } finally {
       setActionLoading(false)
@@ -886,7 +894,7 @@ export default function ThemaPage({ params }: Props) {
             {/* Hero: Lernen */}
             <Link
               href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}
-              className="group relative flex overflow-hidden rounded-2xl bg-gradient-to-br from-primary/15 via-primary/8 to-transparent border border-primary/20 hover:border-primary/40 hover:from-primary/20 transition-all shadow-card hover:shadow-card-hover hover:-translate-y-0.5 p-5"
+              className="group relative flex overflow-hidden rounded-2xl border border-border/50 bg-card hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5 p-5"
             >
               <div className="flex items-start gap-4 flex-1 min-w-0">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 group-hover:bg-primary/25 transition-colors">
