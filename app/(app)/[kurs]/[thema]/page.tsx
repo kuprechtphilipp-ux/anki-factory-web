@@ -746,43 +746,46 @@ export default function ThemaPage({ params }: Props) {
           )}
 
           {bannerState === 'B' && (
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 p-5 text-white shadow-lg">
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.12),transparent_60%)]" />
-              <div className="relative space-y-1">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-emerald-200">Alles im Plan</p>
-                <p className="text-2xl font-bold">Alle Karten erledigt</p>
-                {nextDueDate && (
-                  <p className="text-sm text-emerald-200">
-                    Nächste Session{' '}
-                    <span className="font-semibold text-white">
-                      {new Date(nextDueDate).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}
-                    </span>
-                  </p>
-                )}
+            <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-card">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+                  <CheckCheck className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Alles im Plan</p>
+                  <p className="text-xl font-semibold">Alle Karten erledigt</p>
+                  {nextDueDate && (
+                    <p className="text-sm text-muted-foreground">
+                      Nächste Session{' '}
+                      <span className="font-semibold text-foreground">
+                        {new Date(nextDueDate).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      </span>
+                    </p>
+                  )}
+                </div>
               </div>
               {aktivitaetDays.length > 0 && (
                 <div className="relative mt-4 flex items-end gap-1.5">
                   {aktivitaetDays.map((day, i) => (
-                    <div key={i} className={`w-3 h-3 rounded-full ${day.studied ? 'bg-white' : 'bg-white/25'}`} title={day.date} />
+                    <div key={i} className={`w-3 h-3 rounded-full ${day.studied ? 'bg-primary' : 'bg-muted'}`} title={day.date} />
                   ))}
-                  <span className="ml-1 text-[10px] text-emerald-300">7-Tage-Aktivität</span>
+                  <span className="ml-1 text-[10px] text-muted-foreground/60">7-Tage-Aktivität</span>
                 </div>
               )}
             </div>
           )}
 
           {bannerState === 'C' && (
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 p-5 text-white shadow-lg">
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.12),transparent_60%)]" />
-              <div className="relative flex items-start justify-between gap-4">
+            <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-card">
+              <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-100">Neue Karten</p>
-                  <p className="text-3xl font-bold tabular-nums">{neuCount} Karten</p>
-                  <p className="text-sm text-amber-100">warten auf deinen Review</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Neue Karten</p>
+                  <p className="text-3xl font-bold tabular-nums text-primary">{neuCount} Karten</p>
+                  <p className="text-sm text-muted-foreground">warten auf deinen Review</p>
                 </div>
                 <button
                   onClick={() => setActiveTab('review')}
-                  className="shrink-0 rounded-xl bg-white/20 hover:bg-white/30 px-4 py-2.5 text-sm font-semibold transition-colors backdrop-blur-sm"
+                  className="shrink-0 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2.5 text-sm font-semibold transition-colors"
                 >
                   Zum Review
                 </button>
@@ -805,14 +808,14 @@ export default function ThemaPage({ params }: Props) {
             <div className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${(dueCount ?? 0) > 0 ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground/60'}`}>
               {dueCount ?? '–'} fällig
             </div>
-            <div className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${(neuCount ?? 0) > 0 ? 'border-amber-300/60 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400' : 'border-border/60 text-muted-foreground/60'}`}>
+            <div className="rounded-full border border-border/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground/60">
               {neuCount ?? '–'} im Review
             </div>
             <div className="rounded-full border border-border/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground/60">
               {reviewedCount ?? '–'} im Deck
             </div>
             {retentionEst != null && (
-              <div className="rounded-full border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+              <div className="rounded-full border border-border/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground/60">
                 ~{retentionEst}% Retention
               </div>
             )}
@@ -829,37 +832,37 @@ export default function ThemaPage({ params }: Props) {
                 {maturity.neu > 0 && (
                   <div
                     title={`Neu: ${maturity.neu}`}
-                    className="bg-amber-400 dark:bg-amber-500 rounded-l-full transition-all"
+                    className="bg-violet-200 dark:bg-violet-900/40 rounded-l-full transition-all"
                     style={{ width: `${(maturity.neu / maturity.total) * 100}%` }}
                   />
                 )}
                 {maturity.inLearning > 0 && (
                   <div
                     title={`Im Lernen: ${maturity.inLearning}`}
-                    className="bg-violet-500 transition-all"
+                    className="bg-violet-400 dark:bg-violet-700 transition-all"
                     style={{ width: `${(maturity.inLearning / maturity.total) * 100}%` }}
                   />
                 )}
                 {maturity.gut > 0 && (
                   <div
                     title={`Gut: ${maturity.gut}`}
-                    className="bg-indigo-500 transition-all"
+                    className="bg-violet-600 dark:bg-violet-500 transition-all"
                     style={{ width: `${(maturity.gut / maturity.total) * 100}%` }}
                   />
                 )}
                 {maturity.solid > 0 && (
                   <div
                     title={`Gefestigt: ${maturity.solid}`}
-                    className="bg-emerald-500 rounded-r-full transition-all"
+                    className="bg-violet-800 dark:bg-violet-300 rounded-r-full transition-all"
                     style={{ width: `${(maturity.solid / maturity.total) * 100}%` }}
                   />
                 )}
               </div>
               <div className="flex items-center gap-3 text-[10px] text-muted-foreground/60 flex-wrap">
-                {maturity.neu > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400 inline-block" />Neu ({maturity.neu})</span>}
-                {maturity.inLearning > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-500 inline-block" />Lernen ({maturity.inLearning})</span>}
-                {maturity.gut > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-indigo-500 inline-block" />Gut ({maturity.gut})</span>}
-                {maturity.solid > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" />Gefestigt ({maturity.solid})</span>}
+                {maturity.neu > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-200 dark:bg-violet-900/40 inline-block" />Neu ({maturity.neu})</span>}
+                {maturity.inLearning > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-400 dark:bg-violet-700 inline-block" />Lernen ({maturity.inLearning})</span>}
+                {maturity.gut > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-600 dark:bg-violet-500 inline-block" />Gut ({maturity.gut})</span>}
+                {maturity.solid > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-800 dark:bg-violet-300 inline-block" />Gefestigt ({maturity.solid})</span>}
               </div>
             </div>
           )}
@@ -910,7 +913,7 @@ export default function ThemaPage({ params }: Props) {
             <div className="grid grid-cols-3 gap-2">
               <Link
                 href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/drill`}
-                className="group flex flex-col gap-2 rounded-xl border border-amber-200/50 dark:border-amber-700/30 bg-gradient-to-b from-amber-50/70 to-transparent dark:from-amber-950/15 p-3 sm:p-4 hover:border-amber-300/70 transition-all shadow-card hover:-translate-y-0.5"
+                className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
                   <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -923,7 +926,7 @@ export default function ThemaPage({ params }: Props) {
 
               <Link
                 href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/quiz`}
-                className="group flex flex-col gap-2 rounded-xl border border-indigo-200/50 dark:border-indigo-700/30 bg-gradient-to-b from-indigo-50/70 to-transparent dark:from-indigo-950/15 p-3 sm:p-4 hover:border-indigo-300/70 transition-all shadow-card hover:-translate-y-0.5"
+                className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
                   <BookOpen className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
@@ -936,7 +939,7 @@ export default function ThemaPage({ params }: Props) {
 
               <Link
                 href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/schriftlich`}
-                className="group flex flex-col gap-2 rounded-xl border border-emerald-200/50 dark:border-emerald-700/30 bg-gradient-to-b from-emerald-50/70 to-transparent dark:from-emerald-950/15 p-3 sm:p-4 hover:border-emerald-300/70 transition-all shadow-card hover:-translate-y-0.5"
+                className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
                   <PenLine className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
