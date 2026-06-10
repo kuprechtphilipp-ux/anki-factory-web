@@ -9,29 +9,55 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { TabletMockup } from './tablet-mockup'
 
-const CRAMO_GREETING = 'Bereit fürs Cramming?'
+const cramoSayings = [
+  'Bereit fürs Cramming?',
+  'Schon deine Karten von heute gelernt?',
+  'Dein Gehirn liebt kleine Wiederholungen.',
+  'Nur noch 5 Minuten... oder so 😄',
+]
 
 export function Hero() {
+  const [sayingIndex, setSayingIndex] = useState(0)
   const [typedText, setTypedText] = useState('')
+  const [bubbleVisible, setBubbleVisible] = useState(true)
   const [isBubbleHovered, setIsBubbleHovered] = useState(false)
 
   useEffect(() => {
+    const text = cramoSayings[sayingIndex]
     let charIndex = 0
-    let intervalId: ReturnType<typeof setInterval>
+    let typeInterval: ReturnType<typeof setInterval>
+    let displayTimeout: ReturnType<typeof setTimeout>
+    let fadeTimeout: ReturnType<typeof setTimeout>
 
-    const startTyping = setTimeout(() => {
-      intervalId = setInterval(() => {
-        charIndex += 1
-        setTypedText(CRAMO_GREETING.slice(0, charIndex))
-        if (charIndex >= CRAMO_GREETING.length) clearInterval(intervalId)
-      }, 45)
-    }, 700)
+    setTypedText('')
+    setBubbleVisible(true)
+
+    const startDelay = setTimeout(
+      () => {
+        typeInterval = setInterval(() => {
+          charIndex += 1
+          setTypedText(text.slice(0, charIndex))
+          if (charIndex >= text.length) {
+            clearInterval(typeInterval)
+            displayTimeout = setTimeout(() => {
+              setBubbleVisible(false)
+              fadeTimeout = setTimeout(() => {
+                setSayingIndex((i) => (i + 1) % cramoSayings.length)
+              }, 500)
+            }, 5000)
+          }
+        }, 45)
+      },
+      sayingIndex === 0 ? 700 : 600
+    )
 
     return () => {
-      clearTimeout(startTyping)
-      clearInterval(intervalId)
+      clearTimeout(startDelay)
+      clearInterval(typeInterval)
+      clearTimeout(displayTimeout)
+      clearTimeout(fadeTimeout)
     }
-  }, [])
+  }, [sayingIndex])
 
   return (
     <section className="relative overflow-hidden pb-16 pt-28 md:pb-20 md:pt-32">
@@ -82,7 +108,7 @@ export function Hero() {
             <div className="mt-12 flex items-center justify-center gap-6 lg:justify-start lg:pl-3">
               <div className="relative shrink-0">
                 <motion.div
-                  className="relative h-28 w-28 overflow-hidden rounded-full shadow-card ring-4 ring-card sm:h-32 sm:w-32"
+                  className="relative h-32 w-32 overflow-hidden rounded-full shadow-card ring-4 ring-card sm:h-40 sm:w-40"
                   whileHover={{ scale: 1.08 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 15 }}
                 >
@@ -126,13 +152,13 @@ export function Hero() {
                       <motion.p
                         key="greeting"
                         initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
+                        animate={{ opacity: bubbleVisible ? 1 : 0, y: bubbleVisible ? 0 : -6 }}
                         exit={{ opacity: 0, y: -6 }}
-                        transition={{ duration: 0.35, ease: 'easeOut' }}
+                        transition={{ duration: 0.45, ease: 'easeInOut' }}
                         className="text-sm font-medium"
                       >
                         {typedText}
-                        {typedText.length < CRAMO_GREETING.length && (
+                        {typedText.length < cramoSayings[sayingIndex].length && (
                           <span className="ml-0.5 inline-block h-3.5 w-[2px] animate-pulse bg-current align-middle" />
                         )}
                       </motion.p>
