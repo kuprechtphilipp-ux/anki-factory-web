@@ -24,7 +24,7 @@ export function Hero() {
     if (isBubbleHovered) return
     const id = setInterval(() => {
       setSayingIndex((i) => (i + 1) % cramoSayings.length)
-    }, 3500)
+    }, 6000)
     return () => clearInterval(id)
   }, [isBubbleHovered])
 
@@ -116,7 +116,7 @@ export function Hero() {
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.25, ease: 'easeOut' }}
+                      transition={{ duration: 0.7, ease: 'easeInOut' }}
                       className={cn(
                         'flex items-center gap-1.5 text-sm font-medium',
                         isBubbleHovered && 'text-primary'
