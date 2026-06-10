@@ -55,7 +55,7 @@ export function TabletMockup({ className }: { className?: string }) {
               Frage
             </p>
             <p className="text-xs font-medium leading-snug text-foreground">
-              Was unterscheidet Mitose von Meiose?
+              Wofür steht das AIDA-Modell im Marketing?
             </p>
           </div>
 

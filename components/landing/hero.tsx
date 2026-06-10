@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowRight, Flame, BarChart3, Sparkles } from 'lucide-react'
+import { ArrowRight, Flame, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TabletMockup } from './tablet-mockup'
 
@@ -38,9 +38,8 @@ export function Hero() {
             transition={{ duration: 0.6 }}
             className="mx-auto max-w-xl text-center lg:mx-0 lg:text-left"
           >
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              Smart lernen statt stur pauken
+            <span className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
+              KI-gestütztes Lernen
             </span>
             <h1 className="mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
               PDF hochladen.
@@ -66,7 +65,7 @@ export function Hero() {
               </Link>
             </div>
 
-            <div className="mt-12 flex items-center justify-center gap-5 lg:justify-start">
+            <div className="mt-12 flex items-center justify-center gap-5 lg:justify-start lg:pl-3">
               <div className="relative shrink-0">
                 <motion.div
                   className="relative h-20 w-20 overflow-hidden rounded-full ring-4 ring-card shadow-card sm:h-24 sm:w-24"
@@ -83,31 +82,9 @@ export function Hero() {
                   />
                 </motion.div>
 
-                {/* Comic-Pfeil + "Meet Cramo" Label */}
-                <div className="pointer-events-none absolute -bottom-9 -left-24 hidden -rotate-6 flex-col items-center gap-1 text-violet-500 dark:text-violet-400 sm:flex">
-                  <span className="font-serif text-sm font-bold italic text-violet-600 dark:text-violet-400">
-                    Meet Cramo!
-                  </span>
-                  <svg
-                    viewBox="0 0 100 60"
-                    className="h-12 w-20 -translate-x-2 translate-y-1"
-                    fill="none"
-                  >
-                    <path
-                      d="M8 12 C 30 55, 65 50, 88 14"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeDasharray="1 7"
-                    />
-                    <path
-                      d="M88 14 L 77 16 M88 14 L 81 26"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </div>
+                <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-border/50 bg-card px-2 py-0.5 text-[10px] font-semibold text-muted-foreground shadow-card">
+                  Cramo
+                </span>
               </div>
 
               <div className="relative">
@@ -138,7 +115,7 @@ export function Hero() {
             <TabletMockup />
 
             <motion.div
-              className="absolute -left-2 -top-8 sm:-left-10 sm:-top-14"
+              className="absolute -left-4 -top-10 sm:-left-8 sm:-top-12"
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
               whileHover={{ scale: 1.05 }}
@@ -155,7 +132,7 @@ export function Hero() {
             </motion.div>
 
             <motion.div
-              className="absolute -right-4 -bottom-4 sm:-right-8 sm:-bottom-6"
+              className="absolute -right-4 -bottom-10 sm:-right-8 sm:-bottom-12"
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
               whileHover={{ scale: 1.05 }}
@@ -166,7 +143,7 @@ export function Hero() {
                 </div>
                 <div>
                   <p className="text-sm font-bold leading-none">84%</p>
-                  <p className="mt-1 text-[10px] text-muted-foreground">Biologie gelernt</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Marketing gelernt</p>
                 </div>
               </div>
             </motion.div>

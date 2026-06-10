@@ -26,11 +26,16 @@ export function LandingNavbar() {
       )}
     >
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-border/60 shadow-sm">
-            <Image src="/images/cramo-mascot.png" alt="Cramo" fill className="object-cover" />
+        <Link href="/" className="flex items-center gap-3">
+          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-border/60 shadow-sm">
+            <Image
+              src="/icons/Cramo_Icons/Cramo_App_Icon_dark_background.png"
+              alt="Cramo"
+              fill
+              className="object-cover"
+            />
           </div>
-          <span className="text-lg font-bold tracking-tight">Cramo</span>
+          <span className="text-xl font-bold tracking-tight">Cramo</span>
         </Link>
 
         <nav className="flex items-center gap-2">
