@@ -17,13 +17,15 @@ const cramoSayings = [
 
 export function Hero() {
   const [sayingIndex, setSayingIndex] = useState(0)
+  const [isBubbleHovered, setIsBubbleHovered] = useState(false)
 
   useEffect(() => {
+    if (isBubbleHovered) return
     const id = setInterval(() => {
       setSayingIndex((i) => (i + 1) % cramoSayings.length)
     }, 3500)
     return () => clearInterval(id)
-  }, [])
+  }, [isBubbleHovered])
 
   return (
     <section className="relative overflow-hidden pb-16 pt-28 md:pb-20 md:pt-32">
@@ -51,27 +53,32 @@ export function Hero() {
               sich für dich, wann du sie wiederholen musst.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4 lg:justify-start">
-              <Button size="lg" asChild>
+              <Button
+                size="lg"
+                asChild
+                className="group bg-gradient-to-r from-primary to-violet-500 shadow-lg shadow-primary/30 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/40"
+              >
                 <Link href="/signup">
                   Jetzt kostenlos starten
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Link>
               </Button>
-              <Link
-                href="/login"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              <Button
+                size="lg"
+                variant="outline"
+                asChild
+                className="border-border/70 bg-card/60 backdrop-blur-sm transition-colors hover:bg-card"
               >
-                Bereits registriert? Anmelden
-              </Link>
+                <Link href="/login">Bereits registriert? Anmelden</Link>
+              </Button>
             </div>
 
-            <div className="mt-12 flex items-center justify-center gap-5 lg:justify-start lg:pl-3">
+            <div className="mt-12 flex items-center justify-center gap-6 lg:justify-start lg:pl-3">
               <div className="relative shrink-0">
                 <motion.div
-                  className="relative h-20 w-20 overflow-hidden rounded-full ring-4 ring-card shadow-card sm:h-24 sm:w-24"
-                  animate={{ y: [0, -6, 0], rotate: [0, -3, 0, 3, 0] }}
-                  transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-                  whileHover={{ scale: 1.08, rotate: -6 }}
+                  className="relative h-28 w-28 overflow-hidden rounded-full ring-4 ring-card shadow-card sm:h-32 sm:w-32"
+                  whileHover={{ scale: 1.08 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 15 }}
                 >
                   <Image
                     src="/icons/Cramo_Icons/Cramo_Hero_Icon.jpeg"
@@ -82,25 +89,46 @@ export function Hero() {
                   />
                 </motion.div>
 
-                <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-border/50 bg-card px-2 py-0.5 text-[10px] font-semibold text-muted-foreground shadow-card">
-                  Cramo
-                </span>
+                {/* LinkedIn-Style "#STUDYING"-Banner */}
+                <svg
+                  viewBox="0 0 100 100"
+                  className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+                  aria-hidden="true"
+                >
+                  <path
+                    id="cramo-banner-arc"
+                    d="M 11.7 82.15 A 50 50 0 0 0 88.3 82.15"
+                    fill="none"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="15"
+                    strokeLinecap="round"
+                  />
+                  <text fill="white" fontSize="11" fontWeight="700" letterSpacing="0.5">
+                    <textPath href="#cramo-banner-arc" startOffset="50%" textAnchor="middle">
+                      #STUDYING
+                    </textPath>
+                  </text>
+                </svg>
               </div>
 
-              <div className="relative">
+              <div
+                className="relative cursor-default rounded-2xl border border-border/50 bg-card px-4 py-2.5 shadow-card"
+                onMouseEnter={() => setIsBubbleHovered(true)}
+                onMouseLeave={() => setIsBubbleHovered(false)}
+              >
                 <AnimatePresence mode="wait">
-                  <motion.div
-                    key={sayingIndex}
+                  <motion.p
+                    key={isBubbleHovered ? 'hover' : sayingIndex}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.4 }}
-                    className="relative rounded-2xl border border-border/50 bg-card px-4 py-2.5 shadow-card"
+                    transition={{ duration: 0.3 }}
+                    className="text-sm font-medium whitespace-nowrap"
                   >
-                    <p className="text-sm font-medium whitespace-nowrap">{cramoSayings[sayingIndex]}</p>
-                    <span className="absolute -left-[5px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border-b border-l border-border/50 bg-card" />
-                  </motion.div>
+                    {isBubbleHovered ? 'Bring mir Kaffee, bitte ☕' : cramoSayings[sayingIndex]}
+                  </motion.p>
                 </AnimatePresence>
+                <span className="absolute -left-[5px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border-b border-l border-border/50 bg-card" />
               </div>
             </div>
           </motion.div>
