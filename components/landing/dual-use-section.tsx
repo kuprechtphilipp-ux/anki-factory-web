@@ -55,7 +55,7 @@ export function DualUseSection() {
           >
             <Badge
               variant="secondary"
-              className="absolute -top-4 left-6 z-10 rotate-[-3deg] px-3 py-1 text-xs font-semibold shadow-sm"
+              className="absolute -top-4 left-6 z-10 px-3 py-1 text-xs font-semibold shadow-sm"
             >
               1 · Vorbereiten
             </Badge>
@@ -70,7 +70,7 @@ export function DualUseSection() {
           >
             <Badge
               variant="secondary"
-              className="absolute -top-4 right-6 z-10 rotate-3 px-3 py-1 text-xs font-semibold shadow-sm sm:right-10"
+              className="absolute -top-4 right-6 z-10 px-3 py-1 text-xs font-semibold shadow-sm sm:right-10"
             >
               2 · Lernen
             </Badge>

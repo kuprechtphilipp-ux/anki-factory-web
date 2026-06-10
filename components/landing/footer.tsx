@@ -8,11 +8,16 @@ export function LandingFooter() {
       <div className="container py-16">
         <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr]">
           <div>
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-border/60 shadow-sm">
-                <Image src="/images/cramo-mascot.png" alt="Cramo" fill className="object-cover" />
+            <Link href="/" className="flex items-center gap-3">
+              <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-border/60 shadow-sm">
+                <Image
+                  src="/icons/Cramo_Icons/Cramo_App_Icon_dark_background.png"
+                  alt="Cramo"
+                  fill
+                  className="object-cover"
+                />
               </div>
-              <span className="text-lg font-bold tracking-tight">Cramo</span>
+              <span className="text-2xl font-bold tracking-tight">Cramo</span>
             </Link>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
               Dein Lernbuddy für die Nachtschicht vor der Prüfung: PDF rein, Karteikarten

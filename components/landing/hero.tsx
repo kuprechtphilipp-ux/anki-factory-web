@@ -108,7 +108,7 @@ export function Hero() {
             <div className="mt-12 flex items-center justify-center gap-6 lg:justify-start lg:pl-3">
               <div className="relative shrink-0">
                 <motion.div
-                  className="relative h-32 w-32 overflow-hidden rounded-full shadow-card ring-4 ring-card sm:h-40 sm:w-40"
+                  className="relative h-28 w-28 overflow-hidden rounded-full shadow-card ring-4 ring-card sm:h-32 sm:w-32"
                   whileHover={{ scale: 1.08 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 15 }}
                 >

@@ -26,12 +26,24 @@ export function CtaBanner() {
             Lade dein erstes PDF hoch und lass Cramo in Sekunden deine Karteikarten
             erstellen – kostenlos und ohne Setup.
           </p>
-          <div className="mt-8 flex justify-center">
-            <Button size="lg" asChild>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <Button
+              size="lg"
+              asChild
+              className="group bg-gradient-to-r from-primary to-violet-500 shadow-lg shadow-primary/30 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/40"
+            >
               <Link href="/signup">
                 Jetzt kostenlos starten
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              asChild
+              className="border-border/70 bg-card/60 backdrop-blur-sm transition-colors hover:bg-card"
+            >
+              <Link href="/login">Bereits registriert? Anmelden</Link>
             </Button>
           </div>
         </motion.div>
@@ -47,8 +59,8 @@ export function CtaBanner() {
             <Image
               src="/images/cramo-mascot.png"
               alt="Cramo Maskottchen"
-              width={64}
-              height={64}
+              width={88}
+              height={88}
               className="rounded-xl"
             />
           </div>
