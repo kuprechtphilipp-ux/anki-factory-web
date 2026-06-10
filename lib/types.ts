@@ -3,10 +3,35 @@ export type KartStatus = 'neu' | 'reviewed' | 'exportiert' | 'verworfen'
 // FSRS states: 0=New, 1=Learning, 2=Review, 3=Relearning
 export type FsrsState = 0 | 1 | 2 | 3
 
+export type Plan = 'basic' | 'basic_plus' | 'premium' | 'ultra'
+
 export interface Kurs {
   id: number
   name: string
+  user_id: string | null
   created_at: string
+}
+
+export interface Profile {
+  id: string
+  email: string | null
+  plan: Plan
+  credits_total: number
+  credits_used: number
+  is_admin: boolean
+  onboarding_completed: boolean
+  created_at: string
+}
+
+export interface InviteCode {
+  id: number
+  code: string
+  plan: Exclude<Plan, 'basic'>
+  credits: number
+  used_by: string | null
+  used_at: string | null
+  created_at: string
+  created_by: string | null
 }
 
 export interface Thema {
@@ -179,12 +204,62 @@ export type Database = {
         Insert: {
           id?: number
           name: string
+          user_id?: string | null
           created_at?: string
         }
         Update: {
           id?: number
           name?: string
+          user_id?: string | null
           created_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: Profile
+        Insert: {
+          id: string
+          email?: string | null
+          plan?: Plan
+          credits_total?: number
+          credits_used?: number
+          is_admin?: boolean
+          onboarding_completed?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string | null
+          plan?: Plan
+          credits_total?: number
+          credits_used?: number
+          is_admin?: boolean
+          onboarding_completed?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      invite_codes: {
+        Row: InviteCode
+        Insert: {
+          id?: number
+          code: string
+          plan: Exclude<Plan, 'basic'>
+          credits: number
+          used_by?: string | null
+          used_at?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: number
+          code?: string
+          plan?: Exclude<Plan, 'basic'>
+          credits?: number
+          used_by?: string | null
+          used_at?: string | null
+          created_at?: string
+          created_by?: string | null
         }
         Relationships: []
       }

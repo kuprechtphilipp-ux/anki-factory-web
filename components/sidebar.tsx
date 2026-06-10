@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import type { Kurs, Thema } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import {
@@ -17,6 +18,7 @@ import {
   Pencil,
   Check,
   Loader2,
+  LogOut,
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -59,6 +61,13 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
 
   useEffect(() => { onClose?.() }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleLogout() {
+    const browserSupabase = createBrowserSupabaseClient()
+    await browserSupabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
 
   const handleDragStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -522,6 +531,17 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
           )}
         </div>
       </nav>
+
+      {/* Logout */}
+      <div className="shrink-0 border-t border-border/50 p-2" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground"
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          Abmelden
+        </button>
+      </div>
 
       {/* Drag handle — desktop only */}
       <div
