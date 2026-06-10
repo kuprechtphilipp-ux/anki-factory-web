@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -88,8 +89,16 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ frage, musterantwort, nutzerantwort: userAnswer, kontext: karte.kontext }),
     })
-      .then(r => r.json())
-      .then(data => { setAiFeedback(data); setChecking(false) })
+      .then(async r => {
+        const data = await r.json()
+        if (r.status === 402) {
+          toast.error(data.message ?? data.error)
+          setChecking(false)
+          return
+        }
+        setAiFeedback(data)
+        setChecking(false)
+      })
       .catch(() => setChecking(false))
   }
 

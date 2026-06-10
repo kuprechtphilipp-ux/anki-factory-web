@@ -24,6 +24,21 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('plan, credits_total, credits_used')
+    .eq('id', user.id)
+    .single()
+
+  const creditsTotal = profile?.credits_total ?? 0
+  const creditsUsed = profile?.credits_used ?? 0
+  const credits = {
+    plan: profile?.plan ?? 'basic',
+    total: creditsTotal,
+    used: creditsUsed,
+    remaining: Math.max(0, creditsTotal - creditsUsed),
+  }
+
   const rows = (data ?? []) as UsageRow[]
 
   const now = new Date()
@@ -81,5 +96,6 @@ export async function GET() {
     proFeature,
     proTag,
     letzteAufrufe,
+    credits,
   })
 }

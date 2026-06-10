@@ -20,6 +20,7 @@ import {
   Loader2,
   LogOut,
   X,
+  ShieldCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -97,6 +98,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
   const [kurse, setKurse] = useState<KursWithThemen[]>([])
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [dueMap, setDueMap] = useState<Record<number, number>>({})
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const [showNewKurs, setShowNewKurs] = useState(false)
   const [newKursName, setNewKursName] = useState('')
@@ -111,6 +113,13 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
   const [renameKursValue, setRenameKursValue] = useState('')
   const [renamingThemaId, setRenamingThemaId] = useState<number | null>(null)
   const [renameThemaValue, setRenameThemaValue] = useState('')
+
+  async function loadAdminStatus() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single()
+    setIsAdmin(!!profile?.is_admin)
+  }
 
   async function load() {
     const { data: kursData } = await supabase.from('kurs').select('*').order('name')
@@ -137,6 +146,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
   }
 
   useEffect(() => { load() }, [])
+  useEffect(() => { loadAdminStatus() }, [])
 
   function toggleKurs(id: number) {
     setExpanded((prev) => {
@@ -307,6 +317,20 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
           <DollarSign className="h-4 w-4 shrink-0" />
           API-Kosten
         </Link>
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className={cn(
+              'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground',
+              pathname === '/admin'
+                ? 'bg-primary/10 text-primary font-medium'
+                : 'text-muted-foreground'
+            )}
+          >
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+            Admin
+          </Link>
+        )}
 
         <div className="mt-4">
           <div className="flex items-center justify-between px-3 py-1 mb-1">

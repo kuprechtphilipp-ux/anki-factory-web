@@ -61,7 +61,7 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
       })
       const data = await res.json()
       if (!res.ok || data.error) {
-        setGenError(data.error ?? 'Generierung fehlgeschlagen')
+        setGenError(data.message ?? data.error ?? 'Generierung fehlgeschlagen')
         setQuizState('idle')
         return
       }

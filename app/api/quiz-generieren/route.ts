@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import type { Karte, QuizFrage } from '@/lib/types'
-import { logApiUsage } from '@/lib/api-cost'
+import { logApiUsage, getCreditStatus, incrementCreditsUsed, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
 
 export const maxDuration = 60
 
@@ -27,6 +27,11 @@ export async function POST(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const creditStatus = await getCreditStatus(supabase, user.id)
+  if (creditStatus.exhausted) {
+    return NextResponse.json({ error: 'credits_exhausted', message: CREDITS_EXHAUSTED_MESSAGE }, { status: 402 })
+  }
 
   const body = await req.json()
   const { thema_id, kurs_name, anzahl = 10, schwierigkeit = 'mittel' } = body as {
@@ -143,7 +148,7 @@ ${distractorText}`
     messages: [{ role: 'user', content: userMessage }],
   })
 
-  logApiUsage(supabase, {
+  const cost_usd = await logApiUsage(supabase, {
     feature: 'quiz',
     model: 'claude-sonnet-4-6',
     inputTokens: msg.usage.input_tokens,
@@ -151,6 +156,7 @@ ${distractorText}`
     themaId: thema_id ? Number(thema_id) : null,
     userId: user.id,
   })
+  await incrementCreditsUsed(supabase, user.id, cost_usd)
 
   const raw = msg.content[0].type === 'text' ? msg.content[0].text : ''
 

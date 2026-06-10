@@ -24,6 +24,13 @@ interface AufrufRow {
   cost_usd: number
 }
 
+interface CreditsInfo {
+  plan: string
+  total: number
+  used: number
+  remaining: number
+}
+
 interface KostenData {
   heute: number
   woche: number
@@ -32,6 +39,60 @@ interface KostenData {
   proFeature: ProFeature[]
   proTag: ProTag[]
   letzteAufrufe: AufrufRow[]
+  credits: CreditsInfo
+}
+
+const PLAN_LABELS: Record<string, string> = {
+  basic: 'Basic',
+  basic_plus: 'Basic+',
+  premium: 'Premium',
+  ultra: 'Ultra',
+}
+
+function CreditsDonut({ credits }: { credits: CreditsInfo }) {
+  const pct = credits.total > 0 ? Math.min(1, credits.used / credits.total) : 0
+  const exhausted = credits.used >= credits.total
+  const radius = 40
+  const circumference = 2 * Math.PI * radius
+  const dash = circumference * pct
+  const colorClass = exhausted ? 'text-rose-500' : 'text-primary'
+
+  return (
+    <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card">
+      <div className="flex items-center gap-6">
+        <svg width="100" height="100" viewBox="0 0 100 100" className="shrink-0 -rotate-90">
+          <circle cx="50" cy="50" r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth="10" />
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="none"
+            strokeWidth="10"
+            strokeLinecap="round"
+            strokeDasharray={`${dash} ${circumference - dash}`}
+            className={`${colorClass} stroke-current transition-all`}
+          />
+        </svg>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">
+            Plan: {PLAN_LABELS[credits.plan] ?? credits.plan}
+          </p>
+          <p className="text-2xl font-bold tracking-tight">
+            {credits.used} / {credits.total}
+          </p>
+          <p className="text-sm text-muted-foreground mt-0.5">Credits verbraucht</p>
+        </div>
+      </div>
+      {exhausted && (
+        <p className="mt-4 text-sm text-rose-500">
+          Deine Credits sind aufgebraucht. Schreib mir für mehr Credits:{' '}
+          <a href="mailto:philipp.kuprecht@student.unisg.ch" className="underline underline-offset-2">
+            philipp.kuprecht@student.unisg.ch
+          </a>
+        </p>
+      )}
+    </div>
+  )
 }
 
 const FEATURE_LABELS: Record<string, string> = {
@@ -110,6 +171,12 @@ export default function KostenPage() {
         <StatCard icon={<Calendar className="h-5 w-5 text-blue-500" />} label="Diese Woche" value={fmtUsd(data.woche)} />
         <StatCard icon={<CalendarDays className="h-5 w-5 text-violet-500" />} label="Diesen Monat" value={fmtUsd(data.monat)} />
         <StatCard icon={<Wallet className="h-5 w-5 text-primary" />} label="Gesamt" value={fmtUsd(data.gesamt)} />
+      </div>
+
+      {/* Credits */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Credits</p>
+        <CreditsDonut credits={data.credits} />
       </div>
 
       {/* 30-Tage Chart */}

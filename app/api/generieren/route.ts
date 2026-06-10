@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import pdf from 'pdf-parse'
-import { logApiUsage } from '@/lib/api-cost'
+import { logApiUsage, getCreditStatus, incrementCreditsUsed, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
 
 export const maxDuration = 300
 
@@ -139,6 +139,11 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const creditStatus = await getCreditStatus(supabase, user.id)
+  if (creditStatus.exhausted) {
+    return NextResponse.json({ error: 'credits_exhausted', message: CREDITS_EXHAUSTED_MESSAGE }, { status: 402 })
+  }
+
   try {
     const formData = await req.formData()
     const file = formData.get('pdf') as File | null
@@ -273,7 +278,7 @@ ${existingList}`
         messages: [{ role: 'user', content: userContent }],
       })
 
-      logApiUsage(supabase, {
+      const cost_usd = await logApiUsage(supabase, {
         feature: 'generieren',
         model: 'claude-sonnet-4-6',
         inputTokens: message.usage.input_tokens,
@@ -281,6 +286,7 @@ ${existingList}`
         themaId: Number(themaId),
         userId: user.id,
       })
+      await incrementCreditsUsed(supabase, user.id, cost_usd)
 
       const raw = (message.content[0] as { type: 'text'; text: string }).text
       try {

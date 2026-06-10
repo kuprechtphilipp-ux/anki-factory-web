@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
-import { logApiUsage } from '@/lib/api-cost'
+import { logApiUsage, getCreditStatus, incrementCreditsUsed, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
 
 export const maxDuration = 60
 
@@ -68,6 +68,11 @@ export async function POST(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const creditStatus = await getCreditStatus(supabase, user.id)
+  if (creditStatus.exhausted) {
+    return NextResponse.json({ error: 'credits_exhausted', message: CREDITS_EXHAUSTED_MESSAGE }, { status: 402 })
+  }
 
   try {
     const formData = await req.formData()
@@ -155,7 +160,7 @@ Berücksichtige diese Präferenzen — aber überschreibe sie nicht wenn der Inh
       ],
     })
 
-    logApiUsage(supabase, {
+    const cost_usd = await logApiUsage(supabase, {
       feature: 'prescan',
       model: 'claude-haiku-4-5-20251001',
       inputTokens: message.usage.input_tokens,
@@ -163,6 +168,7 @@ Berücksichtige diese Präferenzen — aber überschreibe sie nicht wenn der Inh
       themaId: themaId ? Number(themaId) : null,
       userId: user.id,
     })
+    await incrementCreditsUsed(supabase, user.id, cost_usd)
 
     if (message.stop_reason === 'max_tokens') {
       throw new Error('Antwort wurde abgeschnitten (PDF zu gross). Versuche ein kleineres PDF oder teile es in Abschnitte auf.')

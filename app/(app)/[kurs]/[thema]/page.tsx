@@ -288,7 +288,7 @@ export default function ThemaPage({ params }: Props) {
       const res = await fetch('/api/prescan', { method: 'POST', body: form })
       const json = await res.json()
       if (!res.ok || json.error) {
-        setScanError(json.error ?? 'Pre-Scan fehlgeschlagen')
+        setScanError(json.message ?? json.error ?? 'Pre-Scan fehlgeschlagen')
         setScanStep('idle')
         return
       }
@@ -422,7 +422,7 @@ export default function ThemaPage({ params }: Props) {
       return null
     }
 
-    let json: { karten?: Partial<Karte>[]; count?: number; error?: string }
+    let json: { karten?: Partial<Karte>[]; count?: number; error?: string; message?: string }
     try {
       json = await res.json()
     } catch {
@@ -431,7 +431,7 @@ export default function ThemaPage({ params }: Props) {
     }
 
     if (!res.ok || json.error) {
-      toast.error(json.error ?? `Serverfehler ${res.status}`)
+      toast.error(json.message ?? json.error ?? `Serverfehler ${res.status}`)
       return null
     }
     const { karten, count } = json as { karten: Partial<Karte>[]; count: number }

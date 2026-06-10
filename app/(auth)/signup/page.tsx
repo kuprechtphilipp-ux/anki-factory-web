@@ -21,6 +21,7 @@ export default function SignupPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -28,7 +29,25 @@ export default function SignupPage() {
     setLoading(true)
 
     const supabase = createClient()
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const code = inviteCode.trim()
+    let plan: string | null = null
+
+    if (code) {
+      const { data: inviteRows, error: inviteError } = await supabase.rpc('check_invite_code', { p_code: code })
+      const invite = Array.isArray(inviteRows) ? inviteRows[0] : null
+      if (inviteError || !invite) {
+        toast.error('Code ungültig oder bereits verwendet')
+        setLoading(false)
+        return
+      }
+      plan = invite.plan
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      ...(code ? { options: { data: { invite_code: code } } } : {}),
+    })
 
     if (error) {
       toast.error(error.message)
@@ -37,7 +56,11 @@ export default function SignupPage() {
     }
 
     if (!data.session) {
-      toast.success('Konto erstellt. Bitte bestätige deine E-Mail-Adresse, um dich anzumelden.')
+      toast.success(
+        plan
+          ? `Account erstellt — Plan: ${plan}. Bitte bestätige deine E-Mail-Adresse, um dich anzumelden.`
+          : 'Konto erstellt. Bitte bestätige deine E-Mail-Adresse, um dich anzumelden.'
+      )
       setLoading(false)
       return
     }
@@ -76,6 +99,17 @@ export default function SignupPage() {
               required
               minLength={6}
               autoComplete="new-password"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="inviteCode">Einladungscode (optional)</Label>
+            <Input
+              id="inviteCode"
+              type="text"
+              placeholder="z. B. ABC-123"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              autoComplete="off"
             />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
