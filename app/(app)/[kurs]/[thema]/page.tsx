@@ -673,7 +673,7 @@ export default function ThemaPage({ params }: Props) {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
-          <TabsList className="h-9 rounded-lg bg-muted p-1 gap-0.5 mb-0 inline-flex w-auto min-w-full sm:w-full flex-nowrap">
+          <TabsList className="h-9 rounded-lg bg-muted p-1 gap-0.5 mb-0 inline-flex w-auto min-w-full sm:w-full flex-nowrap justify-start">
             <TabsTrigger
               value="uebersicht"
               className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm shrink-0"
@@ -905,7 +905,7 @@ export default function ThemaPage({ params }: Props) {
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-foreground">Lernen</p>
                     {dueCount != null && dueCount > 0 && (
-                      <span className="rounded-full bg-primary text-primary-foreground px-2.5 py-0.5 text-xs font-bold">
+                      <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[11px] font-medium">
                         {dueCount} fällig heute
                       </span>
                     )}
@@ -964,28 +964,25 @@ export default function ThemaPage({ params }: Props) {
           {/* ── Generate Magic CTA ── */}
           <button
             onClick={() => setActiveTab('generieren')}
-            className="group relative w-full overflow-hidden rounded-2xl border border-violet-200/50 dark:border-violet-800/30 p-4 text-left transition-all hover:border-violet-300/70 hover:shadow-md"
-            style={{
-              background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(243 75% 59% / 0.04) 50%, hsl(var(--card)) 100%)',
-            }}
+            className="group relative w-full overflow-hidden rounded-2xl border border-border/50 bg-card p-4 text-left shadow-card transition-all hover:border-primary/30 hover:-translate-y-0.5"
           >
             <div
               className="animate-shimmer absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl"
               style={{
-                background: 'linear-gradient(90deg, transparent 0%, hsl(243 75% 59% / 0.06) 50%, transparent 100%)',
+                background: 'linear-gradient(90deg, transparent 0%, hsl(var(--primary) / 0.06) 50%, transparent 100%)',
               }}
             />
             <div className="relative flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 shrink-0">
-                  <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400 group-hover:animate-spin" style={{ animationDuration: '2s' }} />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 group-hover:bg-primary/25 transition-colors shrink-0">
+                  <Sparkles className="h-4 w-4 text-primary group-hover:animate-spin" style={{ animationDuration: '2s' }} />
                 </div>
                 <div>
                   <p className="text-sm font-semibold">Neues Material generieren</p>
                   <p className="text-xs text-muted-foreground">PDF → Flashcards in Sekunden</p>
                 </div>
               </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-violet-600 group-hover:translate-x-0.5 transition-all" />
+              <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
             </div>
           </button>
 
