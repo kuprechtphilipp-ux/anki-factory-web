@@ -28,12 +28,12 @@ interface ThemaStats {
 }
 
 const KURS_COLORS = [
-  { bg: 'bg-violet-500', light: 'bg-violet-50 dark:bg-violet-950/30', pill: 'bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-900/40 dark:text-violet-300 dark:hover:bg-violet-900/60' },
-  { bg: 'bg-blue-500', light: 'bg-blue-50 dark:bg-blue-950/30', pill: 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60' },
-  { bg: 'bg-emerald-500', light: 'bg-emerald-50 dark:bg-emerald-950/30', pill: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60' },
-  { bg: 'bg-amber-500', light: 'bg-amber-50 dark:bg-amber-950/30', pill: 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:hover:bg-amber-900/60' },
-  { bg: 'bg-rose-500', light: 'bg-rose-50 dark:bg-rose-950/30', pill: 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/40 dark:text-rose-300 dark:hover:bg-rose-900/60' },
-  { bg: 'bg-cyan-500', light: 'bg-cyan-50 dark:bg-cyan-950/30', pill: 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200 dark:bg-cyan-900/40 dark:text-cyan-300 dark:hover:bg-cyan-900/60' },
+  { bg: 'bg-violet-500' },
+  { bg: 'bg-blue-500' },
+  { bg: 'bg-emerald-500' },
+  { bg: 'bg-amber-500' },
+  { bg: 'bg-rose-500' },
+  { bg: 'bg-cyan-500' },
 ]
 
 function hashColorIdx(name: string): number {
@@ -44,8 +44,7 @@ function hashColorIdx(name: string): number {
 
 function FaelligNum({ n }: { n: number }) {
   if (n === 0) return <span className="text-muted-foreground/30">0</span>
-  if (n > 50) return <span className="text-rose-600 font-medium">{n}</span>
-  return <span className="text-emerald-600 font-medium">{n}</span>
+  return <span className="text-primary font-semibold">{n}</span>
 }
 
 function ZeroOrNum({ n }: { n: number }) {
@@ -201,11 +200,11 @@ export default function KursePage() {
             </div>
           ) : (
             streak.dueCount > 0 && !streak.learnedToday && (
-              <div className="flex items-center gap-3 rounded-xl border border-blue-200/60 dark:border-blue-800/40 bg-blue-50/60 dark:bg-blue-950/20 px-4 py-3">
-                <Bell className="h-4 w-4 text-blue-500 shrink-0" />
-                <p className="text-sm text-blue-800 dark:text-blue-200">
+              <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+                <Bell className="h-4 w-4 text-primary shrink-0" />
+                <p className="text-sm text-foreground">
                   Heute noch nicht gelernt —{' '}
-                  <span className="font-semibold">{streak.dueCount} Karten</span> fällig
+                  <span className="font-semibold text-primary">{streak.dueCount} Karten</span> fällig
                 </p>
               </div>
             )
@@ -226,7 +225,7 @@ export default function KursePage() {
               key={kurs.id}
               className="group rounded-xl bg-card shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
             >
-              <div className={`px-5 pt-5 pb-4 ${color.light}`}>
+              <div className="px-5 pt-5 pb-4">
                 <div className="flex items-start gap-3">
                   <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-bold text-white ${color.bg}`}>
                     {kurs.name.charAt(0).toUpperCase()}
@@ -252,8 +251,8 @@ export default function KursePage() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1">
-                        <h2 className="font-semibold text-base leading-tight truncate flex-1">{kurs.name}</h2>
+                      <div className="flex items-start gap-1">
+                        <h2 className="font-semibold text-base leading-tight line-clamp-2 flex-1">{kurs.name}</h2>
                         <button
                           onClick={() => { setRenamingId(kurs.id); setRenameValue(kurs.name) }}
                           className="opacity-0 group-hover:opacity-100 flex h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-black/10 dark:hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all"
@@ -286,7 +285,7 @@ export default function KursePage() {
                       <Link
                         key={thema.id}
                         href={`/${encodeURIComponent(kurs.name)}/${encodeURIComponent(thema.name)}`}
-                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${color.pill}`}
+                        className="rounded-full border border-border/60 bg-card px-3 py-1 text-xs font-medium text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors"
                       >
                         {thema.name}
                       </Link>
@@ -335,7 +334,7 @@ export default function KursePage() {
                       <td className="hidden sm:table-cell px-4 py-3 text-right tabular-nums text-muted-foreground">
                         <ZeroOrNum n={row.neu} />
                       </td>
-                      <td className="hidden sm:table-cell px-4 py-3 text-right tabular-nums text-primary font-medium">
+                      <td className="hidden sm:table-cell px-4 py-3 text-right tabular-nums text-muted-foreground">
                         <ZeroOrNum n={row.lernen} />
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
