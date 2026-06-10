@@ -12,7 +12,7 @@ import { ReviewCard } from '@/components/review-card'
 import { KarteListItem } from '@/components/karte-list-item'
 import { toast } from 'sonner'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, X, Plus, PenLine, ChevronLeft, ChevronRight, ArrowLeft, List, ScanSearch, Wand2, ChevronDown, ChevronUp, Layers, AlertTriangle, Eye } from 'lucide-react'
+import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, X, Plus, PenLine, ChevronLeft, ChevronRight, ArrowLeft, List, ScanSearch, Wand2, ChevronDown, ChevronUp, Layers, AlertTriangle, Eye, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { FeedbackModal } from '@/components/feedback-modal'
 import { FactoryLoader } from '@/components/factory-loader'
@@ -80,6 +80,7 @@ export default function ThemaPage({ params }: Props) {
   const [statusFilter, setStatusFilter] = useState<string>('alle')
   const [searchQuery, setSearchQuery] = useState('')
   const [alleKartenPage, setAlleKartenPage] = useState(1)
+  const [deletingAlle, setDeletingAlle] = useState(false)
 
   // Manual card creation
   const [newTyp, setNewTyp] = useState<KartTyp>('basic')
@@ -242,6 +243,29 @@ export default function ThemaPage({ params }: Props) {
         .catch(() => setAlleLoading(false))
     }
   }, [activeTab, themaId, statusFilter])
+
+  const handleDeleteFiltered = async (filtered: Karte[]) => {
+    if (themaId == null || filtered.length === 0) return
+    if (!window.confirm(`${filtered.length} Karte${filtered.length !== 1 ? 'n' : ''} unwiderruflich löschen?`)) return
+
+    setDeletingAlle(true)
+    try {
+      const res = await fetch(`/api/themen/${themaId}/karten`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: filtered.map((k) => k.id) }),
+      })
+      if (!res.ok) throw new Error('Löschen fehlgeschlagen')
+
+      const deletedIds = new Set(filtered.map((k) => k.id))
+      setAlleKarten((prev) => prev.filter((k) => !deletedIds.has(k.id)))
+      toast.success(`${filtered.length} Karte${filtered.length !== 1 ? 'n' : ''} gelöscht`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Unbekannter Fehler beim Löschen')
+    } finally {
+      setDeletingAlle(false)
+    }
+  }
 
   useEffect(() => {
     if (!generating) { setGenProgress(0); return }
@@ -1710,9 +1734,21 @@ export default function ThemaPage({ params }: Props) {
               <>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>{filtered.length} Karte{filtered.length !== 1 ? 'n' : ''}</span>
-                  {totalPages > 1 && (
-                    <span>Seite {page} / {totalPages}</span>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {totalPages > 1 && (
+                      <span>Seite {page} / {totalPages}</span>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      disabled={deletingAlle}
+                      onClick={() => handleDeleteFiltered(filtered)}
+                    >
+                      {deletingAlle ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                      Alle löschen
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {paginated.map((karte) => (
