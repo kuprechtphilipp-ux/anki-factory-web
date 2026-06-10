@@ -107,13 +107,13 @@ export function Hero() {
                   />
                   <path
                     id="cramo-banner-arc"
-                    d="M -4 84 A 70 18 0 0 1 104 84"
+                    d="M 20.2 92.6 A 52 52 0 0 0 79.8 92.6"
                     fill="none"
                     stroke="hsl(var(--primary))"
-                    strokeWidth="14"
+                    strokeWidth="13"
                     strokeLinecap="round"
                   />
-                  <text fill="white" fontSize="10" fontWeight="700" letterSpacing="1">
+                  <text fill="white" fontSize="8.5" fontWeight="700" letterSpacing="0.5">
                     <textPath href="#cramo-banner-arc" startOffset="50%" textAnchor="middle">
                       #STUDYING
                     </textPath>
@@ -140,7 +140,12 @@ export function Hero() {
                     transition={
                       isBubbleHovered
                         ? { duration: 0.35, ease: 'easeOut' }
-                        : { duration: 3.3, times: [0, 0.12, 0.7, 1], ease: 'easeInOut' }
+                        : {
+                            duration: 3.3,
+                            ease: 'linear',
+                            times: [0, 0.15, 0.8, 1],
+                            opacity: { duration: 3.3, times: [0, 0.15, 0.8, 1], ease: 'easeInOut' },
+                          }
                     }
                     onMouseEnter={() => setIsBubbleHovered(true)}
                     onMouseLeave={() => setIsBubbleHovered(false)}
