@@ -268,13 +268,13 @@ export default function ThemaPage({ params }: Props) {
   }
 
   useEffect(() => {
-    if (!generating) { setGenProgress(0); return }
+    if (!generating && !autoBatchRunning) { setGenProgress(0); return }
     setGenProgress(5)
     const interval = setInterval(() => {
       setGenProgress((prev) => (prev < 88 ? prev + 3 : prev))
     }, 800)
     return () => clearInterval(interval)
-  }, [generating])
+  }, [generating, autoBatchRunning])
 
   async function handlePrescan() {
     if (!pdfFile) return
@@ -349,6 +349,7 @@ export default function ThemaPage({ params }: Props) {
         const baseBatchCards = Math.max(1, Math.round(batchSize * baseRatio))
         const adjustedBatchCards = Math.max(1, Math.round(baseBatchCards * (activeConcepts.length / concepts.length)))
         setCurrentBatchTargetCards(adjustedBatchCards)
+        setGenProgress(5)
 
         const count = await runGenerieren(String(batch.von), String(batch.bis), adjustedBatchCards, activeConcepts)
         if (count === null) return
