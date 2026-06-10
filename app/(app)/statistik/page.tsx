@@ -35,7 +35,7 @@ function StatCard({
   highlight?: boolean
 }) {
   return (
-    <div className={`relative overflow-hidden rounded-2xl border p-5 bg-card shadow-card ${highlight ? 'border-primary/30' : 'border-border/50'}`}>
+    <div className={`relative overflow-hidden rounded-2xl border p-5 bg-card shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 ${highlight ? 'border-primary/30' : 'border-border/50'}`}>
       <div className="flex items-start justify-between">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">{icon}</div>
         {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
@@ -85,7 +85,7 @@ function Donut({ segments }: { segments: { label: string; value: number; color: 
 function DonutCard({ title, segments }: { title: string; segments: { label: string; value: number; color: string }[] }) {
   const total = segments.reduce((s, x) => s + x.value, 0)
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card">
+    <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-3">{title}</p>
       {total === 0 ? (
         <p className="text-sm text-muted-foreground py-6 text-center">Keine Daten vorhanden.</p>
@@ -135,7 +135,7 @@ function ForecastChart({ forecast30 }: { forecast30: number[] }) {
           ))}
         </div>
       </div>
-      <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card">
+      <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200">
         <div className="flex items-end gap-[3px] h-24">
           {data.map((count, i) => (
             <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
@@ -190,7 +190,7 @@ function Sparkline({ label, data, color }: { label: string; data: SessionTrendPo
   }).join(' ')
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card space-y-2">
+    <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium">{label}</span>
         {avgLast != null && <span className="text-lg font-bold tabular-nums">{Math.round(avgLast)}%</span>}
@@ -275,7 +275,7 @@ function ThemenBreakdownTable({ rows }: { rows: ThemaBreakdownRow[] }) {
           Noch keine Themen vorhanden.
         </div>
       ) : (
-        <div className="rounded-2xl border border-border/50 bg-card shadow-card overflow-x-auto">
+        <div className="rounded-2xl border border-border/50 bg-card shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-x-auto">
           <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="border-b border-border/50 text-[10px] uppercase tracking-widest text-muted-foreground/70">
@@ -409,7 +409,7 @@ export default function StatistikPage() {
   ]
 
   return (
-    <div className="max-w-3xl space-y-10">
+    <div className="max-w-3xl space-y-10 animate-fade-in">
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">Lernfortschritt</p>
         <h1 className="text-[1.75rem] font-semibold tracking-tight">Statistik</h1>
@@ -487,7 +487,7 @@ export default function StatistikPage() {
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-4">
           Lernaktivität — letzte 365 Tage
         </p>
-        <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card overflow-x-auto">
+        <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 overflow-x-auto">
           <div className="min-w-[600px]">
             {/* Month labels */}
             <div className="flex mb-1 pl-7">
@@ -548,7 +548,7 @@ export default function StatistikPage() {
       {stats.totalReviews > 0 && (
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-4">Retention Rate</p>
-          <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card space-y-3">
+          <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Korrekte Antworten (Rating Gut / Einfach)</span>
               <span className="font-semibold text-foreground">{stats.retentionRate}%</span>

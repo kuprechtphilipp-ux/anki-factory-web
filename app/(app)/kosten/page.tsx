@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Loader2, DollarSign, Calendar, CalendarDays, Wallet } from 'lucide-react'
+import { Loader2, DollarSign, Calendar, CalendarDays, Wallet, Mail, PartyPopper } from 'lucide-react'
+import { PlanBadge } from '@/components/plan-badge'
+import type { Plan } from '@/lib/types'
 
 interface ProFeature {
   feature: string
@@ -42,13 +44,6 @@ interface KostenData {
   credits: CreditsInfo
 }
 
-const PLAN_LABELS: Record<string, string> = {
-  basic: 'Basic',
-  basic_plus: 'Basic+',
-  premium: 'Premium',
-  ultra: 'Ultra',
-}
-
 function CreditsDonut({ credits }: { credits: CreditsInfo }) {
   const pct = credits.total > 0 ? Math.min(1, credits.used / credits.total) : 0
   const exhausted = credits.used >= credits.total
@@ -58,7 +53,7 @@ function CreditsDonut({ credits }: { credits: CreditsInfo }) {
   const colorClass = exhausted ? 'text-rose-500' : 'text-primary'
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card">
+    <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200">
       <div className="flex items-center gap-6">
         <svg width="100" height="100" viewBox="0 0 100 100" className="shrink-0 -rotate-90">
           <circle cx="50" cy="50" r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth="10" />
@@ -74,9 +69,10 @@ function CreditsDonut({ credits }: { credits: CreditsInfo }) {
           />
         </svg>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">
-            Plan: {PLAN_LABELS[credits.plan] ?? credits.plan}
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1.5">
+            Dein Plan
           </p>
+          <PlanBadge plan={(credits.plan as Plan) ?? 'basic'} className="mb-2" />
           <p className="text-2xl font-bold tracking-tight">
             {credits.used} / {credits.total}
           </p>
@@ -91,6 +87,59 @@ function CreditsDonut({ credits }: { credits: CreditsInfo }) {
           </a>
         </p>
       )}
+    </div>
+  )
+}
+
+const PLAN_ORDER: Plan[] = ['basic', 'basic_plus', 'premium', 'ultra']
+
+const PLAN_CREDITS: Record<Plan, number> = {
+  basic: 50,
+  basic_plus: 100,
+  premium: 300,
+  ultra: 500,
+}
+
+function UpgradeSection({ plan }: { plan: Plan }) {
+  if (plan === 'ultra') {
+    return (
+      <div className="rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/10 p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/40">
+            <PartyPopper className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Du bist auf dem Ultra-Plan — dem höchsten verfügbaren Zugang.</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Mehr Credits gibt es aktuell nicht. Viel Spaß beim Lernen!</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {PLAN_ORDER.map((p) => (
+          <div
+            key={p}
+            className={`rounded-xl border p-3 text-center space-y-1.5 transition-colors ${
+              p === plan ? 'border-primary/40 bg-primary/5' : 'border-border/50'
+            }`}
+          >
+            <PlanBadge plan={p} />
+            <p className="text-lg font-bold tracking-tight">{PLAN_CREDITS[p]}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Credits</p>
+          </div>
+        ))}
+      </div>
+      <a
+        href="mailto:philipp.kuprecht@student.unisg.ch?subject=Anki%20Factory%20-%20Plan-Upgrade"
+        className="flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+      >
+        <Mail className="h-4 w-4" />
+        Mehr Credits? Schreib mir für ein Upgrade
+      </a>
     </div>
   )
 }
@@ -118,7 +167,7 @@ function StatCard({
   sub?: string
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border/50 p-5 bg-card shadow-card">
+    <div className="relative overflow-hidden rounded-2xl border border-border/50 p-5 bg-card shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200">
       <div className="flex items-start justify-between">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">{icon}</div>
         {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
@@ -159,30 +208,36 @@ export default function KostenPage() {
   const totalFeatureCost = data.proFeature.reduce((sum, f) => sum + f.cost, 0)
 
   return (
-    <div className="max-w-3xl space-y-10">
+    <div className="max-w-3xl space-y-10 animate-fade-in">
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">Anthropic API</p>
-        <h1 className="text-[1.75rem] font-semibold tracking-tight">API-Kosten</h1>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">Plan & Nutzung</p>
+        <h1 className="text-[1.75rem] font-semibold tracking-tight">AI Credits</h1>
+      </div>
+
+      {/* Credits + Upgrade */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Dein Zugang</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
+          <CreditsDonut credits={data.credits} />
+          <UpgradeSection plan={(data.credits.plan as Plan) ?? 'basic'} />
+        </div>
       </div>
 
       {/* Metric cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard icon={<DollarSign className="h-5 w-5 text-emerald-500" />} label="Heute" value={fmtUsd(data.heute)} />
-        <StatCard icon={<Calendar className="h-5 w-5 text-blue-500" />} label="Diese Woche" value={fmtUsd(data.woche)} />
-        <StatCard icon={<CalendarDays className="h-5 w-5 text-violet-500" />} label="Diesen Monat" value={fmtUsd(data.monat)} />
-        <StatCard icon={<Wallet className="h-5 w-5 text-primary" />} label="Gesamt" value={fmtUsd(data.gesamt)} />
-      </div>
-
-      {/* Credits */}
       <div className="space-y-3">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Credits</p>
-        <CreditsDonut credits={data.credits} />
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Anthropic API-Kosten</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <StatCard icon={<DollarSign className="h-5 w-5 text-emerald-500" />} label="Heute" value={fmtUsd(data.heute)} />
+          <StatCard icon={<Calendar className="h-5 w-5 text-blue-500" />} label="Diese Woche" value={fmtUsd(data.woche)} />
+          <StatCard icon={<CalendarDays className="h-5 w-5 text-violet-500" />} label="Diesen Monat" value={fmtUsd(data.monat)} />
+          <StatCard icon={<Wallet className="h-5 w-5 text-primary" />} label="Gesamt" value={fmtUsd(data.gesamt)} />
+        </div>
       </div>
 
       {/* 30-Tage Chart */}
       <div className="space-y-3">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Kosten — letzte 30 Tage</p>
-        <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card">
+        <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200">
           <div className="flex items-end gap-[3px] h-24">
             {data.proTag.map((t, i) => (
               <div key={t.date} className="flex flex-1 flex-col items-center gap-1.5">
@@ -214,7 +269,7 @@ export default function KostenPage() {
             Noch keine API-Aufrufe erfasst.
           </div>
         ) : (
-          <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card space-y-4">
+          <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 space-y-4">
             {data.proFeature.map((f) => {
               const pct = totalFeatureCost > 0 ? (f.cost / totalFeatureCost) * 100 : 0
               return (
@@ -241,7 +296,7 @@ export default function KostenPage() {
             Noch keine API-Aufrufe erfasst.
           </div>
         ) : (
-          <div className="rounded-2xl border border-border/50 bg-card shadow-card overflow-hidden">
+          <div className="rounded-2xl border border-border/50 bg-card shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-widest text-muted-foreground/70">
@@ -254,7 +309,7 @@ export default function KostenPage() {
               </thead>
               <tbody>
                 {data.letzteAufrufe.map((row) => (
-                  <tr key={row.id} className="border-b border-border/30 last:border-0">
+                  <tr key={row.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
                       {new Date(row.created_at).toLocaleString('de', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </td>

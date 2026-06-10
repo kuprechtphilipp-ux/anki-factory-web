@@ -62,12 +62,14 @@ Stand: 2026-06-10. Lies dies zusammen mit CLAUDE.md, bevor du weiterarbeitest.
 - `/kosten`: `app/api/kosten/route.ts` liefert zusätzlich `credits: {plan, total, used, remaining}`; `app/(app)/kosten/page.tsx` zeigt SVG-Donut (Warnfarbe + Mailto-Link bei aufgebraucht)
 - `npx tsc --noEmit`: ✅ sauber
 
-### 4B — Admin-Panel v1 (`/admin`, nur `is_admin=true`)
-- User-Tabelle: email, plan, credits_used/credits_total (Donut wie bei 4A)
-- Invite-Code-Generator (Plan wählen → Code wird erzeugt) + Übersicht aller Codes (eingelöst/offen)
-- Manuelles Credits-Aufladen für einzelnen User
-
-**Parallelisierung:** 4A und 4B haben praktisch keine Datei-Überschneidung (4A: Signup, Generierungs-Routen, `/kosten`; 4B: neue `/admin`-Seite + neue `/api/admin/*`-Routen). Beide bauen nur auf den in Schritt 2 angelegten Tabellen auf.
+### ✅ 4B — Admin-Panel v1 (abgeschlossen)
+- `lib/admin.ts`: `requireAdmin()` Helper (401/403, kein Service-Role-Key, RLS via `is_admin()`)
+- Neue Seite `app/(app)/admin/page.tsx` (Server Component, redirect zu `/kurse` für Nicht-Admins)
+- `app/api/admin/users/route.ts` (GET), `app/api/admin/users/[id]/credits/route.ts` (PATCH, addiert auf `credits_total`), `app/api/admin/invite-codes/route.ts` (GET inkl. `used_by_email`, POST mit Default-Credits pro Plan + Kollisions-Retry, Code-Alphabet ohne 0/O/1/I)
+- `components/admin/admin-panel.tsx` + `components/admin/credit-donut.tsx`: Tabs "Nutzer" (Tabelle + Donut + "Credits aufladen"-Dialog) und "Invite-Codes" (Generator + Übersicht eingelöst/offen)
+- `components/sidebar.tsx`: "Admin"-Link (ShieldCheck-Icon) nur für `is_admin=true`
+- `npx tsc --noEmit`: ✅ sauber
+- **Status:** beide Teilschritte committed + gepusht (Commit `1f59770`), live auf Vercel verifiziert (Screenshot `/admin` mit Invite-Codes-Tab funktioniert, Code-Generator sichtbar)
 
 ---
 
@@ -79,8 +81,18 @@ Stand: 2026-06-10. Lies dies zusammen mit CLAUDE.md, bevor du weiterarbeitest.
 
 ---
 
-## Nächster Schritt
-✅ Prompts für 4A und 4B erstellt: `docs/prompts_schritt4.md`. Beide in zwei separate
-Claude-Code-Fenster kopieren und parallel ausführen lassen. Nach Abschluss jeweils
-`npx tsc --noEmit` prüfen, dann `docs/MEMORY.md` mit dem neuen Stand aktualisieren
-(Migration 0002 angewendet? neue Dateien? offene Punkte?).
+## Nächster Schritt — Schritt 4 fertig, vor Versand an Freunde noch testen:
+1. Echten Test-Account anlegen (Inkognito, NICHT dein Admin-Account):
+   - In `/admin` → Invite-Codes → Code generieren (z. B. Basic+)
+   - Mit diesem Code auf `/signup` registrieren
+   - Prüfen: `profiles.plan`/`credits_total` korrekt gesetzt, Code in `/admin` als "eingelöst" markiert
+2. Email-Bestätigung prüfen — kommt die Supabase-Bestätigungsmail beim Test-Account an
+   (nicht im Spam)? Falls nicht: Supabase Auth Email-Settings/Rate-Limits checken.
+3. Credit-Flow testen: mit Test-Account ein paar Karten generieren → `credits_used` steigt,
+   bei Erreichen von `credits_total` erscheint die 402-Meldung mit Mailto-Link
+   (philipp.kuprecht@student.unisg.ch).
+4. RLS-Sichtkontrolle: Test-Account sieht nur leere/eigene Kurse, keine Daten von dir.
+5. Erst danach: echten Code für den jeweiligen Plan in `/admin` generieren und an Freunde schicken.
+
+**Schritt 4 (4A+4B) ist fachlich abgeschlossen** — alle Punkte oben sind nur noch
+Verifikation vor dem ersten echten Versand, keine offenen Implementierungs-Schritte.

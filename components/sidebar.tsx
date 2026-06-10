@@ -12,7 +12,7 @@ import {
   ChevronRight,
   LayoutDashboard,
   BarChart2,
-  DollarSign,
+  Zap,
   Plus,
   Trash2,
   Pencil,
@@ -314,8 +314,8 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
               : 'text-muted-foreground'
           )}
         >
-          <DollarSign className="h-4 w-4 shrink-0" />
-          API-Kosten
+          <Zap className="h-4 w-4 shrink-0" />
+          AI Credits
         </Link>
         {isAdmin && (
           <Link

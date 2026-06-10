@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { CreditDonut } from '@/components/admin/credit-donut'
+import { PlanBadge } from '@/components/plan-badge'
 import type { Plan, InviteCode } from '@/lib/types'
 
 interface AdminUser {
@@ -35,20 +36,6 @@ interface AdminUser {
 
 interface AdminInviteCode extends InviteCode {
   used_by_email: string | null
-}
-
-const PLAN_LABELS: Record<Plan, string> = {
-  basic: 'Basic',
-  basic_plus: 'Basic+',
-  premium: 'Premium',
-  ultra: 'Ultra',
-}
-
-const PLAN_VARIANTS: Record<Plan, 'secondary' | 'default' | 'outline'> = {
-  basic: 'secondary',
-  basic_plus: 'outline',
-  premium: 'default',
-  ultra: 'default',
 }
 
 function fmtDate(iso: string): string {
@@ -176,7 +163,7 @@ export function AdminPanel() {
             Keine Nutzer gefunden.
           </div>
         ) : (
-          <div className="rounded-2xl border border-border/50 bg-card shadow-card overflow-hidden">
+          <div className="rounded-2xl border border-border/50 bg-card shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-widest text-muted-foreground/70">
@@ -189,10 +176,10 @@ export function AdminPanel() {
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-b border-border/30 last:border-0">
+                  <tr key={u.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-2.5">{u.email ?? '—'}</td>
                     <td className="px-4 py-2.5">
-                      <Badge variant={PLAN_VARIANTS[u.plan]}>{PLAN_LABELS[u.plan]}</Badge>
+                      <PlanBadge plan={u.plan} />
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2.5">
@@ -224,7 +211,7 @@ export function AdminPanel() {
 
       {/* --------------------------- Invite-Codes ---------------------------- */}
       <TabsContent value="invites" className="mt-6 space-y-6">
-        <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card space-y-4">
+        <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 space-y-4">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Neuen Code generieren</p>
           <div className="flex flex-col sm:flex-row gap-3">
             <Select value={newCodePlan} onValueChange={(v) => setNewCodePlan(v as Exclude<Plan, 'basic'>)}>
@@ -272,7 +259,7 @@ export function AdminPanel() {
             Noch keine Invite-Codes erstellt.
           </div>
         ) : (
-          <div className="rounded-2xl border border-border/50 bg-card shadow-card overflow-hidden">
+          <div className="rounded-2xl border border-border/50 bg-card shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-widest text-muted-foreground/70">
@@ -284,10 +271,10 @@ export function AdminPanel() {
               </thead>
               <tbody>
                 {codes.map((c) => (
-                  <tr key={c.id} className="border-b border-border/30 last:border-0">
+                  <tr key={c.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-2.5 font-mono tracking-widest">{c.code}</td>
                     <td className="px-4 py-2.5">
-                      <Badge variant={PLAN_VARIANTS[c.plan]}>{PLAN_LABELS[c.plan]}</Badge>
+                      <PlanBadge plan={c.plan} />
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{c.credits}</td>
                     <td className="px-4 py-2.5">

@@ -16,7 +16,7 @@ export default async function AdminPage() {
   if (!profile?.is_admin) redirect('/kurse')
 
   return (
-    <div className="max-w-4xl space-y-8">
+    <div className="max-w-4xl space-y-8 animate-fade-in">
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">Verwaltung</p>
         <h1 className="text-[1.75rem] font-semibold tracking-tight">Admin-Panel</h1>
