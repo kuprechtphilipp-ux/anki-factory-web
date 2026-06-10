@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Karte, KartStatus } from '@/lib/types'
 
-async function resolveThemaIds(themaId: string | null, kursName: string | null): Promise<number[] | null> {
+async function resolveThemaIds(supabase: SupabaseClient, themaId: string | null, kursName: string | null): Promise<number[] | null> {
   if (themaId) return [Number(themaId)]
   if (kursName) {
     const { data: kursRow } = await supabase.from('kurs').select('id').eq('name', kursName).single()
@@ -14,6 +15,10 @@ async function resolveThemaIds(themaId: string | null, kursName: string | null):
 }
 
 export async function GET(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { searchParams } = new URL(req.url)
   const themaId = searchParams.get('thema_id')
   const kursName = searchParams.get('kurs_name')
@@ -23,7 +28,7 @@ export async function GET(req: Request) {
 
   if (mode === 'srs') {
     const now = new Date().toISOString()
-    const themaIds = await resolveThemaIds(themaId, kursName)
+    const themaIds = await resolveThemaIds(supabase, themaId, kursName)
     const base = () => {
       let q = supabase.from('karte').select('*').eq('status', 'reviewed')
       if (themaIds && themaIds.length === 1) q = q.eq('thema_id', themaIds[0])
@@ -42,7 +47,7 @@ export async function GET(req: Request) {
   }
 
   if (mode === 'drill') {
-    const themaIds = await resolveThemaIds(themaId, kursName)
+    const themaIds = await resolveThemaIds(supabase, themaId, kursName)
     let query = supabase.from('karte').select('*').eq('status', 'reviewed')
     if (themaIds && themaIds.length === 1) query = query.eq('thema_id', themaIds[0])
     else if (themaIds && themaIds.length > 1) query = query.in('thema_id', themaIds)
@@ -63,6 +68,10 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = (await req.json()) as Partial<Karte> | Partial<Karte>[]
   const rows = Array.isArray(body) ? body : [body]
   const { data, error } = await supabase.from('karte').insert(rows).select()

@@ -14,12 +14,13 @@ export function calcCost(model: string, inputTokens: number, outputTokens: numbe
 
 export async function logApiUsage(
   supabase: SupabaseClient,
-  { feature, model, inputTokens, outputTokens, themaId }: {
+  { feature, model, inputTokens, outputTokens, themaId, userId }: {
     feature: 'generieren' | 'prescan' | 'quiz' | 'schriftlich'
     model: string
     inputTokens: number
     outputTokens: number
     themaId?: number | null
+    userId: string
   }
 ): Promise<void> {
   try {
@@ -31,6 +32,7 @@ export async function logApiUsage(
       output_tokens: outputTokens,
       cost_usd,
       thema_id: themaId ?? null,
+      user_id: userId,
     })
     if (error) console.error('[api-cost] logApiUsage Fehler:', error.message)
   } catch (err) {

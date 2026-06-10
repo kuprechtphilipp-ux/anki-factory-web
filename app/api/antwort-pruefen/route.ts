@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 import { logApiUsage } from '@/lib/api-cost'
 
 export const maxDuration = 30
@@ -8,6 +8,10 @@ export const maxDuration = 30
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
 export async function POST(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { frage, musterantwort, nutzerantwort, kontext } = await req.json() as {
     frage: string
     musterantwort: string
@@ -51,6 +55,7 @@ Respond ONLY with valid JSON: {"score":85,"feedback":"Short, constructive feedba
       model: 'claude-haiku-4-5-20251001',
       inputTokens: msg.usage.input_tokens,
       outputTokens: msg.usage.output_tokens,
+      userId: user.id,
     })
 
     const raw = msg.content[0].type === 'text' ? msg.content[0].text : ''

@@ -1,14 +1,9 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import { logApiUsage } from '@/lib/api-cost'
 
 export const maxDuration = 60
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 const PRESCAN_SYSTEM = `Du bist ein Lernstratege für Hochschulprüfungen.
 
@@ -70,6 +65,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY nicht gesetzt' }, { status: 500 })
   }
 
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const formData = await req.formData()
     const file = formData.get('pdf') as File | null
@@ -116,7 +115,8 @@ Nutze dein Wissen über typische "${kursRow.name}" Bachelor-Kurse um einzuschät
     const { data: profil } = await supabase
       .from('generier_profil')
       .select('*')
-      .single()
+      .eq('user_id', user.id)
+      .maybeSingle()
 
     const pdfBuffer = Buffer.from(await file.arrayBuffer())
     const pdfBase64 = pdfBuffer.toString('base64')
@@ -161,6 +161,7 @@ Berücksichtige diese Präferenzen — aber überschreibe sie nicht wenn der Inh
       inputTokens: message.usage.input_tokens,
       outputTokens: message.usage.output_tokens,
       themaId: themaId ? Number(themaId) : null,
+      userId: user.id,
     })
 
     if (message.stop_reason === 'max_tokens') {

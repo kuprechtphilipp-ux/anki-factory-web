@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10)
 }
 
 export async function GET() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const now = new Date()
   const today = toDateStr(now)
   const yesterday = toDateStr(new Date(now.getTime() - 86_400_000))
@@ -19,6 +23,7 @@ export async function GET() {
   const { data: streakRows } = await supabase
     .from('lern_streak')
     .select('datum, karten_gelernt')
+    .eq('user_id', user.id)
     .gte('datum', toDateStr(since))
     .order('datum', { ascending: true })
 
@@ -110,7 +115,7 @@ export async function GET() {
     supabase.from('kurs').select('id, name'),
     supabase.from('thema').select('id, kurs_id, name'),
     supabase.from('karte').select('id, thema_id, status, typ, fsrs_state, fsrs_due, fsrs_stability, fsrs_last_review'),
-    supabase.from('session_results').select('thema_id, mode, score_pct, created_at').order('created_at', { ascending: false }),
+    supabase.from('session_results').select('thema_id, mode, score_pct, created_at').eq('user_id', user.id).order('created_at', { ascending: false }),
   ])
 
   const kurse = (kurseData ?? []) as { id: number; name: string }[]

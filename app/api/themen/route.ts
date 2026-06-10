@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 import type { Thema } from '@/lib/types'
 
 export async function GET(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { searchParams } = new URL(req.url)
   const kursId = searchParams.get('kurs_id')
 
@@ -15,6 +19,10 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { kurs_id, name } = await req.json() as { kurs_id: number; name: string }
   const { data, error } = await supabase.from('thema').insert({ kurs_id, name }).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

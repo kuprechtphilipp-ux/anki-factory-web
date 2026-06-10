@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 import { fsrs, karteToFsrsCard } from '@/lib/fsrs'
 import type { Karte, FsrsState } from '@/lib/types'
 
@@ -15,6 +15,10 @@ function fmtDays(days: number): string {
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { rating, mode = 'srs' } = (await req.json()) as {
     rating: 1 | 2 | 3 | 4
     mode?: 'srs' | 'drill'
@@ -131,7 +135,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   })
 
   const todayDate = now.toISOString().slice(0, 10)
-  void supabase.rpc('upsert_lern_streak', { p_datum: todayDate })
+  void supabase.rpc('upsert_lern_streak', { p_datum: todayDate, p_user_id: user.id })
 
   return NextResponse.json({ updated: data as Karte, nextIntervals })
 }

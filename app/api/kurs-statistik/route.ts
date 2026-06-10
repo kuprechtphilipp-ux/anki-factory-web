@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 import type { Karte, Thema } from '@/lib/types'
 
 export async function GET(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { searchParams } = new URL(req.url)
   const kursName = searchParams.get('kurs_name')
 
@@ -69,6 +73,7 @@ export async function GET(req: Request) {
     .from('session_results')
     .select('thema_id, mode, score_pct, created_at')
     .in('thema_id', themaIds)
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
   const lastSession: Record<number, Record<string, number>> = {}

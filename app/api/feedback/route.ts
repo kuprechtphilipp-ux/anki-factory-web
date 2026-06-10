@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await req.json()
     const { thema_id, rating, detailgrad_feedback, kartenmenge_feedback, kartentyp_feedback, freitext, karten_count, lod_used } = body
@@ -21,6 +20,7 @@ export async function POST(req: Request) {
       freitext: freitext ?? null,
       karten_count: karten_count ?? null,
       lod_used: lod_used ?? null,
+      user_id: user.id,
     })
 
     if (fbError) {
@@ -32,6 +32,7 @@ export async function POST(req: Request) {
     const { data: allFeedback } = await supabase
       .from('deck_feedback')
       .select('detailgrad_feedback, kartenmenge_feedback, kartentyp_feedback, freitext, lod_used')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(20)
 
@@ -58,21 +59,22 @@ export async function POST(req: Request) {
         if (fb.freitext?.trim()) notizen.push(fb.freitext.trim())
       }
 
-      const { data: profil } = await supabase.from('generier_profil').select('bevorzugte_kartenmenge').single()
+      const { data: profil } = await supabase.from('generier_profil').select('bevorzugte_kartenmenge').eq('user_id', user.id).maybeSingle()
       const baseMenge = profil?.bevorzugte_kartenmenge ?? 20
 
       const bestDetail = Object.entries(detailCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'Mittel'
       const bestTyp = Object.entries(typCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'gemischt'
       const newMenge = Math.max(10, Math.min(50, baseMenge + Math.round(mengeAdjustment / allFeedback.length)))
 
-      await supabase.from('generier_profil').update({
+      await supabase.from('generier_profil').upsert({
+        user_id: user.id,
         bevorzugter_detailgrad: bestDetail,
         bevorzugte_kartenmenge: newMenge,
         bevorzugter_kartentyp: bestTyp,
         feedback_count: allFeedback.length,
         notizen: notizen.slice(-5),
         last_updated: new Date().toISOString(),
-      }).eq('id', 1)
+      }, { onConflict: 'user_id' })
     }
 
     return NextResponse.json({ success: true })

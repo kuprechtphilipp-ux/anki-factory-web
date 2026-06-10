@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import type { Karte, QuizFrage } from '@/lib/types'
 import { logApiUsage } from '@/lib/api-cost'
@@ -24,6 +24,10 @@ function cardToText(k: Karte): string {
 }
 
 export async function POST(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = await req.json()
   const { thema_id, kurs_name, anzahl = 10, schwierigkeit = 'mittel' } = body as {
     thema_id?: number
@@ -145,6 +149,7 @@ ${distractorText}`
     inputTokens: msg.usage.input_tokens,
     outputTokens: msg.usage.output_tokens,
     themaId: thema_id ? Number(thema_id) : null,
+    userId: user.id,
   })
 
   const raw = msg.content[0].type === 'text' ? msg.content[0].text : ''

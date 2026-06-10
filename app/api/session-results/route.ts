@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = await req.json()
   const { thema_id, mode, score_pct, correct, total } = body as {
     thema_id: number
@@ -17,7 +21,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await supabase
     .from('session_results')
-    .insert({ thema_id, mode, score_pct, correct, total })
+    .insert({ thema_id, mode, score_pct, correct, total, user_id: user.id })
     .select('id')
     .single()
 
@@ -26,6 +30,10 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { searchParams } = new URL(req.url)
   const themaId = searchParams.get('thema_id')
 
@@ -35,6 +43,7 @@ export async function GET(req: Request) {
     .from('session_results')
     .select('mode, score_pct, created_at')
     .eq('thema_id', Number(themaId))
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

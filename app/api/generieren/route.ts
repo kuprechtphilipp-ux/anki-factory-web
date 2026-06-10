@@ -1,15 +1,10 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import pdf from 'pdf-parse'
 import { logApiUsage } from '@/lib/api-cost'
 
 export const maxDuration = 300
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 const SYSTEM_PROMPT_BASE = `Du bist ein Elite-Lernstratege und Didaktik-Experte für Hochschulprüfungen.
 
@@ -139,6 +134,10 @@ export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY nicht gesetzt' }, { status: 500 })
   }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
     const formData = await req.formData()
@@ -280,6 +279,7 @@ ${existingList}`
         inputTokens: message.usage.input_tokens,
         outputTokens: message.usage.output_tokens,
         themaId: Number(themaId),
+        userId: user.id,
       })
 
       const raw = (message.content[0] as { type: 'text'; text: string }).text
