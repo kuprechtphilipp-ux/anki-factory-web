@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import pdf from 'pdf-parse'
+import { logApiUsage } from '@/lib/api-cost'
 
 export const maxDuration = 300
 
@@ -271,6 +272,14 @@ ${existingList}`
         max_tokens: 8192,
         system: dynamicSystemPrompt,
         messages: [{ role: 'user', content: userContent }],
+      })
+
+      logApiUsage(supabase, {
+        feature: 'generieren',
+        model: 'claude-sonnet-4-6',
+        inputTokens: message.usage.input_tokens,
+        outputTokens: message.usage.output_tokens,
+        themaId: Number(themaId),
       })
 
       const raw = (message.content[0] as { type: 'text'; text: string }).text

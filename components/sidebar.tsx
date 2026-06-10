@@ -11,6 +11,7 @@ import {
   ChevronRight,
   LayoutDashboard,
   BarChart2,
+  DollarSign,
   Plus,
   Trash2,
   Pencil,
@@ -284,6 +285,18 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
         >
           <BarChart2 className="h-4 w-4 shrink-0" />
           Statistik
+        </Link>
+        <Link
+          href="/kosten"
+          className={cn(
+            'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground',
+            pathname === '/kosten'
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground'
+          )}
+        >
+          <DollarSign className="h-4 w-4 shrink-0" />
+          API-Kosten
         </Link>
 
         <div className="mt-4">

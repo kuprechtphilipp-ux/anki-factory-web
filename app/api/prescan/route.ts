@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
+import { logApiUsage } from '@/lib/api-cost'
 
 export const maxDuration = 60
 
@@ -152,6 +153,14 @@ Berücksichtige diese Präferenzen — aber überschreibe sie nicht wenn der Inh
           ],
         },
       ],
+    })
+
+    logApiUsage(supabase, {
+      feature: 'prescan',
+      model: 'claude-haiku-4-5-20251001',
+      inputTokens: message.usage.input_tokens,
+      outputTokens: message.usage.output_tokens,
+      themaId: themaId ? Number(themaId) : null,
     })
 
     if (message.stop_reason === 'max_tokens') {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import Anthropic from '@anthropic-ai/sdk'
 import type { Karte, QuizFrage } from '@/lib/types'
+import { logApiUsage } from '@/lib/api-cost'
 
 export const maxDuration = 60
 
@@ -136,6 +137,14 @@ ${distractorText}`
     max_tokens: 8192,
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }],
+  })
+
+  logApiUsage(supabase, {
+    feature: 'quiz',
+    model: 'claude-sonnet-4-6',
+    inputTokens: msg.usage.input_tokens,
+    outputTokens: msg.usage.output_tokens,
+    themaId: thema_id ? Number(thema_id) : null,
   })
 
   const raw = msg.content[0].type === 'text' ? msg.content[0].text : ''

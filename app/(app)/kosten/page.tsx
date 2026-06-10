@@ -1,0 +1,209 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Loader2, DollarSign, Calendar, CalendarDays, Wallet } from 'lucide-react'
+
+interface ProFeature {
+  feature: string
+  cost: number
+  calls: number
+}
+
+interface ProTag {
+  date: string
+  cost: number
+}
+
+interface AufrufRow {
+  id: number
+  created_at: string
+  feature: string
+  model: string
+  input_tokens: number
+  output_tokens: number
+  cost_usd: number
+}
+
+interface KostenData {
+  heute: number
+  woche: number
+  monat: number
+  gesamt: number
+  proFeature: ProFeature[]
+  proTag: ProTag[]
+  letzteAufrufe: AufrufRow[]
+}
+
+const FEATURE_LABELS: Record<string, string> = {
+  generieren: 'Karten generieren',
+  prescan: 'PDF-Prescan',
+  quiz: 'Quiz',
+  schriftlich: 'Schriftliche Antwort',
+}
+
+function fmtUsd(n: number): string {
+  return `$${n.toFixed(2)}`
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  sub,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  sub?: string
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-border/50 p-5 bg-card shadow-card">
+      <div className="flex items-start justify-between">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">{icon}</div>
+        {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
+      </div>
+      <div className="mt-4">
+        <p className="text-3xl font-bold tracking-tight">{value}</p>
+        <p className="text-sm text-muted-foreground mt-0.5">{label}</p>
+      </div>
+    </div>
+  )
+}
+
+export default function KostenPage() {
+  const [data, setData] = useState<KostenData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/kosten')
+      .then(r => r.json())
+      .then((d: KostenData) => { setData(d); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2.5 text-muted-foreground py-20 justify-center">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span>Lade Kosten…</span>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return <div className="py-12 text-sm text-muted-foreground">Kosten konnten nicht geladen werden.</div>
+  }
+
+  const maxBar = Math.max(...data.proTag.map(t => t.cost), 0.000001)
+  const totalFeatureCost = data.proFeature.reduce((sum, f) => sum + f.cost, 0)
+
+  return (
+    <div className="max-w-3xl space-y-10">
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">Anthropic API</p>
+        <h1 className="text-[1.75rem] font-semibold tracking-tight">API-Kosten</h1>
+      </div>
+
+      {/* Metric cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard icon={<DollarSign className="h-5 w-5 text-emerald-500" />} label="Heute" value={fmtUsd(data.heute)} />
+        <StatCard icon={<Calendar className="h-5 w-5 text-blue-500" />} label="Diese Woche" value={fmtUsd(data.woche)} />
+        <StatCard icon={<CalendarDays className="h-5 w-5 text-violet-500" />} label="Diesen Monat" value={fmtUsd(data.monat)} />
+        <StatCard icon={<Wallet className="h-5 w-5 text-primary" />} label="Gesamt" value={fmtUsd(data.gesamt)} />
+      </div>
+
+      {/* 30-Tage Chart */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Kosten — letzte 30 Tage</p>
+        <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card">
+          <div className="flex items-end gap-[3px] h-24">
+            {data.proTag.map((t, i) => (
+              <div key={t.date} className="flex flex-1 flex-col items-center gap-1.5">
+                <div
+                  className="w-full rounded-t-sm transition-all"
+                  style={{
+                    height: `${Math.max(2, (t.cost / maxBar) * 72)}px`,
+                    background: t.cost > 0
+                      ? (i === data.proTag.length - 1 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.4)')
+                      : 'hsl(var(--muted))',
+                  }}
+                  title={`${t.date}: ${fmtUsd(t.cost)}`}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground/50">
+            <span>{data.proTag[0]?.date}</span>
+            <span>{data.proTag[data.proTag.length - 1]?.date}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Kosten pro Feature */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Kosten pro Feature</p>
+        {data.proFeature.length === 0 ? (
+          <div className="rounded-2xl border border-border/50 bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+            Noch keine API-Aufrufe erfasst.
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card space-y-4">
+            {data.proFeature.map((f) => {
+              const pct = totalFeatureCost > 0 ? (f.cost / totalFeatureCost) * 100 : 0
+              return (
+                <div key={f.feature} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">{FEATURE_LABELS[f.feature] ?? f.feature}</span>
+                    <span className="text-muted-foreground">{fmtUsd(f.cost)} · {pct.toFixed(0)}% · {f.calls} Calls</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Letzte API-Calls */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Letzte API-Calls</p>
+        {data.letzteAufrufe.length === 0 ? (
+          <div className="rounded-2xl border border-border/50 bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+            Noch keine API-Aufrufe erfasst.
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-border/50 bg-card shadow-card overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-widest text-muted-foreground/70">
+                  <th className="px-4 py-2.5 font-semibold">Datum</th>
+                  <th className="px-4 py-2.5 font-semibold">Feature</th>
+                  <th className="px-4 py-2.5 font-semibold">Modell</th>
+                  <th className="px-4 py-2.5 font-semibold text-right">Tokens</th>
+                  <th className="px-4 py-2.5 font-semibold text-right">Kosten</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.letzteAufrufe.map((row) => (
+                  <tr key={row.id} className="border-b border-border/30 last:border-0">
+                    <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
+                      {new Date(row.created_at).toLocaleString('de', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="px-4 py-2.5">{FEATURE_LABELS[row.feature] ?? row.feature}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{row.model}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
+                      {row.input_tokens.toLocaleString('de')} / {row.output_tokens.toLocaleString('de')}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums font-medium">{fmtUsd(row.cost_usd)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

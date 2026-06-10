@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { supabase } from '@/lib/supabase'
+import { logApiUsage } from '@/lib/api-cost'
 
 export const maxDuration = 30
 
@@ -42,6 +44,13 @@ Respond ONLY with valid JSON: {"score":85,"feedback":"Short, constructive feedba
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 256,
       messages: [{ role: 'user', content: prompt }],
+    })
+
+    logApiUsage(supabase, {
+      feature: 'schriftlich',
+      model: 'claude-haiku-4-5-20251001',
+      inputTokens: msg.usage.input_tokens,
+      outputTokens: msg.usage.output_tokens,
     })
 
     const raw = msg.content[0].type === 'text' ? msg.content[0].text : ''
