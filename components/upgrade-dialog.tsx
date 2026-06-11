@@ -32,7 +32,7 @@ export function UpgradeDialog({ open, onOpenChange, targetPlan, priceChf }: Upgr
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: targetPlan }),
+        body: JSON.stringify({ plan: targetPlan, returnTo: window.location.pathname }),
       })
       const data = await res.json() as { url?: string; error?: string }
       if (!res.ok || !data.url) {

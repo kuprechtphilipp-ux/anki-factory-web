@@ -11,8 +11,10 @@ import { OnboardingTour } from '@/components/onboarding-tour'
 import { PlanBanner } from '@/components/plan-banner'
 import { Button } from '@/components/ui/button'
 import { Menu, Search, Lightbulb } from 'lucide-react'
-import type { Lernfenster } from '@/lib/types'
+import { toast } from 'sonner'
+import type { Lernfenster, Plan } from '@/lib/types'
 import { CRAMO_TOUR_STEPS } from '@/lib/tour-steps'
+import { PLAN_LABELS } from '@/lib/plans'
 
 const DEFAULT_WIDTH = 256
 const MIN_WIDTH = 180
@@ -59,6 +61,29 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {})
+  }, [])
+
+  // Stripe-Checkout-Rückkehr: Erfolgs-/Abbruch-Hinweis anzeigen und Query-Params entfernen
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const checkout = params.get('checkout')
+    if (!checkout) return
+
+    if (checkout === 'success') {
+      const plan = params.get('plan') as Plan | null
+      const planLabel = plan ? PLAN_LABELS[plan] ?? plan : null
+      toast.success(
+        planLabel ? `Plan erfolgreich auf ${planLabel} geupgradet!` : 'Plan erfolgreich aktualisiert!',
+        { description: 'Du kannst dein Abo jederzeit unter Account & Profil verwalten.' }
+      )
+    } else if (checkout === 'cancel') {
+      toast.info('Checkout abgebrochen — dein Plan wurde nicht geändert.')
+    }
+
+    params.delete('checkout')
+    params.delete('plan')
+    const query = params.toString()
+    window.history.replaceState(null, '', window.location.pathname + (query ? `?${query}` : ''))
   }, [])
 
   // Lock body scroll on iOS when mobile sidebar is open

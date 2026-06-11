@@ -1,24 +1,21 @@
 import { Crown, Sparkles, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { PLAN_LABELS } from '@/lib/plans'
 import type { Plan } from '@/lib/types'
 
-const PLAN_CONFIG: Record<Plan, { label: string; className: string; icon?: React.ReactNode }> = {
+const PLAN_CONFIG: Record<Plan, { className: string; icon?: React.ReactNode }> = {
   basic: {
-    label: 'Basic',
     className: 'border-transparent bg-secondary text-secondary-foreground',
   },
   basic_plus: {
-    label: 'Basic+',
     className: 'border-transparent bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm shadow-blue-500/20',
     icon: <Zap className="h-3 w-3" />,
   },
   premium: {
-    label: 'Premium',
     className: 'border-transparent bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-sm shadow-fuchsia-500/20',
     icon: <Sparkles className="h-3 w-3" />,
   },
   ultra: {
-    label: 'Ultra',
     className: 'border-transparent bg-gradient-to-r from-amber-400 via-orange-400 to-amber-600 text-white shadow-sm shadow-amber-500/30',
     icon: <Crown className="h-3 w-3" />,
   },
@@ -35,7 +32,7 @@ export function PlanBadge({ plan, className }: { plan: Plan; className?: string 
       )}
     >
       {cfg.icon}
-      {cfg.label}
+      {PLAN_LABELS[plan] ?? PLAN_LABELS.basic}
     </span>
   )
 }

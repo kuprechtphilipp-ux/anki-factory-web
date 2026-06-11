@@ -11,10 +11,12 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json() as { plan: Plan }
+  const body = await req.json() as { plan: Plan; returnTo?: string }
   if (!PURCHASABLE_PLANS.includes(body.plan)) {
     return NextResponse.json({ error: 'Ungültiger Plan' }, { status: 400 })
   }
+
+  const returnTo = body.returnTo?.startsWith('/') ? body.returnTo : '/account'
 
   const planConfig = await getPlanConfig(supabase)
   const priceId = planConfig[body.plan].stripe_price_id
@@ -39,8 +41,8 @@ export async function POST(req: Request) {
     allow_promotion_codes: true,
     metadata: { user_id: user.id, plan: body.plan },
     subscription_data: { metadata: { user_id: user.id, plan: body.plan } },
-    success_url: `${origin}/account?checkout=success`,
-    cancel_url: `${origin}/account?checkout=cancel`,
+    success_url: `${origin}${returnTo}?checkout=success&plan=${body.plan}`,
+    cancel_url: `${origin}${returnTo}?checkout=cancel`,
   })
 
   if (!session.url) {

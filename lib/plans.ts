@@ -3,6 +3,13 @@ import type { Plan } from '@/lib/types'
 
 export const PLAN_ORDER: Plan[] = ['basic', 'basic_plus', 'premium', 'ultra']
 
+export const PLAN_LABELS: Record<Plan, string> = {
+  basic: 'Basic',
+  basic_plus: 'Basic+',
+  premium: 'Premium',
+  ultra: 'Ultra',
+}
+
 export interface PlanConfigEntry {
   plan: Plan
   credits: number
