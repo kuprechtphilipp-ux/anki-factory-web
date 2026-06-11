@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { PartyPopper } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PlanBadge } from '@/components/plan-badge'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
@@ -13,20 +12,6 @@ export function PlanOverview({ plan }: { plan: Plan }) {
 
   return (
     <div className="space-y-3">
-      {plan === 'ultra' && (
-        <div className="rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/10 p-5 shadow-card">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/40">
-              <PartyPopper className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold">Du bist auf dem Ultra-Plan — dem höchsten verfügbaren Zugang.</p>
-              <p className="text-sm text-muted-foreground mt-0.5">Mehr Credits gibt es aktuell nicht. Viel Spaß beim Lernen!</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="rounded-2xl border border-border/50 bg-card p-2 shadow-card hover:shadow-card-hover transition-all duration-200 divide-y divide-border/50">
         {PLAN_ORDER.map((p) => {
           const isCurrent = p === plan

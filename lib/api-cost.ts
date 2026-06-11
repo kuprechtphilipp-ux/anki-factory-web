@@ -45,6 +45,10 @@ export async function logApiUsage(
 export const CREDITS_EXHAUSTED_MESSAGE =
   'Deine Credits sind aufgebraucht. Schreib mir für mehr Credits: philipp.kuprecht@student.unisg.ch'
 
+export function usdToCredits(costUsd: number): number {
+  return Math.ceil(costUsd * 100)
+}
+
 export async function getCreditStatus(
   supabase: SupabaseClient,
   userId: string
