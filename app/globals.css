@@ -90,9 +90,11 @@ html {
   /* Prevent iOS rubber-band scroll from showing background gaps */
   background-color: hsl(var(--background));
   overscroll-behavior: none;
+  overflow-x: hidden;
 }
 
 body {
   background-color: hsl(var(--background));
   overscroll-behavior: none;
+  overflow-x: hidden;
 }

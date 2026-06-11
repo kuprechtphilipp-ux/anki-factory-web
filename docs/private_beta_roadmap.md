@@ -31,6 +31,6 @@ Erstelle ein personalisiertes User-Onboarding:
 1. Prüfe in der User-Datenbank (z. B. Tabelle generier_profil oder profiles), ob für den User onboarding_completed auf false steht.
 2. Falls false, zeige beim ersten Laden des Dashboards ein elegantes Willkommens-Modal (Cramo Waschbär) an.
 3. Der AI Tutor (Cramo der Waschbär) begrüßt den Nutzer freundlich und erfasst in 2-3 einfachen Fragen: Fachbereich/Studienfach, das wichtigste Lernziel und das zeitliche Lernfenster (z. B. "Sehr gestresst", "Normal", "Entspannt").
-4. Speichere diese Daten im generier_profil des Users und setze onboarding_completed: true.
-5. Stelle sicher, dass das Onboarding danach nie wieder erscheint.
+4. Speichere diese Daten im generier_profil des Users (nutzt sie nur um den ai tuto wissen zu lassen wie er kommuniziert, mit dem User, trotz dem eigenen stil von Cramo, die Infos haben jedoch keinen einfluss auf die erstellung der karten. Anschliessend, setzt er onboarding_completed: true.
+5. Stelle sicher, dass das Onboarding danach nie wieder erscheint, oder nur wenn man oben ein kleines Glübirne icon anklickt.
 ```

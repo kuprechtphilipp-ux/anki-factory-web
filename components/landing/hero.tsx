@@ -122,7 +122,7 @@ export function Hero() {
                 </motion.div>
               </div>
 
-              <div className="relative">
+              <div className="relative min-w-0">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9, y: 8 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -131,7 +131,7 @@ export function Hero() {
                   onMouseEnter={() => setIsBubbleHovered(true)}
                   onMouseLeave={() => setIsBubbleHovered(false)}
                   className={cn(
-                    'relative cursor-default whitespace-nowrap rounded-2xl border px-4 py-2.5 shadow-card transition-colors duration-300',
+                    'relative min-w-0 max-w-[180px] rounded-2xl border px-4 py-2.5 shadow-card transition-colors duration-300 sm:max-w-[260px] lg:max-w-none lg:whitespace-nowrap',
                     isBubbleHovered ? 'border-primary/40 bg-primary/5' : 'border-border/50 bg-card'
                   )}
                 >
