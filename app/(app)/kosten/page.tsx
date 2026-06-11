@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { Loader2, DollarSign, Calendar, CalendarDays, Wallet } from 'lucide-react'
 import { PlanBadge } from '@/components/plan-badge'
 import { PlanOverview } from '@/components/plan-overview'
+import { UpgradeDialog } from '@/components/upgrade-dialog'
+import { Button } from '@/components/ui/button'
+import { PLAN_ORDER } from '@/lib/plans'
 import type { Plan } from '@/lib/types'
 
 interface ProFeature {
@@ -46,12 +49,18 @@ interface KostenData {
 }
 
 function CreditsDonut({ credits }: { credits: CreditsInfo }) {
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
   const pct = credits.total > 0 ? Math.min(1, credits.used / credits.total) : 0
   const exhausted = credits.used >= credits.total
   const radius = 40
   const circumference = 2 * Math.PI * radius
   const dash = circumference * pct
   const colorClass = exhausted ? 'text-rose-500' : 'text-primary'
+
+  const plan = (credits.plan as Plan) ?? 'basic'
+  const isUltra = plan === 'ultra'
+  const planIndex = PLAN_ORDER.indexOf(plan)
+  const nextPlan = isUltra ? 'ultra' : PLAN_ORDER[planIndex + 1] ?? 'ultra'
 
   return (
     <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200">
@@ -88,6 +97,18 @@ function CreditsDonut({ credits }: { credits: CreditsInfo }) {
           </a>
         </p>
       )}
+      <div className="mt-4 pt-4 border-t border-border/50">
+        {isUltra ? (
+          <p className="text-sm text-muted-foreground">
+            Du hast den Ultra-Plan — mehr Credits gibt es aktuell nicht.
+          </p>
+        ) : (
+          <Button size="sm" variant="outline" onClick={() => setUpgradeOpen(true)}>
+            {nextPlan === 'ultra' ? 'Anfragen' : 'Upgrade'}
+          </Button>
+        )}
+      </div>
+      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} targetPlan={nextPlan} />
     </div>
   )
 }

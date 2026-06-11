@@ -29,26 +29,14 @@ function GoogleIcon() {
   )
 }
 
-export function GoogleAuthButton({ inviteCode }: { inviteCode?: string } = {}) {
+export function GoogleAuthButton() {
   const [loading, setLoading] = useState(false)
 
   async function handleClick() {
     setLoading(true)
     const supabase = createClient()
-    const code = inviteCode?.trim()
-
-    if (code) {
-      const { data: inviteRows, error: inviteError } = await supabase.rpc('check_invite_code', { p_code: code })
-      const invite = Array.isArray(inviteRows) ? inviteRows[0] : null
-      if (inviteError || !invite) {
-        toast.error('Code ungültig oder bereits verwendet')
-        setLoading(false)
-        return
-      }
-    }
 
     const callbackUrl = new URL('/auth/callback', window.location.origin)
-    if (code) callbackUrl.searchParams.set('invite', code)
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',

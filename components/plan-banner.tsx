@@ -38,12 +38,16 @@ export function PlanBanner() {
           aria-label="Plan & Credits"
         >
           <PlanBadge plan={data.plan} />
-          <span className="text-muted-foreground tabular-nums">
-            {data.credits_used}/{data.credits_total}
-          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 space-y-4">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Credits genutzt</span>
+          <span className="font-semibold tabular-nums">
+            {data.credits_used} / {data.credits_total}
+          </span>
+        </div>
+        <Separator />
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">
             Dein Plan

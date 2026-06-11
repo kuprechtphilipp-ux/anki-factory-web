@@ -1,48 +1,75 @@
-import { PartyPopper, Mail } from 'lucide-react'
+'use client'
+
+import { useState } from 'react'
+import { PartyPopper } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { PlanBadge } from '@/components/plan-badge'
-import { PLAN_ORDER, PLAN_CREDITS } from '@/lib/plans'
+import { UpgradeDialog } from '@/components/upgrade-dialog'
+import { PLAN_ORDER, PLAN_CREDITS, PLAN_DESCRIPTIONS, PLAN_PRICES } from '@/lib/plans'
 import type { Plan } from '@/lib/types'
 
 export function PlanOverview({ plan }: { plan: Plan }) {
-  if (plan === 'ultra') {
-    return (
-      <div className="rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/10 p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/40">
-            <PartyPopper className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold">Du bist auf dem Ultra-Plan — dem höchsten verfügbaren Zugang.</p>
-            <p className="text-sm text-muted-foreground mt-0.5">Mehr Credits gibt es aktuell nicht. Viel Spaß beim Lernen!</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const [dialogPlan, setDialogPlan] = useState<Plan | null>(null)
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {PLAN_ORDER.map((p) => (
-          <div
-            key={p}
-            className={`rounded-xl border p-3 text-center space-y-1.5 transition-colors ${
-              p === plan ? 'border-primary/40 bg-primary/5' : 'border-border/50'
-            }`}
-          >
-            <PlanBadge plan={p} />
-            <p className="text-lg font-bold tracking-tight">{PLAN_CREDITS[p]}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Credits</p>
+    <div className="space-y-3">
+      {plan === 'ultra' && (
+        <div className="rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/10 p-5 shadow-card">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/40">
+              <PartyPopper className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Du bist auf dem Ultra-Plan — dem höchsten verfügbaren Zugang.</p>
+              <p className="text-sm text-muted-foreground mt-0.5">Mehr Credits gibt es aktuell nicht. Viel Spaß beim Lernen!</p>
+            </div>
           </div>
-        ))}
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-border/50 bg-card p-2 shadow-card hover:shadow-card-hover transition-all duration-200 divide-y divide-border/50">
+        {PLAN_ORDER.map((p) => {
+          const isCurrent = p === plan
+          return (
+            <div
+              key={p}
+              className={`flex items-center justify-between gap-3 rounded-xl p-3 ${
+                isCurrent ? 'bg-primary/5' : ''
+              }`}
+            >
+              <div className="min-w-0 space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <PlanBadge plan={p} />
+                  <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                    {PLAN_CREDITS[p]} Credits / Monat
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{PLAN_DESCRIPTIONS[p]}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                {isCurrent ? (
+                  <span className="text-xs font-semibold text-primary whitespace-nowrap">Aktueller Plan</span>
+                ) : (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground whitespace-nowrap">{PLAN_PRICES[p]}</p>
+                    <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => setDialogPlan(p)}>
+                      {p === 'ultra' ? 'Anfragen' : 'Upgrade'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
       </div>
-      <a
-        href="mailto:philipp.kuprecht@student.unisg.ch?subject=Anki%20Factory%20-%20Plan-Upgrade"
-        className="flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
-      >
-        <Mail className="h-4 w-4" />
-        Mehr Credits? Schreib mir für ein Upgrade
-      </a>
+
+      {dialogPlan && (
+        <UpgradeDialog
+          open={!!dialogPlan}
+          onOpenChange={(open) => { if (!open) setDialogPlan(null) }}
+          targetPlan={dialogPlan}
+        />
+      )}
     </div>
   )
 }

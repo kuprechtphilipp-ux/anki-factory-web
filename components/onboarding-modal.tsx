@@ -184,8 +184,7 @@ export function OnboardingModal({ open, onOpenChange, initial, onSaved }: Onboar
               für Karten-Generierung, Quiz &amp; Co.
             </p>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Du kannst jederzeit upgraden — einfach oben auf deinen Plan klicken oder einen Einladungscode einlösen,
-              falls du einen von mir bekommen hast.
+              Mehr dazu zeig ich dir gleich noch kurz in der Tour.
             </p>
           </div>
         )}
