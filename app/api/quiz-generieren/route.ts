@@ -12,6 +12,33 @@ function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5)
 }
 
+// Findet das erste vollständige JSON-Array im Text (robust gegen Text/Brackets vor/nach dem Array, z.B. bei Haiku)
+function extractJsonArray(text: string): string | null {
+  const start = text.indexOf('[')
+  if (start === -1) return null
+
+  let depth = 0
+  let inString = false
+  let escape = false
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]
+    if (inString) {
+      if (escape) escape = false
+      else if (ch === '\\') escape = true
+      else if (ch === '"') inString = false
+      continue
+    }
+    if (ch === '"') inString = true
+    else if (ch === '[') depth++
+    else if (ch === ']') {
+      depth--
+      if (depth === 0) return text.slice(start, i + 1)
+    }
+  }
+  return null
+}
+
 function cardToText(k: Karte, includeKontext = true): string {
   if (k.typ === 'cloze' && k.cloze_text) {
     const answer = Array.from(k.cloze_text.matchAll(/\{\{c\d+::([^}]+)\}\}/g)).map(m => m[1]).join('; ')
@@ -170,10 +197,11 @@ ${distractorText}`
 
   let fragen: QuizFrage[]
   try {
-    const jsonMatch = raw.match(/\[[\s\S]*\]/)
-    if (!jsonMatch) throw new Error('Kein JSON gefunden')
-    fragen = JSON.parse(jsonMatch[0]) as QuizFrage[]
-  } catch {
+    const jsonStr = extractJsonArray(raw)
+    if (!jsonStr) throw new Error('Kein JSON gefunden')
+    fragen = JSON.parse(jsonStr) as QuizFrage[]
+  } catch (e) {
+    console.error('Quiz JSON parse error:', e, raw)
     return NextResponse.json({ error: 'Fehler beim Parsen der KI-Antwort' }, { status: 500 })
   }
 
