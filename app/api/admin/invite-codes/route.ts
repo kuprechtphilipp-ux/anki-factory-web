@@ -1,15 +1,10 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin'
+import { getPlanConfig } from '@/lib/plans'
 import type { InviteCode, Plan } from '@/lib/types'
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // ohne 0/O/1/I
 const CODE_LENGTH = 8
-
-const DEFAULT_CREDITS: Record<Exclude<Plan, 'basic'>, number> = {
-  basic_plus: 100,
-  premium: 300,
-  ultra: 500,
-}
 
 function generateCode(): string {
   let code = ''
@@ -58,7 +53,8 @@ export async function POST(req: Request) {
   if (!['basic_plus', 'premium', 'ultra'].includes(plan)) {
     return NextResponse.json({ error: 'Ungültiger Plan' }, { status: 400 })
   }
-  const credits = body.credits ?? DEFAULT_CREDITS[plan]
+  const planConfig = await getPlanConfig(supabase)
+  const credits = body.credits ?? planConfig[plan].credits
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateCode()

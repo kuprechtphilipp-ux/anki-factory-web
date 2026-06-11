@@ -23,6 +23,8 @@ import {
 } from '@/components/ui/select'
 import { CreditDonut } from '@/components/admin/credit-donut'
 import { PlanBadge } from '@/components/plan-badge'
+import { PLAN_ORDER, DEFAULT_PLAN_CONFIG, type PlanConfig } from '@/lib/plans'
+import { getDisplayModelName } from '@/lib/model-names'
 import type { Plan, InviteCode } from '@/lib/types'
 
 interface AdminUser {
@@ -36,6 +38,48 @@ interface AdminUser {
 
 interface AdminInviteCode extends InviteCode {
   used_by_email: string | null
+}
+
+interface CostOverviewRow {
+  feature: string
+  model: string
+  calls: number
+  avgCostUsd: number
+  avgCredits: number
+  minCostUsd: number
+  maxCostUsd: number
+}
+
+interface CostOverviewData {
+  overview: CostOverviewRow[]
+  pricing: Record<string, { input: number; output: number }>
+}
+
+interface PlanConfigForm {
+  credits: string
+  price_chf: string
+  description: string
+}
+
+function configToForm(config: PlanConfig): Record<Plan, PlanConfigForm> {
+  return Object.fromEntries(
+    PLAN_ORDER.map((p) => [
+      p,
+      {
+        credits: String(config[p].credits),
+        price_chf: config[p].price_chf === null ? '' : String(config[p].price_chf),
+        description: config[p].description,
+      },
+    ])
+  ) as Record<Plan, PlanConfigForm>
+}
+
+const FEATURE_LABELS: Record<string, string> = {
+  generieren: 'Karten generieren',
+  prescan: 'PDF-Prescan',
+  quiz: 'Quiz',
+  schriftlich: 'Schriftliche Antwort',
+  tutor: 'Tutor-Chat',
 }
 
 function fmtDate(iso: string): string {
@@ -59,6 +103,14 @@ export function AdminPanel() {
   const [generatingCode, setGeneratingCode] = useState(false)
   const [latestCode, setLatestCode] = useState<string | null>(null)
 
+  // Pricing tab
+  const [planConfig, setPlanConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG)
+  const [planForm, setPlanForm] = useState<Record<Plan, PlanConfigForm>>(configToForm(DEFAULT_PLAN_CONFIG))
+  const [loadingPlanConfig, setLoadingPlanConfig] = useState(true)
+  const [savingPlan, setSavingPlan] = useState<Plan | null>(null)
+  const [costOverview, setCostOverview] = useState<CostOverviewData | null>(null)
+  const [loadingCostOverview, setLoadingCostOverview] = useState(true)
+
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true)
     try {
@@ -81,8 +133,34 @@ export function AdminPanel() {
     }
   }, [])
 
+  const loadPlanConfig = useCallback(async () => {
+    setLoadingPlanConfig(true)
+    try {
+      const res = await fetch('/api/admin/plan-config')
+      if (!res.ok) { toast.error('Pricing konnte nicht geladen werden'); return }
+      const data = await res.json() as PlanConfig
+      setPlanConfig(data)
+      setPlanForm(configToForm(data))
+    } finally {
+      setLoadingPlanConfig(false)
+    }
+  }, [])
+
+  const loadCostOverview = useCallback(async () => {
+    setLoadingCostOverview(true)
+    try {
+      const res = await fetch('/api/admin/cost-overview')
+      if (!res.ok) { toast.error('Kostenübersicht konnte nicht geladen werden'); return }
+      setCostOverview(await res.json())
+    } finally {
+      setLoadingCostOverview(false)
+    }
+  }, [])
+
   useEffect(() => { loadUsers() }, [loadUsers])
   useEffect(() => { loadCodes() }, [loadCodes])
+  useEffect(() => { loadPlanConfig() }, [loadPlanConfig])
+  useEffect(() => { loadCostOverview() }, [loadCostOverview])
 
   async function handleAddCredits() {
     if (!creditDialogUser) return
@@ -140,6 +218,48 @@ export function AdminPanel() {
     toast.success('Code kopiert')
   }
 
+  function setPlanField(plan: Plan, field: keyof PlanConfigForm, value: string) {
+    setPlanForm((prev) => ({ ...prev, [plan]: { ...prev[plan], [field]: value } }))
+  }
+
+  async function handleSavePlan(plan: Plan) {
+    const form = planForm[plan]
+    const credits = Number(form.credits)
+    if (!Number.isInteger(credits) || credits < 0) {
+      toast.error('Credits müssen eine positive Ganzzahl sein')
+      return
+    }
+    let price_chf: number | null = null
+    if (form.price_chf.trim()) {
+      const value = Number(form.price_chf)
+      if (!Number.isFinite(value) || value < 0) {
+        toast.error('Preis muss eine positive Zahl sein (oder leer für kostenlos)')
+        return
+      }
+      price_chf = value
+    }
+    if (!form.description.trim()) {
+      toast.error('Beschreibung darf nicht leer sein')
+      return
+    }
+
+    setSavingPlan(plan)
+    try {
+      const res = await fetch('/api/admin/plan-config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, credits, price_chf, description: form.description.trim() }),
+      })
+      if (!res.ok) { toast.error('Speichern fehlgeschlagen'); return }
+      const data = await res.json() as PlanConfig
+      setPlanConfig(data)
+      setPlanForm(configToForm(data))
+      toast.success('Pricing aktualisiert')
+    } finally {
+      setSavingPlan(null)
+    }
+  }
+
   return (
     <Tabs defaultValue="nutzer">
       <TabsList className="h-9 rounded-lg bg-muted p-1 gap-0.5 mb-0 inline-flex w-auto">
@@ -148,6 +268,9 @@ export function AdminPanel() {
         </TabsTrigger>
         <TabsTrigger value="invites" className="rounded-md px-3 text-xs h-7 data-[state=active]:bg-card data-[state=active]:shadow-sm">
           Invite-Codes
+        </TabsTrigger>
+        <TabsTrigger value="pricing" className="rounded-md px-3 text-xs h-7 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+          Pricing
         </TabsTrigger>
       </TabsList>
 
@@ -219,9 +342,9 @@ export function AdminPanel() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="basic_plus">Basic+ (100 Credits)</SelectItem>
-                <SelectItem value="premium">Premium (300 Credits)</SelectItem>
-                <SelectItem value="ultra">Ultra (500 Credits)</SelectItem>
+                <SelectItem value="basic_plus">Basic+ ({planConfig.basic_plus.credits} Credits)</SelectItem>
+                <SelectItem value="premium">Premium ({planConfig.premium.credits} Credits)</SelectItem>
+                <SelectItem value="ultra">Ultra ({planConfig.ultra.credits} Credits)</SelectItem>
               </SelectContent>
             </Select>
             <Input
@@ -290,6 +413,148 @@ export function AdminPanel() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </TabsContent>
+
+      {/* ------------------------------ Pricing ------------------------------ */}
+      <TabsContent value="pricing" className="mt-6 space-y-6">
+        <div className="space-y-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Pläne & Preise</p>
+          {loadingPlanConfig ? (
+            <div className="flex items-center gap-2.5 text-muted-foreground py-12 justify-center">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Lade Pricing…</span>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-border/50 bg-card shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-widest text-muted-foreground/70">
+                    <th className="px-4 py-2.5 font-semibold">Plan</th>
+                    <th className="px-4 py-2.5 font-semibold">Credits / Monat</th>
+                    <th className="px-4 py-2.5 font-semibold">Preis (CHF)</th>
+                    <th className="px-4 py-2.5 font-semibold">Beschreibung</th>
+                    <th className="px-4 py-2.5 font-semibold text-right">Aktion</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PLAN_ORDER.map((p) => (
+                    <tr key={p} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-2.5">
+                        <PlanBadge plan={p} />
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Input
+                          type="number"
+                          min={0}
+                          value={planForm[p].credits}
+                          onChange={(e) => setPlanField(p, 'credits', e.target.value)}
+                          className="h-8 w-24"
+                        />
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.10"
+                          placeholder="kostenlos"
+                          value={planForm[p].price_chf}
+                          onChange={(e) => setPlanField(p, 'price_chf', e.target.value)}
+                          className="h-8 w-28"
+                        />
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Input
+                          value={planForm[p].description}
+                          onChange={(e) => setPlanField(p, 'description', e.target.value)}
+                          className="h-8 min-w-56"
+                        />
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs"
+                          onClick={() => handleSavePlan(p)}
+                          disabled={savingPlan === p}
+                        >
+                          {savingPlan === p ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                          Speichern
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Kosten pro AI-Aktion</p>
+          {loadingCostOverview ? (
+            <div className="flex items-center gap-2.5 text-muted-foreground py-12 justify-center">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Lade Kostenübersicht…</span>
+            </div>
+          ) : !costOverview || costOverview.overview.length === 0 ? (
+            <div className="rounded-2xl border border-border/50 bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+              Noch keine API-Aufrufe erfasst.
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-border/50 bg-card shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-widest text-muted-foreground/70">
+                    <th className="px-4 py-2.5 font-semibold">Feature</th>
+                    <th className="px-4 py-2.5 font-semibold">Modell</th>
+                    <th className="px-4 py-2.5 font-semibold text-right">Calls</th>
+                    <th className="px-4 py-2.5 font-semibold text-right">Ø Credits / Aktion</th>
+                    <th className="px-4 py-2.5 font-semibold text-right">Range (USD)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {costOverview.overview.map((row) => (
+                    <tr key={`${row.feature}::${row.model}`} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-2.5">{FEATURE_LABELS[row.feature] ?? row.feature}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{getDisplayModelName(row.model)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{row.calls}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums font-medium">{row.avgCredits.toFixed(1)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
+                        ${row.minCostUsd.toFixed(4)} – ${row.maxCostUsd.toFixed(4)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {costOverview && (
+          <div className="space-y-3">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Token-Preise (Referenz)</p>
+            <div className="rounded-2xl border border-border/50 bg-card shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-widest text-muted-foreground/70">
+                    <th className="px-4 py-2.5 font-semibold">Modell</th>
+                    <th className="px-4 py-2.5 font-semibold text-right">Input ($/1M Tokens)</th>
+                    <th className="px-4 py-2.5 font-semibold text-right">Output ($/1M Tokens)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(costOverview.pricing).map(([model, p]) => (
+                    <tr key={model} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-2.5">{getDisplayModelName(model)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">${p.input.toFixed(2)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">${p.output.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </TabsContent>

@@ -23,7 +23,7 @@ export function UpgradeDialog({ open, onOpenChange, targetPlan }: UpgradeDialogP
   const isUltra = targetPlan === 'ultra'
 
   const subject = isUltra
-    ? 'Anki Factory - Interesse an Ultra-Plan'
+    ? 'Anki Factory - Einladungscode für Ultra-Plan'
     : `Anki Factory - Upgrade auf ${targetPlan}`
   const mailtoHref = `mailto:philipp.kuprecht@student.unisg.ch?subject=${encodeURIComponent(subject)}`
 
@@ -39,8 +39,8 @@ export function UpgradeDialog({ open, onOpenChange, targetPlan }: UpgradeDialogP
 
         {isUltra ? (
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Den Ultra-Plan gibt es aktuell nur über einen Einladungscode. Wenn du Interesse hast,
-            schreib mir kurz eine Mail — ich melde mich bei dir.
+            Der Ultra-Plan wird aktuell über einen persönlichen Einladungscode aktiviert. Schreib
+            mir kurz eine Mail, dann schicke ich dir deinen Code.
           </p>
         ) : (
           <p className="text-sm text-muted-foreground leading-relaxed">

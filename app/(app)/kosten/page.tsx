@@ -107,7 +107,7 @@ function CreditsDonut({ credits }: { credits: CreditsInfo }) {
           </div>
         ) : (
           <Button size="sm" variant="outline" onClick={() => setUpgradeOpen(true)}>
-            {nextPlan === 'ultra' ? 'Anfragen' : 'Upgrade'}
+            Upgrade
           </Button>
         )}
       </div>
