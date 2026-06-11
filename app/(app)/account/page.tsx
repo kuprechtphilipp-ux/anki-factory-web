@@ -73,8 +73,8 @@ export default function AccountPage() {
   // Billing
   const [managingBilling, setManagingBilling] = useState(false)
 
-  useEffect(() => {
-    fetch('/api/profile')
+  function refetchProfile() {
+    return fetch('/api/profile')
       .then((r) => (r.ok ? r.json() : null))
       .then((data: ProfileData | null) => {
         if (!data) return
@@ -83,7 +83,10 @@ export default function AccountPage() {
         setLernziel(data.lernziel ?? '')
         setLernfenster(data.lernfenster ?? null)
       })
-      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    refetchProfile().finally(() => setLoading(false))
 
     supabase.auth.getUser().then(({ data }) => {
       setIsEmailProvider(data.user?.app_metadata?.provider === 'email')
@@ -245,6 +248,7 @@ export default function AccountPage() {
           isAdmin={profile.is_admin}
           redeemedCode={profile.redeemed_code}
           planExpiresAt={profile.plan_expires_at}
+          onChanged={refetchProfile}
         />
         <p className="text-sm text-muted-foreground">
           {profile.credits_used} / {profile.credits_total} Credits verbraucht

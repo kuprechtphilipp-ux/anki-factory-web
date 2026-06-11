@@ -52,7 +52,7 @@ interface KostenData {
   credits: CreditsInfo
 }
 
-function CreditsDonut({ credits }: { credits: CreditsInfo }) {
+function CreditsDonut({ credits, onChanged }: { credits: CreditsInfo; onChanged?: () => void }) {
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [planConfig, setPlanConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG)
 
@@ -121,7 +121,14 @@ function CreditsDonut({ credits }: { credits: CreditsInfo }) {
           </Button>
         )}
       </div>
-      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} targetPlan={nextPlan} priceChf={planConfig[nextPlan].price_chf} />
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        currentPlan={plan}
+        targetPlan={nextPlan}
+        priceChf={planConfig[nextPlan].price_chf}
+        onChanged={onChanged}
+      />
     </div>
   )
 }
@@ -168,11 +175,15 @@ export default function KostenPage() {
   const [data, setData] = useState<KostenData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetch('/api/kosten')
+  function refetchKosten() {
+    return fetch('/api/kosten')
       .then(r => r.json())
-      .then((d: KostenData) => { setData(d); setLoading(false) })
-      .catch(() => setLoading(false))
+      .then((d: KostenData) => setData(d))
+      .catch(() => {})
+  }
+
+  useEffect(() => {
+    refetchKosten().finally(() => setLoading(false))
   }, [])
 
   if (loading) {
@@ -202,8 +213,8 @@ export default function KostenPage() {
       <div className="space-y-3">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Dein Zugang</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
-          <CreditsDonut credits={data.credits} />
-          <PlanOverview plan={(data.credits.plan as Plan) ?? 'basic'} isAdmin={data.credits.isAdmin} redeemedCode={data.credits.redeemedCode} />
+          <CreditsDonut credits={data.credits} onChanged={refetchKosten} />
+          <PlanOverview plan={(data.credits.plan as Plan) ?? 'basic'} isAdmin={data.credits.isAdmin} redeemedCode={data.credits.redeemedCode} onChanged={refetchKosten} />
         </div>
       </div>
 

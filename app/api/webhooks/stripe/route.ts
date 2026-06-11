@@ -15,16 +15,16 @@ function planForPriceId(planConfig: PlanConfig, priceId: string | undefined): Pl
   return null
 }
 
-async function userIdForCustomer(
+async function profileForCustomer(
   supabase: ReturnType<typeof createServiceClient>,
   customerId: string
-): Promise<string | null> {
+): Promise<{ id: string; stripe_subscription_id: string | null } | null> {
   const { data } = await supabase
     .from('profiles')
-    .select('id')
+    .select('id, stripe_subscription_id')
     .eq('stripe_customer_id', customerId)
     .single()
-  return data?.id ?? null
+  return data ?? null
 }
 
 export async function POST(req: Request) {
@@ -67,9 +67,15 @@ export async function POST(req: Request) {
       const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id
       const priceId = subscription.items.data[0]?.price.id
       const plan = planForPriceId(planConfig, priceId)
-      const userId = subscription.metadata?.user_id ?? (await userIdForCustomer(supabase, customerId))
+      const profile = await profileForCustomer(supabase, customerId)
+      const userId = subscription.metadata?.user_id ?? profile?.id
 
-      if (userId && plan) {
+      // Nur anwenden, wenn dies die aktuell verknuepfte Subscription des Users
+      // ist (oder noch keine hinterlegt ist) -- sonst koennten veraltete
+      // Events fuer eine andere/abgeloeste Subscription den Plan ueberschreiben.
+      const isCurrentSubscription = !profile?.stripe_subscription_id || profile.stripe_subscription_id === subscription.id
+
+      if (userId && plan && isCurrentSubscription) {
         await supabase.rpc('apply_stripe_subscription', {
           p_user_id: userId,
           p_plan: plan,
@@ -84,9 +90,13 @@ export async function POST(req: Request) {
     case 'customer.subscription.deleted': {
       const subscription = event.data.object as Stripe.Subscription
       const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id
-      const userId = subscription.metadata?.user_id ?? (await userIdForCustomer(supabase, customerId))
+      const profile = await profileForCustomer(supabase, customerId)
+      const userId = subscription.metadata?.user_id ?? profile?.id
 
-      if (userId) {
+      // Nur zuruecksetzen, wenn die geloeschte Subscription die aktuell
+      // verknuepfte war (verhindert, dass das Loeschen einer veralteten/
+      // doppelten Subscription den aktiven Plan auf Basic zuruecksetzt).
+      if (userId && profile?.stripe_subscription_id === subscription.id) {
         await supabase.rpc('cancel_stripe_subscription', { p_user_id: userId })
       }
       break
@@ -98,9 +108,9 @@ export async function POST(req: Request) {
       const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
       if (!customerId) break
 
-      const userId = await userIdForCustomer(supabase, customerId)
-      if (userId) {
-        await supabase.rpc('renew_stripe_credits', { p_user_id: userId })
+      const profile = await profileForCustomer(supabase, customerId)
+      if (profile?.id) {
+        await supabase.rpc('renew_stripe_credits', { p_user_id: profile.id })
       }
       break
     }

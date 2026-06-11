@@ -12,13 +12,19 @@ interface PlanOverviewProps {
   isAdmin?: boolean
   redeemedCode?: string | null
   planExpiresAt?: string | null
+  onChanged?: () => void
 }
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('de', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-export function PlanOverview({ plan, isAdmin = false, redeemedCode = null, planExpiresAt = null }: PlanOverviewProps) {
+function buttonLabel(targetPlan: Plan, currentPlan: Plan): string {
+  if (targetPlan === 'basic') return 'Kündigen'
+  return PLAN_ORDER.indexOf(targetPlan) > PLAN_ORDER.indexOf(currentPlan) ? 'Upgrade' : 'Auswählen'
+}
+
+export function PlanOverview({ plan, isAdmin = false, redeemedCode = null, planExpiresAt = null, onChanged }: PlanOverviewProps) {
   const [dialogPlan, setDialogPlan] = useState<Plan | null>(null)
   const [config, setConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG)
 
@@ -72,7 +78,7 @@ export function PlanOverview({ plan, isAdmin = false, redeemedCode = null, planE
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground whitespace-nowrap">{formatPlanPrice(entry.price_chf)}</p>
                     <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => setDialogPlan(p)}>
-                      Upgrade
+                      {buttonLabel(p, plan)}
                     </Button>
                   </div>
                 )}
@@ -86,8 +92,10 @@ export function PlanOverview({ plan, isAdmin = false, redeemedCode = null, planE
         <UpgradeDialog
           open={!!dialogPlan}
           onOpenChange={(open) => { if (!open) setDialogPlan(null) }}
+          currentPlan={plan}
           targetPlan={dialogPlan}
           priceChf={config[dialogPlan].price_chf}
+          onChanged={onChanged}
         />
       )}
     </div>

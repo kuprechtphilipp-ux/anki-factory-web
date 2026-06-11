@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { stripe } from '@/lib/stripe'
 import { getPlanConfig } from '@/lib/plans'
 import type { Plan } from '@/lib/types'
@@ -26,9 +27,37 @@ export async function POST(req: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('stripe_customer_id, email')
+    .select('stripe_customer_id, stripe_subscription_id, email')
     .eq('id', user.id)
     .single()
+
+  // Bestehendes Abo: Plan direkt per Price-Swap wechseln (Proration), statt
+  // eine neue Checkout-Session zu starten -- sonst entsteht eine zweite,
+  // parallele Subscription fuer denselben Kunden.
+  if (profile?.stripe_customer_id && profile?.stripe_subscription_id) {
+    const subscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id)
+    const itemId = subscription.items.data[0]?.id
+    if (!itemId) {
+      return NextResponse.json({ error: 'Abo konnte nicht geladen werden' }, { status: 500 })
+    }
+
+    await stripe.subscriptions.update(profile.stripe_subscription_id, {
+      items: [{ id: itemId, price: priceId }],
+      proration_behavior: 'create_prorations',
+      cancel_at_period_end: false,
+    })
+
+    const service = createServiceClient()
+    await service.rpc('apply_stripe_subscription', {
+      p_user_id: user.id,
+      p_plan: body.plan,
+      p_credits: planConfig[body.plan].credits,
+      p_customer_id: profile.stripe_customer_id,
+      p_subscription_id: profile.stripe_subscription_id,
+    })
+
+    return NextResponse.json({ switched: true, plan: body.plan })
+  }
 
   const origin = req.headers.get('origin') ?? new URL(req.url).origin
 
