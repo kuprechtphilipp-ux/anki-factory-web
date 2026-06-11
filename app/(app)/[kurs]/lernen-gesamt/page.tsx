@@ -78,7 +78,7 @@ const RATINGS = [
 
 export default function LernenGesamtPage({ params }: { params: { kurs: string } }) {
   const kursName = decodeURIComponent(params.kurs)
-  const backHref = `/${encodeURIComponent(params.kurs)}`
+  const backHref = `/${encodeURIComponent(kursName)}`
 
   const [loading, setLoading] = useState(true)
   const [initialized, setInitialized] = useState(false)

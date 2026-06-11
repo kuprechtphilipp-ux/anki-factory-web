@@ -148,7 +148,10 @@ export default function KursDashboard({ params }: Props) {
 
   useEffect(() => {
     fetch(`/api/kurs-statistik?kurs_name=${encodeURIComponent(kursName)}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error('Kurs nicht gefunden')
+        return r.json()
+      })
       .then((data: KursStatistik) => {
         setStats(data)
         setLoading(false)

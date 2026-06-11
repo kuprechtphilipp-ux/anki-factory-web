@@ -259,7 +259,7 @@ export default function KursePage() {
                   ) : (
                     <>
                       <Link
-                        href={`/${encodeURIComponent(kurs.name)}/lernen-gesamt`}
+                        href={`/${encodeURIComponent(kurs.name)}`}
                         className="group/link flex min-w-0 flex-1 items-start gap-3"
                       >
                         <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-bold text-white ${color.bg}`}>
