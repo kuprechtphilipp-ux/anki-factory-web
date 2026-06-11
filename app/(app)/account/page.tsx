@@ -339,6 +339,13 @@ export default function AccountPage() {
           </AlertDialogContent>
         </AlertDialog>
       </Card>
+
+      <p className="text-center text-xs text-muted-foreground">
+        Fragen oder Probleme?{' '}
+        <a href="mailto:hello@cramo.ch" className="underline hover:text-foreground">
+          hello@cramo.ch
+        </a>
+      </p>
     </div>
   )
 }

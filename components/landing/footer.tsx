@@ -60,6 +60,9 @@ export function LandingFooter() {
             &copy; {new Date().getFullYear()} Cramo. Alle Rechte vorbehalten.
           </p>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <a href="mailto:hello@cramo.ch" className="transition-colors hover:text-foreground">
+              hello@cramo.ch
+            </a>
             <Link href="/login" className="transition-colors hover:text-foreground">
               Login
             </Link>
