@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Loader2, DollarSign, Calendar, CalendarDays, Wallet } from 'lucide-react'
+import { Loader2, Coins, Calendar, CalendarDays, Wallet, PartyPopper } from 'lucide-react'
 import { PlanBadge } from '@/components/plan-badge'
 import { PlanOverview } from '@/components/plan-overview'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { Button } from '@/components/ui/button'
 import { PLAN_ORDER } from '@/lib/plans'
+import { usdToCredits } from '@/lib/api-cost'
+import { getDisplayModelName } from '@/lib/model-names'
 import type { Plan } from '@/lib/types'
 
 interface ProFeature {
@@ -63,7 +65,7 @@ function CreditsDonut({ credits }: { credits: CreditsInfo }) {
   const nextPlan = isUltra ? 'ultra' : PLAN_ORDER[planIndex + 1] ?? 'ultra'
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200">
+    <div className="flex h-full flex-col rounded-2xl border border-border/50 bg-card p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200">
       <div className="flex items-center gap-6">
         <svg width="100" height="100" viewBox="0 0 100 100" className="shrink-0 -rotate-90">
           <circle cx="50" cy="50" r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth="10" />
@@ -97,11 +99,12 @@ function CreditsDonut({ credits }: { credits: CreditsInfo }) {
           </a>
         </p>
       )}
-      <div className="mt-4 pt-4 border-t border-border/50">
+      <div className="mt-auto pt-4 border-t border-border/50">
         {isUltra ? (
-          <p className="text-sm text-muted-foreground">
-            Du hast den Ultra-Plan — mehr Credits gibt es aktuell nicht.
-          </p>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <PartyPopper className="h-4 w-4 shrink-0 text-amber-500" />
+            <span>Höchster Plan erreicht — mehr Credits gibt es aktuell nicht.</span>
+          </div>
         ) : (
           <Button size="sm" variant="outline" onClick={() => setUpgradeOpen(true)}>
             {nextPlan === 'ultra' ? 'Anfragen' : 'Upgrade'}
@@ -120,29 +123,31 @@ const FEATURE_LABELS: Record<string, string> = {
   schriftlich: 'Schriftliche Antwort',
 }
 
-function fmtUsd(n: number): string {
-  return `$${n.toFixed(2)}`
+function fmtCredits(costUsd: number): string {
+  return usdToCredits(costUsd).toLocaleString('de')
 }
 
 function StatCard({
   icon,
   label,
   value,
-  sub,
+  unit,
 }: {
   icon: React.ReactNode
   label: string
   value: string
-  sub?: string
+  unit?: string
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border/50 p-5 bg-card shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200">
       <div className="flex items-start justify-between">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">{icon}</div>
-        {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
       </div>
       <div className="mt-4">
-        <p className="text-3xl font-bold tracking-tight">{value}</p>
+        <p className="text-3xl font-bold tracking-tight">
+          {value}
+          {unit && <span className="ml-1 text-base font-medium text-muted-foreground">{unit}</span>}
+        </p>
         <p className="text-sm text-muted-foreground mt-0.5">{label}</p>
       </div>
     </div>
@@ -196,10 +201,10 @@ export default function KostenPage() {
       <div className="space-y-3">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Cramo API-Kosten</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard icon={<DollarSign className="h-5 w-5 text-emerald-500" />} label="Heute" value={fmtUsd(data.heute)} />
-          <StatCard icon={<Calendar className="h-5 w-5 text-blue-500" />} label="Diese Woche" value={fmtUsd(data.woche)} />
-          <StatCard icon={<CalendarDays className="h-5 w-5 text-violet-500" />} label="Diesen Monat" value={fmtUsd(data.monat)} />
-          <StatCard icon={<Wallet className="h-5 w-5 text-primary" />} label="Gesamt" value={fmtUsd(data.gesamt)} />
+          <StatCard icon={<Coins className="h-5 w-5 text-emerald-500" />} label="Heute" value={fmtCredits(data.heute)} unit="Credits" />
+          <StatCard icon={<Calendar className="h-5 w-5 text-blue-500" />} label="Diese Woche" value={fmtCredits(data.woche)} unit="Credits" />
+          <StatCard icon={<CalendarDays className="h-5 w-5 text-violet-500" />} label="Diesen Monat" value={fmtCredits(data.monat)} unit="Credits" />
+          <StatCard icon={<Wallet className="h-5 w-5 text-primary" />} label="Gesamt" value={fmtCredits(data.gesamt)} unit="Credits" />
         </div>
       </div>
 
@@ -218,7 +223,7 @@ export default function KostenPage() {
                       ? (i === data.proTag.length - 1 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.4)')
                       : 'hsl(var(--muted))',
                   }}
-                  title={`${t.date}: ${fmtUsd(t.cost)}`}
+                  title={`${t.date}: ${fmtCredits(t.cost)} Credits`}
                 />
               </div>
             ))}
@@ -245,7 +250,7 @@ export default function KostenPage() {
                 <div key={f.feature} className="space-y-1.5">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium">{FEATURE_LABELS[f.feature] ?? f.feature}</span>
-                    <span className="text-muted-foreground">{fmtUsd(f.cost)} · {pct.toFixed(0)}% · {f.calls} Calls</span>
+                    <span className="text-muted-foreground">{fmtCredits(f.cost)} Credits · {pct.toFixed(0)}% · {f.calls} Calls</span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                     <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
@@ -273,7 +278,7 @@ export default function KostenPage() {
                   <th className="px-4 py-2.5 font-semibold">Feature</th>
                   <th className="px-4 py-2.5 font-semibold">Modell</th>
                   <th className="px-4 py-2.5 font-semibold text-right">Tokens</th>
-                  <th className="px-4 py-2.5 font-semibold text-right">Kosten</th>
+                  <th className="px-4 py-2.5 font-semibold text-right">Credits</th>
                 </tr>
               </thead>
               <tbody>
@@ -283,11 +288,11 @@ export default function KostenPage() {
                       {new Date(row.created_at).toLocaleString('de', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </td>
                     <td className="px-4 py-2.5">{FEATURE_LABELS[row.feature] ?? row.feature}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{row.model}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{getDisplayModelName(row.model)}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
                       {row.input_tokens.toLocaleString('de')} / {row.output_tokens.toLocaleString('de')}
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums font-medium">{fmtUsd(row.cost_usd)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums font-medium">{fmtCredits(row.cost_usd)}</td>
                   </tr>
                 ))}
               </tbody>

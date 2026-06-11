@@ -45,6 +45,10 @@ export async function logApiUsage(
 export const CREDITS_EXHAUSTED_MESSAGE =
   'Deine Credits sind aufgebraucht. Schreib mir für mehr Credits: philipp.kuprecht@student.unisg.ch'
 
+export function usdToCredits(costUsd: number): number {
+  return Math.ceil(costUsd * 100)
+}
+
 export async function getCreditStatus(
   supabase: SupabaseClient,
   userId: string
@@ -65,7 +69,7 @@ export async function incrementCreditsUsed(
   userId: string,
   costUsd: number
 ): Promise<void> {
-  const credits = Math.ceil(costUsd * 100)
+  const credits = usdToCredits(costUsd)
   if (credits <= 0) return
   const { error } = await supabase.rpc('increment_credits_used', { p_user_id: userId, p_amount: credits })
   if (error) console.error('[api-cost] incrementCreditsUsed Fehler:', error.message)
