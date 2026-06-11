@@ -10,7 +10,7 @@ import type { Plan } from '@/lib/types'
 
 interface RedeemInviteCodeProps {
   redeemedCode: string | null
-  onRedeemed: (plan: Plan, credits: number) => void
+  onRedeemed: (plan: Plan, credits: number, expiresAt: string | null) => void
 }
 
 export function RedeemInviteCode({ redeemedCode, onRedeemed }: RedeemInviteCodeProps) {
@@ -38,10 +38,10 @@ export function RedeemInviteCode({ redeemedCode, onRedeemed }: RedeemInviteCodeP
         toast.error('Code ungültig oder bereits verwendet')
         return
       }
-      const result = data[0] as { plan: Plan; credits: number }
+      const result = data[0] as { plan: Plan; credits: number; expires_at: string | null }
       toast.success(`Code eingelöst — du bist jetzt auf Plan ${result.plan} mit ${result.credits} Credits`)
       setCode('')
-      onRedeemed(result.plan, result.credits)
+      onRedeemed(result.plan, result.credits, result.expires_at)
     } catch {
       toast.error('Code ungültig oder bereits verwendet')
     } finally {

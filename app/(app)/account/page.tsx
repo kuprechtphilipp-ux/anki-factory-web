@@ -31,6 +31,9 @@ interface ProfileData {
   lernfenster: Lernfenster | null
   onboarding_completed: boolean
   plan: Plan
+  base_plan: Plan
+  plan_expires_at: string | null
+  stripe_customer_id: string | null
   credits_total: number
   credits_used: number
   email: string | null
@@ -66,6 +69,9 @@ export default function AccountPage() {
 
   // Account löschen
   const [deleting, setDeleting] = useState(false)
+
+  // Billing
+  const [managingBilling, setManagingBilling] = useState(false)
 
   useEffect(() => {
     fetch('/api/profile')
@@ -145,6 +151,23 @@ export default function AccountPage() {
     }
   }
 
+  async function handleManageBilling() {
+    setManagingBilling(true)
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' })
+      const data = await res.json() as { url?: string; error?: string }
+      if (!res.ok || !data.url) {
+        toast.error(data.error ?? 'Abo-Verwaltung konnte nicht geöffnet werden')
+        return
+      }
+      window.location.href = data.url
+    } catch {
+      toast.error('Abo-Verwaltung konnte nicht geöffnet werden')
+    } finally {
+      setManagingBilling(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center gap-2.5 text-muted-foreground py-20 justify-center">
@@ -217,10 +240,20 @@ export default function AccountPage() {
       </Card>
 
       <Card title="Plan & Credits">
-        <PlanOverview plan={profile.plan} isAdmin={profile.is_admin} redeemedCode={profile.redeemed_code} />
+        <PlanOverview
+          plan={profile.plan}
+          isAdmin={profile.is_admin}
+          redeemedCode={profile.redeemed_code}
+          planExpiresAt={profile.plan_expires_at}
+        />
         <p className="text-sm text-muted-foreground">
           {profile.credits_used} / {profile.credits_total} Credits verbraucht
         </p>
+        {profile.stripe_customer_id && (
+          <Button variant="outline" size="sm" onClick={handleManageBilling} disabled={managingBilling}>
+            {managingBilling ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Abo verwalten'}
+          </Button>
+        )}
         <Separator />
         <div className="space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
@@ -228,8 +261,8 @@ export default function AccountPage() {
           </p>
           <RedeemInviteCode
             redeemedCode={profile.redeemed_code}
-            onRedeemed={(plan, credits) => {
-              setProfile((prev) => prev ? { ...prev, plan, credits_total: credits, credits_used: 0, redeemed_code: prev.redeemed_code } : prev)
+            onRedeemed={(plan, credits, expiresAt) => {
+              setProfile((prev) => prev ? { ...prev, plan, credits_total: credits, credits_used: 0, plan_expires_at: expiresAt, redeemed_code: prev.redeemed_code } : prev)
               fetch('/api/profile')
                 .then((r) => (r.ok ? r.json() : null))
                 .then((data: ProfileData | null) => { if (data) setProfile(data) })

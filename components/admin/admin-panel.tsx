@@ -59,6 +59,7 @@ interface PlanConfigForm {
   credits: string
   price_chf: string
   description: string
+  stripe_price_id: string
 }
 
 function configToForm(config: PlanConfig): Record<Plan, PlanConfigForm> {
@@ -69,6 +70,7 @@ function configToForm(config: PlanConfig): Record<Plan, PlanConfigForm> {
         credits: String(config[p].credits),
         price_chf: config[p].price_chf === null ? '' : String(config[p].price_chf),
         description: config[p].description,
+        stripe_price_id: config[p].stripe_price_id ?? '',
       },
     ])
   ) as Record<Plan, PlanConfigForm>
@@ -100,6 +102,7 @@ export function AdminPanel() {
   // Invite code form
   const [newCodePlan, setNewCodePlan] = useState<Exclude<Plan, 'basic'>>('basic_plus')
   const [newCodeCredits, setNewCodeCredits] = useState('')
+  const [newCodeDuration, setNewCodeDuration] = useState<string>('permanent')
   const [generatingCode, setGeneratingCode] = useState(false)
   const [latestCode, setLatestCode] = useState<string | null>(null)
 
@@ -189,7 +192,7 @@ export function AdminPanel() {
   async function handleGenerateCode() {
     setGeneratingCode(true)
     try {
-      const body: { plan: Exclude<Plan, 'basic'>; credits?: number } = { plan: newCodePlan }
+      const body: { plan: Exclude<Plan, 'basic'>; credits?: number; duration_months?: number } = { plan: newCodePlan }
       if (newCodeCredits.trim()) {
         const value = Number(newCodeCredits)
         if (!Number.isInteger(value) || value <= 0) {
@@ -197,6 +200,9 @@ export function AdminPanel() {
           return
         }
         body.credits = value
+      }
+      if (newCodeDuration !== 'permanent') {
+        body.duration_months = Number(newCodeDuration)
       }
       const res = await fetch('/api/admin/invite-codes', {
         method: 'POST',
@@ -248,7 +254,13 @@ export function AdminPanel() {
       const res = await fetch('/api/admin/plan-config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, credits, price_chf, description: form.description.trim() }),
+        body: JSON.stringify({
+          plan,
+          credits,
+          price_chf,
+          description: form.description.trim(),
+          stripe_price_id: form.stripe_price_id.trim() || null,
+        }),
       })
       if (!res.ok) { toast.error('Speichern fehlgeschlagen'); return }
       const data = await res.json() as PlanConfig
@@ -347,6 +359,17 @@ export function AdminPanel() {
                 <SelectItem value="ultra">Ultra ({planConfig.ultra.credits} Credits)</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={newCodeDuration} onValueChange={setNewCodeDuration}>
+              <SelectTrigger className="w-full sm:w-40 h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="permanent">Permanent</SelectItem>
+                <SelectItem value="1">1 Monat</SelectItem>
+                <SelectItem value="2">2 Monate</SelectItem>
+                <SelectItem value="3">3 Monate</SelectItem>
+              </SelectContent>
+            </Select>
             <Input
               type="number"
               min={1}
@@ -389,28 +412,37 @@ export function AdminPanel() {
                   <th className="px-4 py-2.5 font-semibold">Code</th>
                   <th className="px-4 py-2.5 font-semibold">Plan</th>
                   <th className="px-4 py-2.5 font-semibold text-right">Credits</th>
+                  <th className="px-4 py-2.5 font-semibold">Dauer</th>
                   <th className="px-4 py-2.5 font-semibold">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {codes.map((c) => (
-                  <tr key={c.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-2.5 font-mono tracking-widest">{c.code}</td>
-                    <td className="px-4 py-2.5">
-                      <PlanBadge plan={c.plan} />
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{c.credits}</td>
-                    <td className="px-4 py-2.5">
-                      {c.used_by ? (
-                        <Badge variant="secondary">
-                          eingelöst von {c.used_by_email ?? c.used_by} am {c.used_at ? fmtDate(c.used_at) : '—'}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">offen</Badge>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {codes.map((c) => {
+                  const expiresAt = c.used_at && c.duration_months
+                    ? new Date(new Date(c.used_at).setMonth(new Date(c.used_at).getMonth() + c.duration_months))
+                    : null
+                  return (
+                    <tr key={c.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-2.5 font-mono tracking-widest">{c.code}</td>
+                      <td className="px-4 py-2.5">
+                        <PlanBadge plan={c.plan} />
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{c.credits}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
+                        {c.duration_months ? `${c.duration_months} Monate${expiresAt ? ` (bis ${fmtDate(expiresAt.toISOString())})` : ''}` : 'permanent'}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {c.used_by ? (
+                          <Badge variant="secondary">
+                            eingelöst von {c.used_by_email ?? c.used_by} am {c.used_at ? fmtDate(c.used_at) : '—'}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">offen</Badge>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -435,6 +467,7 @@ export function AdminPanel() {
                     <th className="px-4 py-2.5 font-semibold">Credits / Monat</th>
                     <th className="px-4 py-2.5 font-semibold">Preis (CHF)</th>
                     <th className="px-4 py-2.5 font-semibold">Beschreibung</th>
+                    <th className="px-4 py-2.5 font-semibold">Stripe Price ID</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Aktion</th>
                   </tr>
                 </thead>
@@ -469,6 +502,15 @@ export function AdminPanel() {
                           value={planForm[p].description}
                           onChange={(e) => setPlanField(p, 'description', e.target.value)}
                           className="h-8 min-w-56"
+                        />
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Input
+                          value={planForm[p].stripe_price_id}
+                          onChange={(e) => setPlanField(p, 'stripe_price_id', e.target.value)}
+                          placeholder={p === 'basic' ? '—' : 'price_...'}
+                          disabled={p === 'basic'}
+                          className="h-8 min-w-44 font-mono text-xs"
                         />
                       </td>
                       <td className="px-4 py-2.5 text-right">

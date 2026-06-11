@@ -24,6 +24,10 @@ export interface Profile {
   id: string
   email: string | null
   plan: Plan
+  base_plan: Plan
+  plan_expires_at: string | null
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
   credits_total: number
   credits_used: number
   credits_reset_at: string
@@ -48,6 +52,7 @@ export interface InviteCode {
   code: string
   plan: Exclude<Plan, 'basic'>
   credits: number
+  duration_months: number | null
   used_by: string | null
   used_at: string | null
   created_at: string
@@ -241,6 +246,10 @@ export type Database = {
           id: string
           email?: string | null
           plan?: Plan
+          base_plan?: Plan
+          plan_expires_at?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           credits_total?: number
           credits_used?: number
           credits_reset_at?: string
@@ -255,6 +264,10 @@ export type Database = {
           id?: string
           email?: string | null
           plan?: Plan
+          base_plan?: Plan
+          plan_expires_at?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           credits_total?: number
           credits_used?: number
           credits_reset_at?: string
@@ -274,6 +287,7 @@ export type Database = {
           code: string
           plan: Exclude<Plan, 'basic'>
           credits: number
+          duration_months?: number | null
           used_by?: string | null
           used_at?: string | null
           created_at?: string
@@ -284,6 +298,7 @@ export type Database = {
           code?: string
           plan?: Exclude<Plan, 'basic'>
           credits?: number
+          duration_months?: number | null
           used_by?: string | null
           used_at?: string | null
           created_at?: string

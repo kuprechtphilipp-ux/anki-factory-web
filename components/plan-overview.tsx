@@ -11,9 +11,14 @@ interface PlanOverviewProps {
   plan: Plan
   isAdmin?: boolean
   redeemedCode?: string | null
+  planExpiresAt?: string | null
 }
 
-export function PlanOverview({ plan, isAdmin = false, redeemedCode = null }: PlanOverviewProps) {
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('de', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+export function PlanOverview({ plan, isAdmin = false, redeemedCode = null, planExpiresAt = null }: PlanOverviewProps) {
   const [dialogPlan, setDialogPlan] = useState<Plan | null>(null)
   const [config, setConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG)
 
@@ -55,7 +60,9 @@ export function PlanOverview({ plan, isAdmin = false, redeemedCode = null }: Pla
                     ) : redeemedCode && entry.price_chf !== null ? (
                       <div className="text-xs leading-tight">
                         <p className="text-muted-foreground line-through whitespace-nowrap">{formatPlanPrice(entry.price_chf)}</p>
-                        <p className="text-emerald-600 font-medium whitespace-nowrap">Free via Promocode</p>
+                        <p className="text-emerald-600 font-medium whitespace-nowrap">
+                          {planExpiresAt ? `Free via Promocode bis ${fmtDate(planExpiresAt)}` : 'Free via Promocode'}
+                        </p>
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground whitespace-nowrap">{formatPlanPrice(entry.price_chf)}</p>
@@ -80,6 +87,7 @@ export function PlanOverview({ plan, isAdmin = false, redeemedCode = null }: Pla
           open={!!dialogPlan}
           onOpenChange={(open) => { if (!open) setDialogPlan(null) }}
           targetPlan={dialogPlan}
+          priceChf={config[dialogPlan].price_chf}
         />
       )}
     </div>

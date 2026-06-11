@@ -24,6 +24,7 @@ export async function PATCH(req: Request) {
     credits: number
     price_chf: number | null
     description: string
+    stripe_price_id?: string | null
   }
 
   if (!VALID_PLANS.includes(body.plan)) {
@@ -38,6 +39,9 @@ export async function PATCH(req: Request) {
   if (typeof body.description !== 'string' || !body.description.trim()) {
     return NextResponse.json({ error: 'Beschreibung darf nicht leer sein' }, { status: 400 })
   }
+  if (body.stripe_price_id != null && typeof body.stripe_price_id !== 'string') {
+    return NextResponse.json({ error: 'Ungültige Stripe Price ID' }, { status: 400 })
+  }
 
   const { error } = await supabase
     .from('plan_config')
@@ -45,6 +49,7 @@ export async function PATCH(req: Request) {
       credits: body.credits,
       price_chf: body.price_chf,
       description: body.description.trim(),
+      stripe_price_id: body.stripe_price_id ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq('plan', body.plan)

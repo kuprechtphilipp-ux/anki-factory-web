@@ -6,7 +6,7 @@ import { PlanBadge } from '@/components/plan-badge'
 import { PlanOverview } from '@/components/plan-overview'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { Button } from '@/components/ui/button'
-import { PLAN_ORDER } from '@/lib/plans'
+import { PLAN_ORDER, DEFAULT_PLAN_CONFIG, type PlanConfig } from '@/lib/plans'
 import { usdToCredits } from '@/lib/api-cost'
 import { getDisplayModelName } from '@/lib/model-names'
 import type { Plan } from '@/lib/types'
@@ -54,6 +54,14 @@ interface KostenData {
 
 function CreditsDonut({ credits }: { credits: CreditsInfo }) {
   const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [planConfig, setPlanConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG)
+
+  useEffect(() => {
+    fetch('/api/plan-config')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: PlanConfig | null) => { if (d) setPlanConfig(d) })
+      .catch(() => {})
+  }, [])
   const pct = credits.total > 0 ? Math.min(1, credits.used / credits.total) : 0
   const exhausted = credits.used >= credits.total
   const radius = 40
@@ -113,7 +121,7 @@ function CreditsDonut({ credits }: { credits: CreditsInfo }) {
           </Button>
         )}
       </div>
-      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} targetPlan={nextPlan} />
+      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} targetPlan={nextPlan} priceChf={planConfig[nextPlan].price_chf} />
     </div>
   )
 }

@@ -48,10 +48,17 @@ export async function POST(req: Request) {
   if ('error' in ctx) return ctx.error
   const { supabase, user } = ctx
 
-  const body = await req.json() as { plan: Exclude<Plan, 'basic'>; credits?: number }
+  const body = await req.json() as { plan: Exclude<Plan, 'basic'>; credits?: number; duration_months?: number | null }
   const { plan } = body
   if (!['basic_plus', 'premium', 'ultra'].includes(plan)) {
     return NextResponse.json({ error: 'Ungültiger Plan' }, { status: 400 })
+  }
+  let duration_months: number | null = null
+  if (body.duration_months != null) {
+    if (!Number.isInteger(body.duration_months) || body.duration_months <= 0) {
+      return NextResponse.json({ error: 'Dauer muss eine positive Ganzzahl (Monate) sein' }, { status: 400 })
+    }
+    duration_months = body.duration_months
   }
   const planConfig = await getPlanConfig(supabase)
   const credits = body.credits ?? planConfig[plan].credits
@@ -60,7 +67,7 @@ export async function POST(req: Request) {
     const code = generateCode()
     const { data, error } = await supabase
       .from('invite_codes')
-      .insert({ code, plan, credits, created_by: user.id })
+      .insert({ code, plan, credits, duration_months, created_by: user.id })
       .select()
       .single()
 
