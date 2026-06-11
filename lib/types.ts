@@ -26,6 +26,7 @@ export interface Profile {
   plan: Plan
   credits_total: number
   credits_used: number
+  credits_reset_at: string
   is_admin: boolean
   onboarding_completed: boolean
   fachbereich: string | null
@@ -242,6 +243,7 @@ export type Database = {
           plan?: Plan
           credits_total?: number
           credits_used?: number
+          credits_reset_at?: string
           is_admin?: boolean
           onboarding_completed?: boolean
           fachbereich?: string | null
@@ -255,6 +257,7 @@ export type Database = {
           plan?: Plan
           credits_total?: number
           credits_used?: number
+          credits_reset_at?: string
           is_admin?: boolean
           onboarding_completed?: boolean
           fachbereich?: string | null

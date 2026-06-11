@@ -12,6 +12,7 @@ interface ProfilePlanData {
   plan: Plan
   credits_total: number
   credits_used: number
+  credits_reset_at: string
   redeemed_code: string | null
 }
 
@@ -47,6 +48,16 @@ export function PlanBanner() {
             {data.credits_used} / {data.credits_total}
           </span>
         </div>
+        {data.credits_reset_at && (
+          <p className="text-xs text-muted-foreground">
+            Nächster Reset:{' '}
+            {new Date(data.credits_reset_at).toLocaleDateString('de-DE', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+            })}
+          </p>
+        )}
         <Separator />
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">
