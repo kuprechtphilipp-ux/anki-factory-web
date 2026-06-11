@@ -8,7 +8,7 @@ export async function GET() {
   const { supabase } = ctx
 
   const { data, error } = await supabase
-    .from('profiles')
+    .from('profiles_with_credits')
     .select('id, email, plan, credits_total, credits_used, created_at')
     .order('created_at', { ascending: false })
 

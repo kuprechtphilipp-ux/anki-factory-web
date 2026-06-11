@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
-import { logApiUsage, getCreditStatus, incrementCreditsUsed, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
+import { logApiUsage, getCreditStatus, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
 
 export const maxDuration = 60
 
@@ -160,7 +160,7 @@ Berücksichtige diese Präferenzen — aber überschreibe sie nicht wenn der Inh
       ],
     })
 
-    const cost_usd = await logApiUsage(supabase, {
+    await logApiUsage(supabase, {
       feature: 'prescan',
       model: 'claude-haiku-4-5-20251001',
       inputTokens: message.usage.input_tokens,
@@ -168,7 +168,6 @@ Berücksichtige diese Präferenzen — aber überschreibe sie nicht wenn der Inh
       themaId: themaId ? Number(themaId) : null,
       userId: user.id,
     })
-    await incrementCreditsUsed(supabase, user.id, cost_usd)
 
     if (message.stop_reason === 'max_tokens') {
       throw new Error('Antwort wurde abgeschnitten (PDF zu gross). Versuche ein kleineres PDF oder teile es in Abschnitte auf.')

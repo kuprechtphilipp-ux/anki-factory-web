@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
-import { logApiUsage, getCreditStatus, incrementCreditsUsed, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
+import { logApiUsage, getCreditStatus, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
 import type { CramoLernkontext } from '@/lib/types'
 
 export const maxDuration = 30
@@ -96,14 +96,13 @@ export async function POST(req: Request) {
       messages,
     })
 
-    const cost_usd = await logApiUsage(supabase, {
+    await logApiUsage(supabase, {
       feature: 'tutor',
       model: 'claude-haiku-4-5-20251001',
       inputTokens: msg.usage.input_tokens,
       outputTokens: msg.usage.output_tokens,
       userId: user.id,
     })
-    await incrementCreditsUsed(supabase, user.id, cost_usd)
 
     const reply = msg.content[0].type === 'text' ? msg.content[0].text : ''
     return NextResponse.json({ reply })

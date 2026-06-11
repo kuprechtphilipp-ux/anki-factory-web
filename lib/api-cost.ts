@@ -54,7 +54,7 @@ export async function getCreditStatus(
   userId: string
 ): Promise<{ creditsTotal: number; creditsUsed: number; exhausted: boolean }> {
   const { data } = await supabase
-    .from('profiles')
+    .from('profiles_with_credits')
     .select('credits_total, credits_used')
     .eq('id', userId)
     .single()
@@ -62,15 +62,4 @@ export async function getCreditStatus(
   const creditsTotal = data?.credits_total ?? 0
   const creditsUsed = data?.credits_used ?? 0
   return { creditsTotal, creditsUsed, exhausted: creditsUsed >= creditsTotal }
-}
-
-export async function incrementCreditsUsed(
-  supabase: SupabaseClient,
-  userId: string,
-  costUsd: number
-): Promise<void> {
-  const credits = usdToCredits(costUsd)
-  if (credits <= 0) return
-  const { error } = await supabase.rpc('increment_credits_used', { p_user_id: userId, p_amount: credits })
-  if (error) console.error('[api-cost] incrementCreditsUsed Fehler:', error.message)
 }
