@@ -15,7 +15,7 @@ export function calcCost(model: string, inputTokens: number, outputTokens: numbe
 export async function logApiUsage(
   supabase: SupabaseClient,
   { feature, model, inputTokens, outputTokens, themaId, userId }: {
-    feature: 'generieren' | 'prescan' | 'quiz' | 'schriftlich'
+    feature: 'generieren' | 'prescan' | 'quiz' | 'schriftlich' | 'tutor'
     model: string
     inputTokens: number
     outputTokens: number

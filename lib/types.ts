@@ -12,6 +12,8 @@ export interface Kurs {
   created_at: string
 }
 
+export type Lernfenster = 'gestresst' | 'normal' | 'entspannt'
+
 export interface Profile {
   id: string
   email: string | null
@@ -20,7 +22,18 @@ export interface Profile {
   credits_used: number
   is_admin: boolean
   onboarding_completed: boolean
+  fachbereich: string | null
+  lernziel: string | null
+  lernfenster: Lernfenster | null
   created_at: string
+}
+
+export interface CramoLernkontext {
+  themaName?: string
+  kursName?: string
+  karteFrage?: string
+  karteAntwort?: string
+  karteKontext?: string
 }
 
 export interface InviteCode {
@@ -225,6 +238,9 @@ export type Database = {
           credits_used?: number
           is_admin?: boolean
           onboarding_completed?: boolean
+          fachbereich?: string | null
+          lernziel?: string | null
+          lernfenster?: Lernfenster | null
           created_at?: string
         }
         Update: {
@@ -235,6 +251,9 @@ export type Database = {
           credits_used?: number
           is_admin?: boolean
           onboarding_completed?: boolean
+          fachbereich?: string | null
+          lernziel?: string | null
+          lernfenster?: Lernfenster | null
           created_at?: string
         }
         Relationships: []

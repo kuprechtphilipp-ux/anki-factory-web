@@ -4,16 +4,29 @@ import { useState, useEffect } from 'react'
 import { Sidebar } from '@/components/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { CommandPalette } from '@/components/command-palette'
+import { CramoContextProvider } from '@/components/cramo-context'
+import { CramoChatWidget } from '@/components/cramo-chat-widget'
+import { OnboardingModal } from '@/components/onboarding-modal'
 import { Button } from '@/components/ui/button'
-import { Menu, Search } from 'lucide-react'
+import { Menu, Search, Lightbulb } from 'lucide-react'
+import type { Lernfenster } from '@/lib/types'
 
 const DEFAULT_WIDTH = 256
 const MIN_WIDTH = 180
 const MAX_WIDTH = 400
 
+interface ProfileData {
+  fachbereich: string | null
+  lernziel: string | null
+  lernfenster: Lernfenster | null
+  onboarding_completed: boolean
+}
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_WIDTH)
+  const [profile, setProfile] = useState<ProfileData | null>(null)
+  const [onboardingOpen, setOnboardingOpen] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-width')
@@ -21,6 +34,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const w = Number(saved)
       if (w >= MIN_WIDTH && w <= MAX_WIDTH) setSidebarWidth(w)
     }
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/profile')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: ProfileData | null) => {
+        if (!data) return
+        setProfile(data)
+        if (!data.onboarding_completed) setOnboardingOpen(true)
+      })
+      .catch(() => {})
   }, [])
 
   // Lock body scroll on iOS when mobile sidebar is open
@@ -40,6 +64,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
+    <CramoContextProvider>
     <div className="flex h-dvh overflow-hidden bg-background">
       {/* Mobile backdrop */}
       {sidebarOpen && (
@@ -82,6 +107,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <span>Suche</span>
               <kbd className="ml-1 rounded border border-border/60 bg-card px-1 text-[10px] font-mono">⌘K</kbd>
             </button>
+            <button
+              onClick={() => setOnboardingOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              title="Cramo-Einstellungen"
+              aria-label="Cramo-Einstellungen öffnen"
+            >
+              <Lightbulb className="h-[18px] w-[18px]" />
+            </button>
             <ThemeToggle />
           </div>
         </header>
@@ -91,6 +124,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         >{children}</main>
         <CommandPalette />
       </div>
+
+      <CramoChatWidget />
+
+      <OnboardingModal
+        open={onboardingOpen}
+        onOpenChange={setOnboardingOpen}
+        initial={profile ?? undefined}
+        onSaved={() => {
+          fetch('/api/profile')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data: ProfileData | null) => { if (data) setProfile(data) })
+            .catch(() => {})
+        }}
+      />
     </div>
+    </CramoContextProvider>
   )
 }

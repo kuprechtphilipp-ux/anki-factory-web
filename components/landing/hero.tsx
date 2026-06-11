@@ -105,7 +105,7 @@ export function Hero() {
               </Button>
             </div>
 
-            <div className="mt-12 flex items-center justify-center gap-6 lg:justify-start lg:pl-3">
+            <div className="mt-8 flex items-center justify-center gap-6 sm:mt-10 lg:mt-12 lg:justify-start lg:pl-3">
               <div className="relative shrink-0">
                 <motion.div
                   className="relative h-28 w-28 overflow-hidden rounded-full shadow-card ring-4 ring-card sm:h-32 sm:w-32"
@@ -185,7 +185,7 @@ export function Hero() {
             <TabletMockup />
 
             <motion.div
-              className="absolute -left-4 -top-10 sm:-left-8 sm:-top-12"
+              className="absolute -left-4 -top-10 hidden sm:-left-8 sm:-top-12 sm:block"
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
               whileHover={{ scale: 1.05 }}
@@ -202,7 +202,7 @@ export function Hero() {
             </motion.div>
 
             <motion.div
-              className="absolute -right-4 -bottom-10 sm:-right-8 sm:-bottom-12"
+              className="absolute -right-4 -bottom-10 hidden sm:-right-8 sm:-bottom-12 sm:block"
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
               whileHover={{ scale: 1.05 }}

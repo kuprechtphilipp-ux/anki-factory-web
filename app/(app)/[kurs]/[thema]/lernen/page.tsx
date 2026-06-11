@@ -7,6 +7,7 @@ import { FSRS, generatorParameters } from 'ts-fsrs'
 import { karteToFsrsCard } from '@/lib/fsrs'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, BookOpen, Layers, Flame, Target } from 'lucide-react'
+import { useCramoContext } from '@/components/cramo-context'
 import type { Karte, FsrsState } from '@/lib/types'
 
 const clientFsrs = new FSRS(generatorParameters())
@@ -189,6 +190,19 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
 
   const currentItem = filteredQueue[0]
   const currentKarte = currentItem?.karte
+
+  const { setContext, clearContext } = useCramoContext()
+  useEffect(() => {
+    if (!currentKarte) return
+    setContext({
+      kursName,
+      themaName,
+      karteFrage: currentKarte.typ === 'cloze' ? (currentKarte.cloze_text ?? currentKarte.frage) : currentKarte.frage,
+      karteAntwort: currentKarte.typ === 'cloze' ? undefined : currentKarte.antwort,
+      karteKontext: currentKarte.kontext ?? undefined,
+    })
+  }, [currentKarte, kursName, themaName, setContext])
+  useEffect(() => () => clearContext(), [clearContext])
 
   const intervals = currentKarte ? computeIntervals(currentKarte) : null
   const isCloze = currentKarte?.typ === 'cloze'

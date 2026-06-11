@@ -12,6 +12,7 @@ import {
   ChevronRight,
   LayoutDashboard,
   BarChart2,
+  Sparkles,
   Zap,
   Plus,
   Trash2,
@@ -304,6 +305,18 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
         >
           <BarChart2 className="h-4 w-4 shrink-0" />
           Statistik
+        </Link>
+        <Link
+          href="/tutor"
+          className={cn(
+            'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground',
+            pathname === '/tutor'
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground'
+          )}
+        >
+          <Sparkles className="h-4 w-4 shrink-0" />
+          AI Tutor
         </Link>
         <Link
           href="/kosten"
