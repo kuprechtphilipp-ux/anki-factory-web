@@ -64,64 +64,71 @@ export function PlanOverview({ plan, isAdmin = false, redeemedCode = null, planE
         {PLAN_ORDER.map((p) => {
           const isCurrent = p === plan
           const entry = config[p]
+          // "Kündigen" auf der Basic-Zeile macht keinen Sinn mehr, wenn das
+          // Abo bereits gekuendigt ist (Reaktivieren-Button steht schon da).
+          const hideAction = p === 'basic' && !!stripeCancelAt
           return (
             <div
               key={p}
-              className={`flex items-center justify-between gap-3 rounded-xl p-3 ${
-                isCurrent ? 'bg-primary/5' : ''
-              }`}
+              className={`rounded-xl p-3 ${isCurrent ? 'bg-primary/5' : ''}`}
             >
-              <div className="min-w-0 space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <PlanBadge plan={p} />
-                  <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-                    {entry.credits} Credits / Monat
-                  </span>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <PlanBadge plan={p} />
+                    <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                      {entry.credits} Credits / Monat
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">{entry.description}</p>
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{entry.description}</p>
-              </div>
-              <div className="shrink-0 text-right">
-                {isCurrent ? (
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-semibold text-primary whitespace-nowrap">Aktueller Plan</span>
-                    {stripeCancelAt ? (
-                      <div className="space-y-1">
-                        <p className="text-xs text-rose-500 font-medium whitespace-nowrap">
-                          Gekündigt — läuft bis {fmtDate(stripeCancelAt)}
-                        </p>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 px-2 text-[10px]"
-                          onClick={handleReactivate}
-                          disabled={reactivating}
-                        >
-                          {reactivating ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                          Reaktivieren
-                        </Button>
-                      </div>
-                    ) : isAdmin ? (
-                      <p className="text-xs font-semibold text-amber-500 whitespace-nowrap">Owner</p>
-                    ) : redeemedCode && entry.price_chf !== null ? (
-                      <div className="text-xs leading-tight">
-                        <p className="text-muted-foreground line-through whitespace-nowrap">{formatPlanPrice(entry.price_chf)}</p>
-                        <p className="text-emerald-600 font-medium whitespace-nowrap">
-                          {planExpiresAt ? `Free via Promocode bis ${fmtDate(planExpiresAt)}` : 'Free via Promocode'}
-                        </p>
-                      </div>
-                    ) : (
+                <div className="shrink-0 text-right">
+                  {isCurrent ? (
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-semibold text-primary whitespace-nowrap">Aktueller Plan</span>
+                      {!stripeCancelAt && (
+                        isAdmin ? (
+                          <p className="text-xs font-semibold text-amber-500 whitespace-nowrap">Owner</p>
+                        ) : redeemedCode && entry.price_chf !== null ? (
+                          <div className="text-xs leading-tight">
+                            <p className="text-muted-foreground line-through whitespace-nowrap">{formatPlanPrice(entry.price_chf)}</p>
+                            <p className="text-emerald-600 font-medium whitespace-nowrap">
+                              {planExpiresAt ? `Free via Promocode bis ${fmtDate(planExpiresAt)}` : 'Free via Promocode'}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground whitespace-nowrap">{formatPlanPrice(entry.price_chf)}</p>
+                        )
+                      )}
+                    </div>
+                  ) : !hideAction ? (
+                    <div className="space-y-1">
                       <p className="text-xs text-muted-foreground whitespace-nowrap">{formatPlanPrice(entry.price_chf)}</p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground whitespace-nowrap">{formatPlanPrice(entry.price_chf)}</p>
-                    <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => setDialogPlan(p)}>
-                      {buttonLabel(p, plan)}
-                    </Button>
-                  </div>
-                )}
+                      <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => setDialogPlan(p)}>
+                        {buttonLabel(p, plan)}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
+
+              {isCurrent && stripeCancelAt && (
+                <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-rose-500/10 px-2.5 py-1.5">
+                  <p className="text-xs text-rose-500 font-medium">
+                    Gekündigt — läuft bis {fmtDate(stripeCancelAt)}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-[10px] shrink-0"
+                    onClick={handleReactivate}
+                    disabled={reactivating}
+                  >
+                    {reactivating ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                    Reaktivieren
+                  </Button>
+                </div>
+              )}
             </div>
           )
         })}

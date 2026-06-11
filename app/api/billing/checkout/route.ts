@@ -55,6 +55,9 @@ export async function POST(req: Request) {
       p_customer_id: profile.stripe_customer_id,
       p_subscription_id: profile.stripe_subscription_id,
     })
+    // cancel_at_period_end wurde oben aufgehoben -- Kuendigungs-Hinweis sofort
+    // entfernen, statt auf den Webhook zu warten.
+    await service.from('profiles').update({ stripe_cancel_at: null }).eq('id', user.id)
 
     return NextResponse.json({ switched: true, plan: body.plan })
   }
