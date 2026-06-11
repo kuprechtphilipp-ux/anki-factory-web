@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
-import { Loader2, ArrowLeft, BookOpen, RotateCcw } from 'lucide-react'
+import { Loader2, ArrowLeft, BookOpen, RotateCcw, Coins } from 'lucide-react'
 import type { QuizFrage } from '@/lib/types'
 import { estimateQuizCredits, type QuizModus } from '@/lib/quiz-cost'
 
@@ -34,6 +34,7 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
   const [anzahl, setAnzahl] = useState(10)
   const [modus, setModus] = useState<QuizModus>('quick')
   const [genError, setGenError] = useState<string | null>(null)
+  const [creditsUsed, setCreditsUsed] = useState(0)
 
   useEffect(() => {
     async function loadMeta() {
@@ -70,6 +71,7 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
       setCurrentIdx(0)
       setAnswers([])
       setRevealed(false)
+      setCreditsUsed(data.credits ?? 0)
       setQuizState('playing')
     } catch {
       setGenError('Netzwerkfehler')
@@ -182,6 +184,10 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
           <p className={`text-base font-semibold ${scoreColor}`}>{scoreLabel}</p>
           <p className="text-sm text-muted-foreground">
             <span className="font-semibold text-foreground">{correctCount}</span> von {totalCount} richtig
+          </p>
+          <p className="text-xs text-muted-foreground/70 flex items-center justify-center gap-1">
+            <Coins className="h-3.5 w-3.5" />
+            {creditsUsed} Credit{creditsUsed === 1 ? '' : 's'} verbraucht
           </p>
         </div>
 

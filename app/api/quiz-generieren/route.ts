@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import type { Karte, QuizFrage } from '@/lib/types'
-import { logApiUsage, getCreditStatus, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
+import { logApiUsage, getCreditStatus, CREDITS_EXHAUSTED_MESSAGE, usdToCredits } from '@/lib/api-cost'
 
 export const maxDuration = 60
 
@@ -10,6 +10,17 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5)
+}
+
+const OPTION_LETTERS = ['A', 'B', 'C', 'D']
+
+// Mischt die Antwortoptionen jeder Frage neu, damit die richtige Antwort nicht immer auf "A" landet
+function shuffleOptions(frage: QuizFrage): QuizFrage {
+  const stripped = frage.optionen.map((opt) => opt.replace(/^[A-D]:\s*/, ''))
+  const order = shuffle(stripped.map((_, i) => i))
+  const optionen = order.map((origIdx, i) => `${OPTION_LETTERS[i]}: ${stripped[origIdx]}`)
+  const richtig = order.indexOf(frage.richtig)
+  return { ...frage, optionen, richtig }
 }
 
 // Findet das erste vollständige JSON-Array im Text (robust gegen Text/Brackets vor/nach dem Array, z.B. bei Haiku)
@@ -183,7 +194,7 @@ ${distractorText}`
     messages: [{ role: 'user', content: userMessage }],
   })
 
-  await logApiUsage(supabase, {
+  const cost_usd = await logApiUsage(supabase, {
     feature: 'quiz',
     model,
     inputTokens: msg.usage.input_tokens,
@@ -204,5 +215,7 @@ ${distractorText}`
     return NextResponse.json({ error: 'Fehler beim Parsen der KI-Antwort' }, { status: 500 })
   }
 
-  return NextResponse.json({ fragen, count: fragen.length })
+  fragen = fragen.map(shuffleOptions)
+
+  return NextResponse.json({ fragen, count: fragen.length, credits: usdToCredits(cost_usd) })
 }

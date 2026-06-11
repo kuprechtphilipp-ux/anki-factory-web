@@ -18,6 +18,12 @@ const DEFAULT_WIDTH = 256
 const MIN_WIDTH = 180
 const MAX_WIDTH = 400
 
+function markPwaPromptReady() {
+  if (localStorage.getItem('pwa-prompt-ready') === '1') return
+  localStorage.setItem('pwa-prompt-ready', '1')
+  window.dispatchEvent(new Event('pwa-prompt-ready'))
+}
+
 interface ProfileData {
   fachbereich: string | null
   lernziel: string | null
@@ -46,7 +52,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       .then((data: ProfileData | null) => {
         if (!data) return
         setProfile(data)
-        if (!data.onboarding_completed) setOnboardingOpen(true)
+        if (!data.onboarding_completed) {
+          setOnboardingOpen(true)
+        } else {
+          markPwaPromptReady()
+        }
       })
       .catch(() => {})
   }, [])
@@ -148,7 +158,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <OnboardingTour
         open={tourOpen}
-        onClose={() => setTourOpen(false)}
+        onClose={() => {
+          setTourOpen(false)
+          markPwaPromptReady()
+        }}
         steps={CRAMO_TOUR_STEPS}
         onRequestSidebarOpen={() => setSidebarOpen(true)}
         onRequestSidebarClose={() => setSidebarOpen(false)}

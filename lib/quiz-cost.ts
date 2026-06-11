@@ -11,3 +11,11 @@ export function estimateQuizCredits(anzahl: number, modus: QuizModus): number {
   const costUsd = baseUsd + perQuestionUsd * anzahl
   return Math.max(1, Math.ceil(costUsd * 100))
 }
+
+// Grobe Schätzung: ein Haiku-Call pro Karte (Bewertung der Antwort), kleiner Prompt + kurzes Feedback
+const SCHRIFTLICH_PER_KARTE_USD = 0.0008
+
+export function estimateSchriftlichCredits(anzahl: number): number {
+  const costUsd = SCHRIFTLICH_PER_KARTE_USD * anzahl
+  return Math.max(1, Math.ceil(costUsd * 100))
+}

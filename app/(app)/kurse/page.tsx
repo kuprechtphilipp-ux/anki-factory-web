@@ -227,32 +227,52 @@ export default function KursePage() {
             >
               <div className="px-5 pt-5 pb-4">
                 <div className="flex items-start gap-3">
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-bold text-white ${color.bg}`}>
-                    {kurs.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1 pt-0.5">
-                    {isRenaming ? (
-                      <div className="flex items-center gap-1">
-                        <Input
-                          autoFocus
-                          value={renameValue}
-                          onChange={(e) => setRenameValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleRename(kurs)
-                            if (e.key === 'Escape') setRenamingId(null)
-                          }}
-                          className="h-7 text-sm font-semibold"
-                        />
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleRename(kurs)} disabled={renameSaving}>
-                          <Check className="h-3.5 w-3.5 text-emerald-600" />
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setRenamingId(null)}>
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
+                  {isRenaming ? (
+                    <>
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-bold text-white ${color.bg}`}>
+                        {kurs.name.charAt(0).toUpperCase()}
                       </div>
-                    ) : (
-                      <div className="flex items-start gap-1">
-                        <h2 className="font-semibold text-base leading-tight line-clamp-2 flex-1">{kurs.name}</h2>
+                      <div className="min-w-0 flex-1 pt-0.5">
+                        <div className="flex items-center gap-1">
+                          <Input
+                            autoFocus
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleRename(kurs)
+                              if (e.key === 'Escape') setRenamingId(null)
+                            }}
+                            className="h-7 text-sm font-semibold"
+                          />
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleRename(kurs)} disabled={renameSaving}>
+                            <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setRenamingId(null)}>
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {kurs.themen.length} {kurs.themen.length === 1 ? 'Thema' : 'Themen'}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href={`/${encodeURIComponent(kurs.name)}/lernen-gesamt`}
+                        className="group/link flex min-w-0 flex-1 items-start gap-3"
+                      >
+                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-bold text-white ${color.bg}`}>
+                          {kurs.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1 pt-0.5">
+                          <h2 className="font-semibold text-base leading-tight line-clamp-2 transition-colors group-hover/link:text-primary">{kurs.name}</h2>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {kurs.themen.length} {kurs.themen.length === 1 ? 'Thema' : 'Themen'}
+                          </p>
+                        </div>
+                      </Link>
+                      <div className="flex items-start gap-1 pt-0.5">
                         <button
                           onClick={() => { setRenamingId(kurs.id); setRenameValue(kurs.name) }}
                           className="opacity-0 group-hover:opacity-100 flex h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-black/10 dark:hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all"
@@ -269,11 +289,8 @@ export default function KursePage() {
                           <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {kurs.themen.length} {kurs.themen.length === 1 ? 'Thema' : 'Themen'}
-                    </p>
-                  </div>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="px-5 py-4">
