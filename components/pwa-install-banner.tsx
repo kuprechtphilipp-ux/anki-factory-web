@@ -7,6 +7,9 @@ type Platform = 'ios' | 'android' | null
 
 const DISMISS_KEY = 'pwa-install-dismissed'
 const DISMISS_DAYS = 14
+const READY_KEY = 'pwa-prompt-ready'
+const READY_EVENT = 'pwa-prompt-ready'
+const SHOW_DELAY_MS = 1500
 
 export function PwaInstallBanner() {
   const [platform, setPlatform] = useState<Platform>(null)
@@ -23,53 +26,73 @@ export function PwaInstallBanner() {
 
     if (isStandalone) return
 
-    // Check dismiss cooldown
-    const dismissed = localStorage.getItem(DISMISS_KEY)
-    if (dismissed) {
-      const daysAgo = (Date.now() - Number(dismissed)) / 86_400_000
-      if (daysAgo < DISMISS_DAYS) return
-    }
-
     const ua = navigator.userAgent
     const isIos = /iphone|ipad|ipod/i.test(ua)
     const isAndroid = /android/i.test(ua)
+    const isMobile = isIos || isAndroid
+
+    // Dismiss check: mobile = once per browser session, desktop = cooldown across sessions
+    if (isMobile) {
+      if (sessionStorage.getItem(DISMISS_KEY)) return
+    } else {
+      const dismissed = localStorage.getItem(DISMISS_KEY)
+      if (dismissed) {
+        const daysAgo = (Date.now() - Number(dismissed)) / 86_400_000
+        if (daysAgo < DISMISS_DAYS) return
+      }
+    }
+
+    const cleanupFns: Array<() => void> = []
+
+    // Wait until shortly after onboarding before revealing the prompt
+    function whenReady(cb: () => void) {
+      if (localStorage.getItem(READY_KEY) === '1') {
+        cb()
+        return
+      }
+      const handler = () => cb()
+      window.addEventListener(READY_EVENT, handler, { once: true })
+      cleanupFns.push(() => window.removeEventListener(READY_EVENT, handler))
+    }
+
+    function reveal() {
+      whenReady(() => {
+        const timer = setTimeout(() => setVisible(true), SHOW_DELAY_MS)
+        cleanupFns.push(() => clearTimeout(timer))
+      })
+    }
 
     if (isIos) {
       // iOS Safari: show manual instructions
       const isSafari = /safari/i.test(ua) && !/chrome|crios|fxios/i.test(ua)
       if (isSafari) {
         setPlatform('ios')
-        setVisible(true)
+        reveal()
       }
-      return
-    }
-
-    if (isAndroid) {
-      // Android: wait for beforeinstallprompt
+    } else {
+      // Android & Desktop: wait for beforeinstallprompt
       const handler = (e: Event) => {
         e.preventDefault()
         setDeferredPrompt(e as Event & { prompt: () => Promise<void> })
         setPlatform('android')
-        setVisible(true)
+        reveal()
       }
       window.addEventListener('beforeinstallprompt', handler)
-      return () => window.removeEventListener('beforeinstallprompt', handler)
+      cleanupFns.push(() => window.removeEventListener('beforeinstallprompt', handler))
     }
 
-    // Desktop Chrome
-    const handler = (e: Event) => {
-      e.preventDefault()
-      setDeferredPrompt(e as Event & { prompt: () => Promise<void> })
-      setPlatform('android')
-      setVisible(true)
-    }
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+    return () => cleanupFns.forEach((fn) => fn())
   }, [])
 
   function dismiss() {
     setVisible(false)
-    localStorage.setItem(DISMISS_KEY, String(Date.now()))
+    const ua = navigator.userAgent
+    const isMobile = /iphone|ipad|ipod|android/i.test(ua)
+    if (isMobile) {
+      sessionStorage.setItem(DISMISS_KEY, '1')
+    } else {
+      localStorage.setItem(DISMISS_KEY, String(Date.now()))
+    }
   }
 
   async function install() {

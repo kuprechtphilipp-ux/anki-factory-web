@@ -6,8 +6,9 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, ArrowLeft, PenLine, CheckCircle2, XCircle, RotateCcw } from 'lucide-react'
+import { Loader2, ArrowLeft, PenLine, CheckCircle2, XCircle, RotateCcw, Coins } from 'lucide-react'
 import type { Karte } from '@/lib/types'
+import { estimateSchriftlichCredits } from '@/lib/quiz-cost'
 
 const ANZAHL_OPTIONS = [5, 10, 15, 20]
 
@@ -31,7 +32,7 @@ function getClozeAnswer(clozeText: string) {
 export default function SchriftlichPage({ params }: { params: { kurs: string; thema: string } }) {
   const kursName = decodeURIComponent(params.kurs)
   const themaName = decodeURIComponent(params.thema)
-  const backHref = `/${encodeURIComponent(params.kurs)}/${encodeURIComponent(params.thema)}`
+  const backHref = `/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}`
 
   const [themaId, setThemaId] = useState<number | null>(null)
   const [allKarten, setAllKarten] = useState<Karte[]>([])
@@ -45,6 +46,7 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
   const [checking, setChecking] = useState(false)
   const [aiFeedback, setAiFeedback] = useState<{ score: number; feedback: string; korrekt: boolean } | null>(null)
   const [results, setResults] = useState<CardResult[]>([])
+  const [creditsUsed, setCreditsUsed] = useState(0)
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -71,6 +73,7 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
     setSubmitted(false)
     setAiFeedback(null)
     setResults([])
+    setCreditsUsed(0)
     setPageState('playing')
     setTimeout(() => textareaRef.current?.focus(), 100)
   }
@@ -97,6 +100,7 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
           return
         }
         setAiFeedback(data)
+        setCreditsUsed((prev) => prev + (data.credits ?? 0))
         setChecking(false)
       })
       .catch(() => setChecking(false))
@@ -175,6 +179,10 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
             {scorePct >= 80 ? 'Ausgezeichnet!' : scorePct >= 60 ? 'Gut gemacht!' : 'Mehr Übung empfohlen'}
           </p>
           <p className="text-sm text-muted-foreground">KI-Score: <span className="font-semibold text-foreground">{avgScore}%</span> Durchschnitt</p>
+          <p className="text-xs text-muted-foreground/70 flex items-center justify-center gap-1">
+            <Coins className="h-3.5 w-3.5" />
+            {creditsUsed} Credit{creditsUsed === 1 ? '' : 's'} verbraucht
+          </p>
         </div>
 
         <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
@@ -354,6 +362,9 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
           ))}
         </div>
         <p className="text-[11px] text-muted-foreground">Aus {allKarten.length} verfügbaren Karten</p>
+        <p className="text-[11px] font-medium text-muted-foreground/80">
+          ≈ {estimateSchriftlichCredits(anzahl)} Credit{estimateSchriftlichCredits(anzahl) === 1 ? '' : 's'}
+        </p>
       </div>
 
       <div className="rounded-xl border border-primary/15 bg-primary/5 px-4 py-3 flex items-start gap-3">

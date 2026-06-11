@@ -14,6 +14,7 @@ interface ProfilePlanData {
   credits_used: number
   credits_reset_at: string
   redeemed_code: string | null
+  is_admin: boolean
 }
 
 export function PlanBanner() {
@@ -63,7 +64,7 @@ export function PlanBanner() {
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">
             Dein Plan
           </p>
-          <PlanOverview plan={data.plan} />
+          <PlanOverview plan={data.plan} isAdmin={data.is_admin} redeemedCode={data.redeemed_code} />
         </div>
         <Separator />
         <div className="space-y-2">
