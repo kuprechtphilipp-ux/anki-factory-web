@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -29,9 +29,16 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('de', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+type PreviewState =
+  | { status: 'loading' }
+  | { status: 'none' } // kein bestehendes Abo -> Stripe Checkout, keine Proration
+  | { status: 'ready'; amount: number; currency: string }
+  | { status: 'error' }
+
 export function UpgradeDialog({ open, onOpenChange, currentPlan, targetPlan, priceChf, onChanged }: UpgradeDialogProps) {
   const [loading, setLoading] = useState(false)
   const [cancelAt, setCancelAt] = useState<string | null>(null)
+  const [preview, setPreview] = useState<PreviewState>({ status: 'loading' })
 
   const mode: 'upgrade' | 'downgrade' | 'cancel' =
     targetPlan === 'basic'
@@ -39,6 +46,29 @@ export function UpgradeDialog({ open, onOpenChange, currentPlan, targetPlan, pri
       : PLAN_ORDER.indexOf(targetPlan) > PLAN_ORDER.indexOf(currentPlan)
         ? 'upgrade'
         : 'downgrade'
+
+  useEffect(() => {
+    if (!open || mode === 'cancel') return
+    setPreview({ status: 'loading' })
+    fetch('/api/billing/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan: targetPlan }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { hasSubscription?: boolean; prorationAmount?: number; currency?: string } | null) => {
+        if (!data) { setPreview({ status: 'error' }); return }
+        if (!data.hasSubscription) { setPreview({ status: 'none' }); return }
+        setPreview({ status: 'ready', amount: data.prorationAmount ?? 0, currency: data.currency ?? 'chf' })
+      })
+      .catch(() => setPreview({ status: 'error' }))
+  }, [open, mode, targetPlan])
+
+  function formatProration(amount: number, currency: string): string {
+    const value = Math.abs(amount) / 100
+    const formatted = new Intl.NumberFormat('de-CH', { style: 'currency', currency: currency.toUpperCase() }).format(value)
+    return formatted
+  }
 
   async function handleCheckout() {
     setLoading(true)
@@ -155,17 +185,38 @@ export function UpgradeDialog({ open, onOpenChange, currentPlan, targetPlan, pri
           </DialogDescription>
         </DialogHeader>
 
-        {mode === 'upgrade' ? (
+        {preview.status === 'none' ? (
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Du wirst zur sicheren Stripe-Checkout-Seite weitergeleitet (oder dein bestehendes Abo wird
-            anteilig umgestellt). Das Abo läuft monatlich und kann jederzeit über &quot;Abo verwalten&quot;
-            in deinem Account gekündigt werden.
+            Du wirst zur sicheren Stripe-Checkout-Seite weitergeleitet. Das Abo läuft monatlich und
+            kann jederzeit über &quot;Abo verwalten&quot; in deinem Account gekündigt werden.
           </p>
         ) : (
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Dein Abo wird auf {PLAN_LABELS[targetPlan]} umgestellt. Die Differenz wird anteilig mit
-            deiner nächsten Rechnung verrechnet. Das Abo läuft monatlich und kann jederzeit über
-            &quot;Abo verwalten&quot; in deinem Account gekündigt werden.
+            Dein Abo wird auf {PLAN_LABELS[targetPlan]} umgestellt. Das Abo läuft monatlich und kann
+            jederzeit über &quot;Abo verwalten&quot; in deinem Account gekündigt werden.
+            <br className="my-1" />
+            {preview.status === 'loading' && (
+              <span className="inline-flex items-center gap-1.5 mt-1.5 text-xs">
+                <Loader2 className="h-3 w-3 animate-spin" /> Berechne anteiligen Betrag…
+              </span>
+            )}
+            {preview.status === 'ready' && preview.amount > 0 && (
+              <span className="block mt-1.5 font-medium text-foreground">
+                Dir werden {formatProration(preview.amount, preview.currency)} anteilig auf der
+                nächsten Rechnung zusätzlich berechnet.
+              </span>
+            )}
+            {preview.status === 'ready' && preview.amount < 0 && (
+              <span className="block mt-1.5 font-medium text-foreground">
+                Dir werden {formatProration(preview.amount, preview.currency)} anteilig auf der
+                nächsten Rechnung gutgeschrieben.
+              </span>
+            )}
+            {preview.status === 'ready' && preview.amount === 0 && (
+              <span className="block mt-1.5 font-medium text-foreground">
+                Es entstehen keine zusätzlichen Kosten.
+              </span>
+            )}
           </p>
         )}
 
