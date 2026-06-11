@@ -30,7 +30,7 @@ export function CramoChatWidget() {
         <div className="flex items-center justify-between border-b border-border/50 px-4 py-3 shrink-0">
           <div className="flex items-center gap-2">
             <img
-              src="/icons/Cramo_Icons/Cramo_Ai-Chat_Icon.jpeg"
+              src="/icons/Cramo_Icons/Cramo_Fresh_Ai_Chat_Icon.png"
               alt="Cramo"
               className="h-9 w-9 rounded-full object-cover"
             />
@@ -69,7 +69,7 @@ export function CramoChatWidget() {
           </div>
         ) : (
           <img
-            src="/icons/Cramo_Icons/Cramo_Ai-Chat_Icon.jpeg"
+            src="/icons/Cramo_Icons/Cramo_Fresh_Ai_Chat_Icon.png"
             alt="Cramo-Chat öffnen"
             className="h-full w-full object-cover"
           />

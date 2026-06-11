@@ -141,7 +141,7 @@ export function CramoChat({ mode, placeholder, introMessage, className }: CramoC
 function CramoAvatar() {
   return (
     <img
-      src="/icons/Cramo_Icons/Cramo_Ai-Chat_Icon.jpeg"
+      src="/icons/Cramo_Icons/Cramo_Fresh_Ai_Chat_Icon.png"
       alt="Cramo"
       className="h-10 w-10 shrink-0 rounded-full object-cover"
     />

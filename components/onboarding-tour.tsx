@@ -232,7 +232,7 @@ export function OnboardingTour({ open, onClose, steps, onRequestSidebarOpen, onR
 
             <div className="flex items-start gap-3">
               <img
-                src="/icons/Cramo_Icons/Cramo_Ai-Chat_Icon.jpeg"
+                src="/icons/Cramo_Icons/Cramo_Fresh_Ai_Chat_Icon.png"
                 alt="Cramo"
                 className="h-9 w-9 rounded-full object-cover shrink-0"
               />

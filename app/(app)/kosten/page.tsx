@@ -194,7 +194,7 @@ export default function KostenPage() {
 
       {/* Metric cards */}
       <div className="space-y-3">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Anthropic API-Kosten</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Cramo API-Kosten</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <StatCard icon={<DollarSign className="h-5 w-5 text-emerald-500" />} label="Heute" value={fmtUsd(data.heute)} />
           <StatCard icon={<Calendar className="h-5 w-5 text-blue-500" />} label="Diese Woche" value={fmtUsd(data.woche)} />

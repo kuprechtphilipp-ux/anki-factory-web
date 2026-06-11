@@ -1110,7 +1110,7 @@ export default function ThemaPage({ params }: Props) {
                   <ScanSearch className="h-4.5 w-4.5 text-violet-600 dark:text-violet-400 animate-pulse" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">Claude analysiert dein Dokument...</p>
+                  <p className="text-sm font-semibold">Cramo analysiert dein Dokument...</p>
                   <p className="text-xs text-muted-foreground">Ermittle optimale Einstellungen</p>
                 </div>
               </div>

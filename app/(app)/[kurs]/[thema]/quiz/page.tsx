@@ -157,7 +157,7 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
         <div>
           <p className="text-lg font-semibold">Quiz wird generiert</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Claude analysiert deine Karten und erstellt Prüfungsfragen...
+            Cramo analysiert deine Karten und erstellt Prüfungsfragen...
           </p>
         </div>
         <div className="h-1 w-48 mx-auto rounded-full bg-muted overflow-hidden">

@@ -24,7 +24,7 @@ export default function TutorPage() {
     <div className="flex flex-col gap-6 h-full">
       <div className="flex items-center gap-3">
         <img
-          src="/icons/Cramo_Icons/Cramo_Ai-Chat_Icon.jpeg"
+          src="/icons/Cramo_Icons/Cramo_Fresh_Ai_Chat_Icon.png"
           alt="Cramo"
           className="h-12 w-12 rounded-full object-cover shrink-0"
         />
