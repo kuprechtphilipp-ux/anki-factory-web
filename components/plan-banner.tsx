@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator'
 import { PlanBadge } from '@/components/plan-badge'
 import { PlanOverview } from '@/components/plan-overview'
 import { RedeemInviteCode } from '@/components/redeem-invite-code'
+import { PLAN_UPDATED_EVENT } from '@/lib/plans'
 import type { Plan } from '@/lib/types'
 
 interface ProfilePlanData {
@@ -15,6 +16,7 @@ interface ProfilePlanData {
   credits_reset_at: string
   redeemed_code: string | null
   is_admin: boolean
+  stripe_cancel_at: string | null
 }
 
 export function PlanBanner() {
@@ -28,6 +30,11 @@ export function PlanBanner() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    window.addEventListener(PLAN_UPDATED_EVENT, load)
+    return () => window.removeEventListener(PLAN_UPDATED_EVENT, load)
+  }, [load])
 
   if (!data) return null
 
@@ -64,7 +71,13 @@ export function PlanBanner() {
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">
             Dein Plan
           </p>
-          <PlanOverview plan={data.plan} isAdmin={data.is_admin} redeemedCode={data.redeemed_code} />
+          <PlanOverview
+            plan={data.plan}
+            isAdmin={data.is_admin}
+            redeemedCode={data.redeemed_code}
+            stripeCancelAt={data.stripe_cancel_at}
+            onChanged={load}
+          />
         </div>
         <Separator />
         <div className="space-y-2">

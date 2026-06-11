@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PlanBadge } from '@/components/plan-badge'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
-import { PLAN_ORDER, DEFAULT_PLAN_CONFIG, formatPlanPrice, type PlanConfig } from '@/lib/plans'
+import { toast } from 'sonner'
+import { PLAN_ORDER, DEFAULT_PLAN_CONFIG, PLAN_UPDATED_EVENT, formatPlanPrice, type PlanConfig } from '@/lib/plans'
 import type { Plan } from '@/lib/types'
 
 interface PlanOverviewProps {
@@ -12,6 +14,7 @@ interface PlanOverviewProps {
   isAdmin?: boolean
   redeemedCode?: string | null
   planExpiresAt?: string | null
+  stripeCancelAt?: string | null
   onChanged?: () => void
 }
 
@@ -24,9 +27,10 @@ function buttonLabel(targetPlan: Plan, currentPlan: Plan): string {
   return PLAN_ORDER.indexOf(targetPlan) > PLAN_ORDER.indexOf(currentPlan) ? 'Upgrade' : 'Auswählen'
 }
 
-export function PlanOverview({ plan, isAdmin = false, redeemedCode = null, planExpiresAt = null, onChanged }: PlanOverviewProps) {
+export function PlanOverview({ plan, isAdmin = false, redeemedCode = null, planExpiresAt = null, stripeCancelAt = null, onChanged }: PlanOverviewProps) {
   const [dialogPlan, setDialogPlan] = useState<Plan | null>(null)
   const [config, setConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG)
+  const [reactivating, setReactivating] = useState(false)
 
   useEffect(() => {
     fetch('/api/plan-config')
@@ -34,6 +38,25 @@ export function PlanOverview({ plan, isAdmin = false, redeemedCode = null, planE
       .then((d: PlanConfig | null) => { if (d) setConfig(d) })
       .catch(() => {})
   }, [])
+
+  async function handleReactivate() {
+    setReactivating(true)
+    try {
+      const res = await fetch('/api/billing/cancel', { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json() as { error?: string }
+        toast.error(data.error ?? 'Abo konnte nicht reaktiviert werden')
+        return
+      }
+      toast.success('Abo reaktiviert', { description: 'Dein Plan läuft wie gewohnt weiter.' })
+      onChanged?.()
+      window.dispatchEvent(new Event(PLAN_UPDATED_EVENT))
+    } catch {
+      toast.error('Abo konnte nicht reaktiviert werden')
+    } finally {
+      setReactivating(false)
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -61,7 +84,23 @@ export function PlanOverview({ plan, isAdmin = false, redeemedCode = null, planE
                 {isCurrent ? (
                   <div className="space-y-0.5">
                     <span className="text-xs font-semibold text-primary whitespace-nowrap">Aktueller Plan</span>
-                    {isAdmin ? (
+                    {stripeCancelAt ? (
+                      <div className="space-y-1">
+                        <p className="text-xs text-rose-500 font-medium whitespace-nowrap">
+                          Gekündigt — läuft bis {fmtDate(stripeCancelAt)}
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={handleReactivate}
+                          disabled={reactivating}
+                        >
+                          {reactivating ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                          Reaktivieren
+                        </Button>
+                      </div>
+                    ) : isAdmin ? (
                       <p className="text-xs font-semibold text-amber-500 whitespace-nowrap">Owner</p>
                     ) : redeemedCode && entry.price_chf !== null ? (
                       <div className="text-xs leading-tight">

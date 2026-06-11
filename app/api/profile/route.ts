@@ -9,7 +9,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('profiles_with_credits')
-    .select('fachbereich, lernziel, lernfenster, onboarding_completed, plan, base_plan, plan_expires_at, stripe_customer_id, credits_total, credits_used, credits_reset_at, email, is_admin')
+    .select('fachbereich, lernziel, lernfenster, onboarding_completed, plan, base_plan, plan_expires_at, stripe_customer_id, stripe_cancel_at, credits_total, credits_used, credits_reset_at, email, is_admin')
     .eq('id', user.id)
     .single()
 

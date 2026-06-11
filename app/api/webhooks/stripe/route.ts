@@ -84,6 +84,13 @@ export async function POST(req: Request) {
           p_subscription_id: subscription.id,
         })
       }
+
+      if (userId && isCurrentSubscription) {
+        await supabase
+          .from('profiles')
+          .update({ stripe_cancel_at: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null })
+          .eq('id', userId)
+      }
       break
     }
 
@@ -98,6 +105,7 @@ export async function POST(req: Request) {
       // doppelten Subscription den aktiven Plan auf Basic zuruecksetzt).
       if (userId && profile?.stripe_subscription_id === subscription.id) {
         await supabase.rpc('cancel_stripe_subscription', { p_user_id: userId })
+        await supabase.from('profiles').update({ stripe_cancel_at: null }).eq('id', userId)
       }
       break
     }

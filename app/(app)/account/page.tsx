@@ -34,6 +34,7 @@ interface ProfileData {
   base_plan: Plan
   plan_expires_at: string | null
   stripe_customer_id: string | null
+  stripe_cancel_at: string | null
   credits_total: number
   credits_used: number
   email: string | null
@@ -248,6 +249,7 @@ export default function AccountPage() {
           isAdmin={profile.is_admin}
           redeemedCode={profile.redeemed_code}
           planExpiresAt={profile.plan_expires_at}
+          stripeCancelAt={profile.stripe_cancel_at}
           onChanged={refetchProfile}
         />
         <p className="text-sm text-muted-foreground">

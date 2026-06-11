@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Loader2, CreditCard, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { PlanBadge } from '@/components/plan-badge'
-import { formatPlanPrice, PLAN_ORDER, PLAN_LABELS } from '@/lib/plans'
+import { formatPlanPrice, PLAN_ORDER, PLAN_LABELS, PLAN_UPDATED_EVENT } from '@/lib/plans'
 import type { Plan } from '@/lib/types'
 
 interface UpgradeDialogProps {
@@ -58,6 +58,7 @@ export function UpgradeDialog({ open, onOpenChange, currentPlan, targetPlan, pri
           description: 'Du kannst dein Abo jederzeit unter Account & Profil verwalten.',
         })
         onChanged?.()
+        window.dispatchEvent(new Event(PLAN_UPDATED_EVENT))
         onOpenChange(false)
         return
       }
@@ -91,6 +92,7 @@ export function UpgradeDialog({ open, onOpenChange, currentPlan, targetPlan, pri
           : 'Dein Plan wird zum Ende der aktuellen Periode auf Basic zurückgestuft.',
       })
       onChanged?.()
+      window.dispatchEvent(new Event(PLAN_UPDATED_EVENT))
     } catch {
       toast.error('Abo konnte nicht gekündigt werden')
     } finally {

@@ -3,6 +3,11 @@ import type { Plan } from '@/lib/types'
 
 export const PLAN_ORDER: Plan[] = ['basic', 'basic_plus', 'premium', 'ultra']
 
+// Globales Event: wird ausgeloest, wenn sich Plan/Abo-Status aendert (Upgrade,
+// Wechsel, Kuendigung, Reaktivierung), damit z.B. die PlanBanner im Header
+// ihre Daten neu laedt, auch wenn die Aenderung auf einer anderen Seite erfolgte.
+export const PLAN_UPDATED_EVENT = 'plan-updated'
+
 export const PLAN_LABELS: Record<Plan, string> = {
   basic: 'Basic',
   basic_plus: 'Basic+',
