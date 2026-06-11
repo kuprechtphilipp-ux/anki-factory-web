@@ -43,21 +43,15 @@ export const CRAMO_TOUR_STEPS: TourStep[] = [
     placement: 'left',
   },
   {
-    target: 'lightbulb-button',
-    title: 'Bis bald',
-    content: 'Falls du diese Tour oder deine Angaben nochmal ändern willst: einfach hier klicken. Viel Erfolg!',
-    placement: 'bottom',
-  },
-  {
     target: 'plan-banner',
     title: 'Dein Plan',
     content: 'Hier oben siehst du immer deinen aktuellen Plan und deine Credits. Klick drauf, um zu upgraden oder einen Einladungscode einzulösen.',
     placement: 'bottom',
   },
   {
-    target: 'plan-banner',
-    title: 'Dein Start-Guthaben',
-    content: 'Du startest auf dem Basic-Plan, kostenlos, mit einem kleinen Guthaben an Credits zum Reinschnuppern. Wenn es eng wird: hier oben kannst du jederzeit upgraden oder einen Einladungscode einlösen.',
+    target: 'lightbulb-button',
+    title: 'Bis bald',
+    content: 'Falls du diese Tour oder deine Angaben nochmal ändern willst: einfach hier klicken. Viel Erfolg!',
     placement: 'bottom',
   },
 ]
