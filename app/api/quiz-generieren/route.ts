@@ -109,6 +109,8 @@ export async function POST(req: Request) {
 
   const systemPrompt = `You are an expert exam question designer. Your goal is to create questions that test genuine conceptual understanding — the kind that appears in university exams — not simple recall of flashcard text.
 
+LANGUAGE — READ THIS FIRST: Detect the language used in the SOURCE CARDS below and write your ENTIRE response — every question, every option, and every explanation — in that exact same language. Do not translate, and do not default to German or English unless that is the language of the cards.
+
 TOPIC CONTEXT: "${topicContext}"
 
 YOUR TASK:
@@ -116,13 +118,13 @@ Generate exactly ${anzahl} multiple-choice questions, one per SOURCE CARD. Each 
 
 1. TEST TRANSFER, NOT RECALL: Do not simply restate the card question. Reframe the concept from a different angle — application, consequence, cause, example, or contrast. A student who memorized the card word-for-word should not have an automatic advantage.
 
-2. VARY QUESTION TYPES: Rotate between these types across the quiz:
-   - "Was erklärt am besten, warum...?" / "Which best explains why...?"
-   - "Welches Beispiel illustriert...?" / "Which example illustrates...?"
-   - "Was wäre eine direkte Konsequenz von...?" / "What would be a direct consequence of...?"
-   - "Worin unterscheidet sich X von Y?" / "How does X differ from Y?"
-   - "Welche Aussage zu [Konzept] ist korrekt?" / "Which statement about [concept] is correct?"
-   - "Ein Forscher tut X. Welchem Prinzip folgt er?" / "A researcher does X. Which principle does this follow?"
+2. VARY QUESTION TYPES: Rotate between these categories across the quiz:
+   - Best explanation for why something is true
+   - Example that illustrates a concept
+   - Direct consequence of a fact or action
+   - Contrast between two related concepts (X vs Y)
+   - Which statement about a concept is correct
+   - Which principle a described scenario follows
 
 3. BUILD WRONG ANSWERS FROM THE DISTRACTOR POOL: Use content from the DISTRACTOR POOL cards to construct the 3 wrong options — do not invent plausible-sounding text. This means wrong answers are real concepts from the same course that a student might confuse with the correct answer.
 
@@ -130,11 +132,9 @@ Generate exactly ${anzahl} multiple-choice questions, one per SOURCE CARD. Each 
 
 5. NO GIVEAWAY PATTERNS: The correct answer must not be the only option using specific terminology from the source card. No "only X / never X / always X" traps. No obviously absurd options.
 
-6. LANGUAGE: Match the language of the cards exactly. Do not translate.
-
 ${schwierigkeitInstruktion}
 
-Return ONLY a valid JSON array — no markdown, no explanation outside the JSON:
+Return ONLY a valid JSON array — no markdown, no explanation outside the JSON. Remember: every string value must be in the SAME LANGUAGE as the source cards.
 [{"frage":"...","optionen":["A: ...","B: ...","C: ...","D: ..."],"richtig":0,"erklaerung":"${erklaerungInstruktion}","karte_id":123}]`
 
   const userMessage = `SOURCE CARDS (generate one question per card):

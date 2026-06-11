@@ -305,3 +305,4 @@ npm run generate-image -- "<PROMPT>" "<DATEINAME>"
 - Keine Auth nötig (Single-User App) — RLS Policy erlaubt alles
 - shadcn/ui Komponenten via `npx shadcn@latest add [component]` installieren
 - Bilder als base64 in der DB speichern (wie bisher in der Streamlit-App)
+- **Finaler Schritt jeder Code-Änderung:** `npx tsc --noEmit` (+ ggf. `npx eslint <geänderte Dateien>`) statt `npm run build`/`npm run dev` ausführen — auf dem M1 8GB schlagen lokale Builds/Dev-Server fehl bzw. überlasten den Rechner. Danach committen und pushen (User testet via Vercel-Preview/-Production), siehe `docs/vercel_preview_workflow.md`.
