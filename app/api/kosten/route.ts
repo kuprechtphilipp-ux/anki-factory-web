@@ -25,7 +25,7 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const { data: profile } = await supabase
-    .from('profiles')
+    .from('profiles_with_credits')
     .select('plan, credits_total, credits_used')
     .eq('id', user.id)
     .single()

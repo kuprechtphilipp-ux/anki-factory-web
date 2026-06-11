@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
-import { logApiUsage, getCreditStatus, incrementCreditsUsed, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
+import { logApiUsage, getCreditStatus, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
 
 export const maxDuration = 30
 
@@ -55,14 +55,13 @@ Respond ONLY with valid JSON: {"score":85,"feedback":"Short, constructive feedba
       messages: [{ role: 'user', content: prompt }],
     })
 
-    const cost_usd = await logApiUsage(supabase, {
+    await logApiUsage(supabase, {
       feature: 'schriftlich',
       model: 'claude-haiku-4-5-20251001',
       inputTokens: msg.usage.input_tokens,
       outputTokens: msg.usage.output_tokens,
       userId: user.id,
     })
-    await incrementCreditsUsed(supabase, user.id, cost_usd)
 
     const raw = msg.content[0].type === 'text' ? msg.content[0].text : ''
     const jsonMatch = raw.match(/\{[\s\S]*\}/)

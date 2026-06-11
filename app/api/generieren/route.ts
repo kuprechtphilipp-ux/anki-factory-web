@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import pdf from 'pdf-parse'
-import { logApiUsage, getCreditStatus, incrementCreditsUsed, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
+import { logApiUsage, getCreditStatus, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
 
 export const maxDuration = 300
 
@@ -278,7 +278,7 @@ ${existingList}`
         messages: [{ role: 'user', content: userContent }],
       })
 
-      const cost_usd = await logApiUsage(supabase, {
+      await logApiUsage(supabase, {
         feature: 'generieren',
         model: 'claude-sonnet-4-6',
         inputTokens: message.usage.input_tokens,
@@ -286,7 +286,6 @@ ${existingList}`
         themaId: Number(themaId),
         userId: user.id,
       })
-      await incrementCreditsUsed(supabase, user.id, cost_usd)
 
       const raw = (message.content[0] as { type: 'text'; text: string }).text
       try {

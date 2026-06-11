@@ -8,7 +8,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data, error } = await supabase
-    .from('profiles')
+    .from('profiles_with_credits')
     .select('fachbereich, lernziel, lernfenster, onboarding_completed, plan, credits_total, credits_used, credits_reset_at, email')
     .eq('id', user.id)
     .single()
