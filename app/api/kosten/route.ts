@@ -26,9 +26,11 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from('profiles_with_credits')
-    .select('plan, credits_total, credits_used')
+    .select('plan, credits_total, credits_used, is_admin')
     .eq('id', user.id)
     .single()
+
+  const { data: redeemedCode } = await supabase.rpc('get_my_redeemed_code')
 
   const creditsTotal = profile?.credits_total ?? 0
   const creditsUsed = profile?.credits_used ?? 0
@@ -37,6 +39,8 @@ export async function GET() {
     total: creditsTotal,
     used: creditsUsed,
     remaining: Math.max(0, creditsTotal - creditsUsed),
+    isAdmin: profile?.is_admin ?? false,
+    redeemedCode: redeemedCode ?? null,
   }
 
   const rows = (data ?? []) as UsageRow[]

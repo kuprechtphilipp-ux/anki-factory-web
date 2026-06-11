@@ -7,7 +7,13 @@ import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { PLAN_ORDER, DEFAULT_PLAN_CONFIG, formatPlanPrice, type PlanConfig } from '@/lib/plans'
 import type { Plan } from '@/lib/types'
 
-export function PlanOverview({ plan }: { plan: Plan }) {
+interface PlanOverviewProps {
+  plan: Plan
+  isAdmin?: boolean
+  redeemedCode?: string | null
+}
+
+export function PlanOverview({ plan, isAdmin = false, redeemedCode = null }: PlanOverviewProps) {
   const [dialogPlan, setDialogPlan] = useState<Plan | null>(null)
   const [config, setConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG)
 
@@ -42,7 +48,19 @@ export function PlanOverview({ plan }: { plan: Plan }) {
               </div>
               <div className="shrink-0 text-right">
                 {isCurrent ? (
-                  <span className="text-xs font-semibold text-primary whitespace-nowrap">Aktueller Plan</span>
+                  <div className="space-y-1">
+                    <span className="text-xs font-semibold text-primary whitespace-nowrap">Aktueller Plan</span>
+                    {isAdmin ? (
+                      <p className="text-xs font-semibold text-amber-500 whitespace-nowrap">Owner</p>
+                    ) : redeemedCode && entry.price_chf !== null ? (
+                      <p className="text-xs whitespace-nowrap">
+                        <span className="text-muted-foreground line-through">{formatPlanPrice(entry.price_chf)}</span>{' '}
+                        <span className="text-emerald-600 font-medium">Free via Promocode</span>
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground whitespace-nowrap">{formatPlanPrice(entry.price_chf)}</p>
+                    )}
+                  </div>
                 ) : (
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground whitespace-nowrap">{formatPlanPrice(entry.price_chf)}</p>

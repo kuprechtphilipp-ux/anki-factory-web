@@ -37,6 +37,8 @@ interface CreditsInfo {
   total: number
   used: number
   remaining: number
+  isAdmin: boolean
+  redeemedCode: string | null
 }
 
 interface KostenData {
@@ -193,7 +195,7 @@ export default function KostenPage() {
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Dein Zugang</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
           <CreditsDonut credits={data.credits} />
-          <PlanOverview plan={(data.credits.plan as Plan) ?? 'basic'} />
+          <PlanOverview plan={(data.credits.plan as Plan) ?? 'basic'} isAdmin={data.credits.isAdmin} redeemedCode={data.credits.redeemedCode} />
         </div>
       </div>
 
