@@ -13,13 +13,13 @@ const geistSans = localFont({
 })
 
 export const metadata: Metadata = {
-  title: 'Anki Factory',
+  title: 'Cramo Learning',
   description: 'AI-powered Flashcards für Prüfungsvorbereitung',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Anki Factory',
+    title: 'Cramo Learning',
   },
   icons: {
     apple: '/apple-touch-icon.png',

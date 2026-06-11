@@ -1,6 +1,6 @@
 {
-  "name": "Anki Factory",
-  "short_name": "AnkiFactory",
+  "name": "Cramo Learning",
+  "short_name": "Cramo",
   "description": "AI-powered Flashcards für Prüfungsvorbereitung",
   "start_url": "/",
   "display": "standalone",

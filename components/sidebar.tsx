@@ -267,8 +267,8 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
       {/* Logo — safe-area wrapper extends behind iOS status bar */}
       <div className="shrink-0 border-b border-border/50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex h-14 items-center gap-2.5 px-4">
-          <img src="/icons/icon-192.png" alt="Anki Factory" className="h-8 w-8 rounded-lg" />
-          <span className="font-semibold gradient-text tracking-tight">Anki Factory</span>
+          <img src="/icons/icon-192.png" alt="Cramo Learning" className="h-8 w-8 rounded-lg" />
+          <span className="font-semibold gradient-text tracking-tight">Cramo Learning</span>
           {/* Close button — mobile only */}
           <button
             onClick={onClose}

@@ -94,11 +94,11 @@ export function PwaInstallBanner() {
         <div className="flex items-start gap-3 px-4 pt-4 pb-3">
           {/* App icon */}
           <div className="shrink-0 h-12 w-12 rounded-2xl overflow-hidden shadow-sm border border-border/40">
-            <img src="/icons/icon-192.png" alt="Anki Factory" className="h-full w-full object-cover" />
+            <img src="/icons/icon-192.png" alt="Cramo Learning" className="h-full w-full object-cover" />
           </div>
 
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold leading-tight">Anki Factory</p>
+            <p className="text-sm font-semibold leading-tight">Cramo Learning</p>
             <p className="text-xs text-muted-foreground mt-0.5">
               {platform === 'ios'
                 ? 'Zum Startbildschirm hinzufügen'

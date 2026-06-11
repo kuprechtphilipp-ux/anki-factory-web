@@ -143,7 +143,7 @@ function CramoAvatar() {
     <img
       src="/icons/Cramo_Icons/Cramo_Ai-Chat_Icon.jpeg"
       alt="Cramo"
-      className="h-7 w-7 shrink-0 rounded-full object-cover"
+      className="h-10 w-10 shrink-0 rounded-full object-cover"
     />
   )
 }
