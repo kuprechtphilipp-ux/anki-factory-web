@@ -48,15 +48,15 @@ export function PlanOverview({ plan, isAdmin = false, redeemedCode = null }: Pla
               </div>
               <div className="shrink-0 text-right">
                 {isCurrent ? (
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     <span className="text-xs font-semibold text-primary whitespace-nowrap">Aktueller Plan</span>
                     {isAdmin ? (
                       <p className="text-xs font-semibold text-amber-500 whitespace-nowrap">Owner</p>
                     ) : redeemedCode && entry.price_chf !== null ? (
-                      <p className="text-xs whitespace-nowrap">
-                        <span className="text-muted-foreground line-through">{formatPlanPrice(entry.price_chf)}</span>{' '}
-                        <span className="text-emerald-600 font-medium">Free via Promocode</span>
-                      </p>
+                      <div className="text-xs leading-tight">
+                        <p className="text-muted-foreground line-through whitespace-nowrap">{formatPlanPrice(entry.price_chf)}</p>
+                        <p className="text-emerald-600 font-medium whitespace-nowrap">Free via Promocode</p>
+                      </div>
                     ) : (
                       <p className="text-xs text-muted-foreground whitespace-nowrap">{formatPlanPrice(entry.price_chf)}</p>
                     )}

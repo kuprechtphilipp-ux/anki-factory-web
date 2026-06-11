@@ -35,6 +35,7 @@ interface ProfileData {
   credits_used: number
   email: string | null
   redeemed_code: string | null
+  is_admin: boolean
 }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
@@ -216,7 +217,7 @@ export default function AccountPage() {
       </Card>
 
       <Card title="Plan & Credits">
-        <PlanOverview plan={profile.plan} />
+        <PlanOverview plan={profile.plan} isAdmin={profile.is_admin} redeemedCode={profile.redeemed_code} />
         <p className="text-sm text-muted-foreground">
           {profile.credits_used} / {profile.credits_total} Credits verbraucht
         </p>
