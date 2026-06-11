@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, BookOpen, RotateCcw } from 'lucide-react'
 import type { QuizFrage } from '@/lib/types'
+import { estimateQuizCredits, type QuizModus } from '@/lib/quiz-cost'
 
 type QuizState = 'idle' | 'generating' | 'playing' | 'done'
 
@@ -14,7 +15,7 @@ interface AnswerRecord {
   correct: boolean
 }
 
-const ANZAHL_OPTIONS = [5, 10, 15, 20]
+const ANZAHL_OPTIONS = [10, 15, 20]
 
 export default function QuizPage({ params }: { params: { kurs: string; thema: string } }) {
   const kursName = decodeURIComponent(params.kurs)
@@ -31,7 +32,7 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
   const [answers, setAnswers] = useState<AnswerRecord[]>([])
   const [revealed, setRevealed] = useState(false)
   const [anzahl, setAnzahl] = useState(10)
-  const [schwierigkeit, setSchwierigkeit] = useState<'leicht' | 'mittel' | 'schwer'>('mittel')
+  const [modus, setModus] = useState<QuizModus>('quick')
   const [genError, setGenError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -57,7 +58,7 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
       const res = await fetch('/api/quiz-generieren', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ thema_id: themaId, anzahl, schwierigkeit }),
+        body: JSON.stringify({ thema_id: themaId, anzahl, modus }),
       })
       const data = await res.json()
       if (!res.ok || data.error) {
@@ -346,27 +347,39 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
       </div>
 
       <div className="space-y-3 p-5 rounded-2xl bg-card border border-border/50 shadow-card">
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Schwierigkeit</p>
-        <div className="flex gap-2">
-          {(['leicht', 'mittel', 'schwer'] as const).map((s) => (
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Quiz-Modus</p>
+        <div className="grid sm:grid-cols-2 gap-2.5">
+          {([
+            {
+              value: 'quick' as const,
+              title: 'Cramo Quick Quiz',
+              description: 'Schnell & günstig — ideal zum häufigen Üben',
+            },
+            {
+              value: 'pruefung' as const,
+              title: 'Cramo Prüfungs-ready Quiz',
+              description: 'Gründlichere Distraktoren aus deinem ganzen Deck — für die finale Vorbereitung',
+            },
+          ]).map((option) => (
             <button
-              key={s}
-              onClick={() => setSchwierigkeit(s)}
-              className={`flex-1 rounded-xl border-2 py-2.5 text-sm font-semibold transition-all capitalize ${
-                schwierigkeit === s
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border/60 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+              key={option.value}
+              onClick={() => setModus(option.value)}
+              className={`text-left rounded-xl border-2 p-3.5 transition-all ${
+                modus === option.value
+                  ? 'border-primary bg-primary/10'
+                  : 'border-border/60 hover:border-primary/40'
               }`}
             >
-              {s.charAt(0).toUpperCase() + s.slice(1)}
+              <p className={`text-sm font-semibold ${modus === option.value ? 'text-primary' : 'text-foreground'}`}>
+                {option.title}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{option.description}</p>
+              <p className="text-[11px] font-medium text-muted-foreground/80 mt-2">
+                ≈ {estimateQuizCredits(anzahl, option.value)} Credit{estimateQuizCredits(anzahl, option.value) === 1 ? '' : 's'}
+              </p>
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-muted-foreground">
-          {schwierigkeit === 'leicht' && 'Klar unterscheidbare Optionen'}
-          {schwierigkeit === 'mittel' && 'Plausible Distraktoren'}
-          {schwierigkeit === 'schwer' && 'Subtile Unterschiede, Missverständnisse'}
-        </p>
       </div>
 
       <Button

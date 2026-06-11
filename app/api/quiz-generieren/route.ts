@@ -12,14 +12,14 @@ function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5)
 }
 
-function cardToText(k: Karte): string {
+function cardToText(k: Karte, includeKontext = true): string {
   if (k.typ === 'cloze' && k.cloze_text) {
     const answer = Array.from(k.cloze_text.matchAll(/\{\{c\d+::([^}]+)\}\}/g)).map(m => m[1]).join('; ')
     const question = k.cloze_text.replace(/\{\{c\d+::([^}]+)\}\}/g, '[...]')
     return `Lückentext: ${question}\nAntwort: ${answer}`
   }
   const parts = [`Frage: ${k.frage}`, `Antwort: ${k.antwort}`]
-  if (k.kontext) parts.push(`Kontext: ${k.kontext}`)
+  if (includeKontext && k.kontext) parts.push(`Kontext: ${k.kontext}`)
   return parts.join('\n')
 }
 
@@ -34,11 +34,12 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json()
-  const { thema_id, kurs_name, anzahl = 10, schwierigkeit = 'mittel' } = body as {
+  const { thema_id, kurs_name, anzahl = 10, schwierigkeit = 'mittel', modus = 'pruefung' } = body as {
     thema_id?: number
     kurs_name?: string
     anzahl?: number
     schwierigkeit?: 'leicht' | 'mittel' | 'schwer'
+    modus?: 'quick' | 'pruefung'
   }
 
   // Resolve thema/kurs names for context
@@ -81,7 +82,8 @@ export async function POST(req: Request) {
   }
 
   // Split deck: source cards (one question each) + distractor pool (content for wrong answers)
-  const pool = shuffle(karten).slice(0, 80)
+  const poolCap = modus === 'quick' ? 40 : 80
+  const pool = shuffle(karten).slice(0, poolCap)
   const sourceKarten = pool.slice(0, Math.min(anzahl, pool.length))
   const distractorPool = pool.slice(sourceKarten.length)
 
@@ -90,7 +92,7 @@ export async function POST(req: Request) {
     .join('\n\n')
 
   const distractorText = distractorPool.length > 0
-    ? distractorPool.map((k, i) => `[${i + 1}] ${cardToText(k)}`).join('\n\n')
+    ? distractorPool.map((k, i) => `[${i + 1}] ${cardToText(k, modus !== 'quick')}`).join('\n\n')
     : '(keine weiteren Karten)'
 
   const topicContext = [themaName, kursNameResolved].filter(Boolean).join(' · ')
@@ -100,6 +102,10 @@ export async function POST(req: Request) {
     mittel: `DIFFICULTY — Mittel: Wrong answers are built from real content in the DISTRACTOR POOL. They use correct terminology and sound plausible. A student who skimmed the material should hesitate before choosing.`,
     schwer: `DIFFICULTY — Schwer: Wrong answers are built from real content in the DISTRACTOR POOL and differ from the correct answer by exactly ONE critical detail — a reversed relationship, wrong direction of causality, swapped terms, off-by-one concept, or a common misconception. A student who studied superficially WILL pick a wrong answer.`,
   }[schwierigkeit]
+
+  const erklaerungInstruktion = modus === 'quick'
+    ? 'Max. 15 Wörter: why the correct answer is right. Same language as the cards.'
+    : 'One sentence: why the correct answer is right and why it matters. Same language as the cards.'
 
   const systemPrompt = `You are an expert exam question designer. Your goal is to create questions that test genuine conceptual understanding — the kind that appears in university exams — not simple recall of flashcard text.
 
@@ -129,7 +135,7 @@ Generate exactly ${anzahl} multiple-choice questions, one per SOURCE CARD. Each 
 ${schwierigkeitInstruktion}
 
 Return ONLY a valid JSON array — no markdown, no explanation outside the JSON:
-[{"frage":"...","optionen":["A: ...","B: ...","C: ...","D: ..."],"richtig":0,"erklaerung":"One sentence: why the correct answer is right and why it matters. Same language as the cards.","karte_id":123}]`
+[{"frage":"...","optionen":["A: ...","B: ...","C: ...","D: ..."],"richtig":0,"erklaerung":"${erklaerungInstruktion}","karte_id":123}]`
 
   const userMessage = `SOURCE CARDS (generate one question per card):
 
@@ -141,16 +147,18 @@ DISTRACTOR POOL (use this content to build wrong answer options — do not gener
 
 ${distractorText}`
 
+  const model = modus === 'quick' ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-4-6'
+
   const msg = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 8192,
+    model,
+    max_tokens: modus === 'quick' ? 4096 : 8192,
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }],
   })
 
   const cost_usd = await logApiUsage(supabase, {
     feature: 'quiz',
-    model: 'claude-sonnet-4-6',
+    model,
     inputTokens: msg.usage.input_tokens,
     outputTokens: msg.usage.output_tokens,
     themaId: thema_id ? Number(thema_id) : null,
