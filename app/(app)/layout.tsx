@@ -7,6 +7,7 @@ import { CommandPalette } from '@/components/command-palette'
 import { CramoContextProvider } from '@/components/cramo-context'
 import { CramoChatWidget } from '@/components/cramo-chat-widget'
 import { OnboardingModal } from '@/components/onboarding-modal'
+import { PlanBanner } from '@/components/plan-banner'
 import { Button } from '@/components/ui/button'
 import { Menu, Search, Lightbulb } from 'lucide-react'
 import type { Lernfenster } from '@/lib/types'
@@ -107,6 +108,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <span>Suche</span>
               <kbd className="ml-1 rounded border border-border/60 bg-card px-1 text-[10px] font-mono">⌘K</kbd>
             </button>
+            <PlanBanner />
             <button
               onClick={() => setOnboardingOpen(true)}
               className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"

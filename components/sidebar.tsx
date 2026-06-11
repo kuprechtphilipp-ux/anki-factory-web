@@ -22,6 +22,7 @@ import {
   LogOut,
   X,
   ShieldCheck,
+  UserCog,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -569,8 +570,20 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
         </div>
       </nav>
 
-      {/* Logout */}
-      <div className="shrink-0 border-t border-border/50 p-2" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+      {/* Account & Logout */}
+      <div className="shrink-0 border-t border-border/50 p-2 space-y-0.5" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+        <Link
+          href="/account"
+          className={cn(
+            'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground',
+            pathname === '/account'
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground'
+          )}
+        >
+          <UserCog className="h-4 w-4 shrink-0" />
+          Account &amp; Profil
+        </Link>
         <button
           onClick={handleLogout}
           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground"

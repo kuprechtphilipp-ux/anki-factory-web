@@ -14,6 +14,12 @@ export interface Kurs {
 
 export type Lernfenster = 'gestresst' | 'normal' | 'entspannt'
 
+export const LERNFENSTER_OPTIONS: { value: Lernfenster; label: string }[] = [
+  { value: 'gestresst', label: 'Sehr gestresst' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'entspannt', label: 'Entspannt' },
+]
+
 export interface Profile {
   id: string
   email: string | null

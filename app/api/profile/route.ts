@@ -9,12 +9,15 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('fachbereich, lernziel, lernfenster, onboarding_completed')
+    .select('fachbereich, lernziel, lernfenster, onboarding_completed, plan, credits_total, credits_used, email')
     .eq('id', user.id)
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+
+  const { data: redeemedCode } = await supabase.rpc('get_my_redeemed_code')
+
+  return NextResponse.json({ ...data, redeemed_code: redeemedCode ?? null })
 }
 
 export async function PATCH(req: Request) {

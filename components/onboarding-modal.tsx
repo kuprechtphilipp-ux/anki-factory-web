@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { Lernfenster } from '@/lib/types'
+import { LERNFENSTER_OPTIONS, type Lernfenster, type Plan } from '@/lib/types'
+import { PlanBadge } from '@/components/plan-badge'
 import { toast } from 'sonner'
 
 interface OnboardingModalProps {
@@ -28,27 +29,29 @@ interface OnboardingModalProps {
   onSaved?: () => void
 }
 
-const LERNFENSTER_OPTIONS: { value: Lernfenster; label: string }[] = [
-  { value: 'gestresst', label: 'Sehr gestresst' },
-  { value: 'normal', label: 'Normal' },
-  { value: 'entspannt', label: 'Entspannt' },
-]
+interface PlanInfo {
+  plan: Plan
+  credits_total: number
+}
 
 export function OnboardingModal({ open, onOpenChange, initial, onSaved }: OnboardingModalProps) {
+  const [step, setStep] = useState<1 | 2>(1)
   const [fachbereich, setFachbereich] = useState('')
   const [lernziel, setLernziel] = useState('')
   const [lernfenster, setLernfenster] = useState<Lernfenster | null>(null)
   const [saving, setSaving] = useState(false)
+  const [planInfo, setPlanInfo] = useState<PlanInfo | null>(null)
 
   useEffect(() => {
     if (open) {
+      setStep(1)
       setFachbereich(initial?.fachbereich ?? '')
       setLernziel(initial?.lernziel ?? '')
       setLernfenster(initial?.lernfenster ?? null)
     }
   }, [open, initial])
 
-  async function handleSubmit() {
+  async function handleNext() {
     setSaving(true)
     try {
       const res = await fetch('/api/profile', {
@@ -58,8 +61,32 @@ export function OnboardingModal({ open, onOpenChange, initial, onSaved }: Onboar
           fachbereich: fachbereich.trim() || null,
           lernziel: lernziel.trim() || null,
           lernfenster,
-          onboarding_completed: true,
         }),
+      })
+      if (!res.ok) {
+        toast.error('Konnte Angaben nicht speichern.')
+        return
+      }
+
+      const profileRes = await fetch('/api/profile')
+      if (profileRes.ok) {
+        const data = await profileRes.json() as { plan: Plan; credits_total: number }
+        setPlanInfo({ plan: data.plan, credits_total: data.credits_total })
+      }
+
+      setStep(2)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleFinish() {
+    setSaving(true)
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ onboarding_completed: true }),
       })
       if (!res.ok) {
         toast.error('Konnte Angaben nicht speichern.')
@@ -83,63 +110,96 @@ export function OnboardingModal({ open, onOpenChange, initial, onSaved }: Onboar
               className="h-20 w-20 rounded-full object-cover"
             />
           </div>
-          <DialogTitle className="text-center">Hey, ich bin Cramo</DialogTitle>
-          <DialogDescription className="text-center">
-            Bevor wir loslegen, ein paar schnelle Fragen — dann weiß ich, wie ich am besten mit dir rede.
-          </DialogDescription>
+          {step === 1 ? (
+            <>
+              <DialogTitle className="text-center">Hey, ich bin Cramo</DialogTitle>
+              <DialogDescription className="text-center">
+                Bevor wir loslegen, ein paar schnelle Fragen — dann weiß ich, wie ich am besten mit dir rede.
+              </DialogDescription>
+            </>
+          ) : (
+            <>
+              <DialogTitle className="text-center">Eine Sache noch</DialogTitle>
+              <DialogDescription className="text-center">
+                Oben siehst du jetzt deinen Plan und deine Credits.
+              </DialogDescription>
+            </>
+          )}
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="fachbereich">Fachbereich / Studienfach</Label>
-            <Input
-              id="fachbereich"
-              placeholder="z. B. Betriebswirtschaft"
-              value={fachbereich}
-              onChange={(e) => setFachbereich(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="lernziel">Was ist gerade dein wichtigstes Lernziel?</Label>
-            <Input
-              id="lernziel"
-              placeholder="z. B. Prüfung in Statistik bestehen"
-              value={lernziel}
-              onChange={(e) => setLernziel(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Wie ist dein Lernfenster gerade?</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {LERNFENSTER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setLernfenster(opt.value)}
-                  className={cn(
-                    'rounded-lg border-2 px-2 py-2.5 text-xs font-medium text-center transition-all',
-                    lernfenster === opt.value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border/60 text-muted-foreground hover:border-border hover:text-foreground'
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
+        {step === 1 ? (
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="fachbereich">Fachbereich / Studienfach</Label>
+              <Input
+                id="fachbereich"
+                placeholder="z. B. Betriebswirtschaft"
+                value={fachbereich}
+                onChange={(e) => setFachbereich(e.target.value)}
+              />
             </div>
-          </div>
 
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Diese Angaben beeinflussen nur, wie Cramo mit dir spricht — nicht, wie deine Karteikarten erstellt werden.
-          </p>
-        </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="lernziel">Was ist gerade dein wichtigstes Lernziel?</Label>
+              <Input
+                id="lernziel"
+                placeholder="z. B. Prüfung in Statistik bestehen"
+                value={lernziel}
+                onChange={(e) => setLernziel(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Wie ist dein Lernfenster gerade?</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {LERNFENSTER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setLernfenster(opt.value)}
+                    className={cn(
+                      'rounded-lg border-2 px-2 py-2.5 text-xs font-medium text-center transition-all',
+                      lernfenster === opt.value
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border/60 text-muted-foreground hover:border-border hover:text-foreground'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Diese Angaben beeinflussen nur, wie Cramo mit dir spricht — nicht, wie deine Karteikarten erstellt werden.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm leading-relaxed">
+              Du bist aktuell auf dem{' '}
+              {planInfo && <PlanBadge plan={planInfo.plan} className="align-middle" />}
+              {' '}Plan mit{' '}
+              <span className="font-semibold">{planInfo?.credits_total ?? '...'}</span> AI-Credits. Die brauchst du
+              für Karten-Generierung, Quiz &amp; Co.
+            </p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Du kannst jederzeit upgraden — einfach oben auf deinen Plan klicken oder einen Einladungscode einlösen,
+              falls du einen von mir bekommen hast.
+            </p>
+          </div>
+        )}
 
         <DialogFooter>
-          <Button onClick={handleSubmit} disabled={saving} className="w-full sm:w-auto">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Los geht\'s'}
-          </Button>
+          {step === 1 ? (
+            <Button onClick={handleNext} disabled={saving} className="w-full sm:w-auto">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Weiter'}
+            </Button>
+          ) : (
+            <Button onClick={handleFinish} disabled={saving} className="w-full sm:w-auto">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Los geht\'s'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
