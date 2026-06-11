@@ -56,6 +56,7 @@ export function CramoChatWidget() {
       {/* Floating button */}
       <button
         onClick={() => setOpen((v) => !v)}
+        data-tour="cramo-widget"
         className={cn(
           'fixed z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-lg border border-border/50 overflow-hidden transition-transform hover:scale-105 active:scale-95',
           'right-4 bottom-[max(1rem,env(safe-area-inset-bottom))]'

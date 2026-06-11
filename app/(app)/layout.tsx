@@ -7,10 +7,12 @@ import { CommandPalette } from '@/components/command-palette'
 import { CramoContextProvider } from '@/components/cramo-context'
 import { CramoChatWidget } from '@/components/cramo-chat-widget'
 import { OnboardingModal } from '@/components/onboarding-modal'
+import { OnboardingTour } from '@/components/onboarding-tour'
 import { PlanBanner } from '@/components/plan-banner'
 import { Button } from '@/components/ui/button'
 import { Menu, Search, Lightbulb } from 'lucide-react'
 import type { Lernfenster } from '@/lib/types'
+import { CRAMO_TOUR_STEPS } from '@/lib/tour-steps'
 
 const DEFAULT_WIDTH = 256
 const MIN_WIDTH = 180
@@ -28,6 +30,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_WIDTH)
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [onboardingOpen, setOnboardingOpen] = useState(false)
+  const [tourOpen, setTourOpen] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-width')
@@ -111,6 +114,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <PlanBanner />
             <button
               onClick={() => setOnboardingOpen(true)}
+              data-tour="lightbulb-button"
               className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               title="Cramo-Einstellungen"
               aria-label="Cramo-Einstellungen öffnen"
@@ -138,7 +142,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             .then((r) => (r.ok ? r.json() : null))
             .then((data: ProfileData | null) => { if (data) setProfile(data) })
             .catch(() => {})
+          setTourOpen(true)
         }}
+      />
+
+      <OnboardingTour
+        open={tourOpen}
+        onClose={() => setTourOpen(false)}
+        steps={CRAMO_TOUR_STEPS}
+        onRequestSidebarOpen={() => setSidebarOpen(true)}
+        onRequestSidebarClose={() => setSidebarOpen(false)}
       />
     </div>
     </CramoContextProvider>

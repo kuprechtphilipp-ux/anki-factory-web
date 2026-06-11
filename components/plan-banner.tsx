@@ -33,6 +33,7 @@ export function PlanBanner() {
     <Popover>
       <PopoverTrigger asChild>
         <button
+          data-tour="plan-banner"
           className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/50 hover:bg-muted px-2.5 py-1.5 text-xs transition-colors mr-2"
           aria-label="Plan & Credits"
         >

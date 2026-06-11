@@ -285,6 +285,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
         {/* Nav links */}
         <Link
           href="/kurse"
+          data-tour="nav-kurse"
           className={cn(
             'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground',
             pathname === '/kurse'
@@ -297,6 +298,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
         </Link>
         <Link
           href="/statistik"
+          data-tour="nav-statistik"
           className={cn(
             'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground',
             pathname === '/statistik'
@@ -309,6 +311,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
         </Link>
         <Link
           href="/tutor"
+          data-tour="nav-tutor"
           className={cn(
             'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground',
             pathname === '/tutor'
@@ -321,6 +324,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
         </Link>
         <Link
           href="/kosten"
+          data-tour="nav-credits"
           className={cn(
             'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground',
             pathname === '/kosten'
@@ -574,6 +578,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
       <div className="shrink-0 border-t border-border/50 p-2 space-y-0.5" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
         <Link
           href="/account"
+          data-tour="nav-account"
           className={cn(
             'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground',
             pathname === '/account'
