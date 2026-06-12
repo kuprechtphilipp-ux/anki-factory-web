@@ -1,13 +1,96 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { CramoChat } from '@/components/cramo-chat'
 import { CramoIcon } from '@/components/cramo-icon'
 import { cn } from '@/lib/utils'
 
+const BUTTON_SIZE = 48
+const MARGIN = 16
+const CORNER_STORAGE_KEY = 'cramo-chat-corner'
+const DRAG_THRESHOLD = 6
+
+type Corner = 'left' | 'right'
+
+function cornerToLeft(corner: Corner): number {
+  if (corner === 'left') return MARGIN
+  return window.innerWidth - BUTTON_SIZE - MARGIN
+}
+
 export function CramoChatWidget() {
   const [open, setOpen] = useState(false)
+  const [corner, setCorner] = useState<Corner>('right')
+  const [restLeft, setRestLeft] = useState<number | null>(null)
+  const [dragLeft, setDragLeft] = useState<number | null>(null)
+  const dragState = useRef<{ startX: number; startLeft: number; moved: boolean } | null>(null)
+  const wasDraggedRef = useRef(false)
+
+  useEffect(() => {
+    const stored = localStorage.getItem(CORNER_STORAGE_KEY)
+    const initialCorner: Corner = stored === 'left' ? 'left' : 'right'
+    setCorner(initialCorner)
+    setRestLeft(cornerToLeft(initialCorner))
+  }, [])
+
+  useEffect(() => {
+    function onResize() {
+      setRestLeft(cornerToLeft(corner))
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [corner])
+
+  function handlePointerDown(e: React.PointerEvent<HTMLButtonElement>) {
+    if (open || window.innerWidth >= 640) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    dragState.current = { startX: e.clientX, startLeft: rect.left, moved: false }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLButtonElement>) {
+    const ds = dragState.current
+    if (!ds) return
+    const dx = e.clientX - ds.startX
+    if (Math.abs(dx) > DRAG_THRESHOLD) {
+      ds.moved = true
+      wasDraggedRef.current = true
+    }
+    if (!ds.moved) return
+    const newLeft = Math.min(
+      window.innerWidth - BUTTON_SIZE - MARGIN,
+      Math.max(MARGIN, ds.startLeft + dx)
+    )
+    setDragLeft(newLeft)
+  }
+
+  function handlePointerUp() {
+    const ds = dragState.current
+    if (!ds) return
+    dragState.current = null
+    if (!ds.moved) {
+      setDragLeft(null)
+      return
+    }
+    const center = (dragLeft ?? ds.startLeft) + BUTTON_SIZE / 2
+    const newCorner: Corner = center < window.innerWidth / 2 ? 'left' : 'right'
+    setCorner(newCorner)
+    setRestLeft(cornerToLeft(newCorner))
+    setDragLeft(null)
+    localStorage.setItem(CORNER_STORAGE_KEY, newCorner)
+  }
+
+  function handleClick() {
+    // Ein Tap mit Bewegung über dem Schwellenwert war ein Drag, kein Klick.
+    if (wasDraggedRef.current) {
+      wasDraggedRef.current = false
+      return
+    }
+    setOpen((v) => !v)
+  }
+
+  const left = dragLeft ?? restLeft
+  const positioned = left !== null
 
   return (
     <>
@@ -52,12 +135,26 @@ export function CramoChatWidget() {
 
       {/* Floating button */}
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleClick}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         data-tour="cramo-widget"
         className={cn(
-          'fixed z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-lg border border-border/50 overflow-hidden transition-transform hover:scale-105 active:scale-95',
-          'right-4 bottom-[max(1rem,env(safe-area-inset-bottom))]'
+          'fixed z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-lg border border-border/50 overflow-hidden transition-transform hover:scale-105 active:scale-95 touch-none',
+          'bottom-[max(1rem,env(safe-area-inset-bottom))]',
+          !positioned && 'right-4'
         )}
+        style={
+          positioned
+            ? {
+                left: left ?? undefined,
+                right: 'auto',
+                transition: dragLeft !== null ? 'none' : 'left 0.3s ease-out, transform 0.15s ease-out',
+              }
+            : undefined
+        }
         aria-label={open ? 'Cramo-Chat schließen' : 'Cramo-Chat öffnen'}
       >
         {open ? (

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Loader2 } from 'lucide-react'
+import { ChevronDown, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PlanBadge } from '@/components/plan-badge'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
@@ -31,6 +31,7 @@ export function PlanOverview({ plan, isAdmin = false, redeemedCode = null, planE
   const [dialogPlan, setDialogPlan] = useState<Plan | null>(null)
   const [config, setConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG)
   const [reactivating, setReactivating] = useState(false)
+  const [showAllPlans, setShowAllPlans] = useState(false)
 
   useEffect(() => {
     fetch('/api/plan-config')
@@ -70,7 +71,7 @@ export function PlanOverview({ plan, isAdmin = false, redeemedCode = null, planE
           return (
             <div
               key={p}
-              className={`rounded-xl p-3 ${isCurrent ? 'bg-primary/5' : ''}`}
+              className={`rounded-xl p-3 ${isCurrent ? 'bg-primary/5' : ''} ${!isCurrent && !showAllPlans ? 'hidden sm:block' : ''}`}
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 space-y-1">
@@ -133,6 +134,15 @@ export function PlanOverview({ plan, isAdmin = false, redeemedCode = null, planE
           )
         })}
       </div>
+
+      <button
+        type="button"
+        onClick={() => setShowAllPlans((v) => !v)}
+        className="flex w-full items-center justify-center gap-1 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors sm:hidden"
+      >
+        {showAllPlans ? 'Weniger anzeigen' : 'Andere Pläne anzeigen'}
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAllPlans ? 'rotate-180' : ''}`} />
+      </button>
 
       {dialogPlan && (
         <UpgradeDialog

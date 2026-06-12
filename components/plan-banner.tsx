@@ -80,18 +80,20 @@ export function PlanBanner() {
           />
         </div>
         <Separator />
-        <div className="space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+        <details>
+          <summary className="cursor-pointer text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 hover:text-foreground transition-colors">
             Einladungscode
-          </p>
-          <RedeemInviteCode
-            redeemedCode={data.redeemed_code}
-            onRedeemed={(plan, credits) => {
-              setData((prev) => prev ? { ...prev, plan, credits_total: credits, credits_used: 0 } : prev)
-              load()
-            }}
-          />
-        </div>
+          </summary>
+          <div className="mt-2">
+            <RedeemInviteCode
+              redeemedCode={data.redeemed_code}
+              onRedeemed={(plan, credits) => {
+                setData((prev) => prev ? { ...prev, plan, credits_total: credits, credits_used: 0 } : prev)
+                load()
+              }}
+            />
+          </div>
+        </details>
       </PopoverContent>
     </Popover>
   )

@@ -69,7 +69,7 @@ export function Hero() {
   }, [sayingIndex])
 
   return (
-    <section className="relative overflow-hidden pb-16 pt-28 md:pb-20 md:pt-32">
+    <section className="relative overflow-hidden pb-16 pt-[calc(7rem+env(safe-area-inset-top))] md:pb-20 md:pt-[calc(8rem+env(safe-area-inset-top))]">
       <div className="pointer-events-none absolute -right-40 -top-40 h-96 w-96 rounded-full bg-primary/20 blur-3xl" />
       <div className="pointer-events-none absolute -left-40 top-40 h-80 w-80 rounded-full bg-violet-300/30 blur-3xl dark:bg-violet-500/10" />
 
