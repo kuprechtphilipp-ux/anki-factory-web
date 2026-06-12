@@ -40,6 +40,7 @@ interface CreditsInfo {
   isAdmin: boolean
   redeemedCode: string | null
   stripeCancelAt: string | null
+  resetAt: string | null
 }
 
 interface KostenData {
@@ -100,14 +101,23 @@ function CreditsDonut({ credits, onChanged }: { credits: CreditsInfo; onChanged?
             {credits.used} / {credits.total}
           </p>
           <p className="text-sm text-muted-foreground mt-0.5">Credits verbraucht</p>
+          {credits.resetAt && (
+            <p className="text-xs text-muted-foreground/70 mt-0.5">
+              Reset am {new Date(credits.resetAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+            </p>
+          )}
         </div>
       </div>
       {exhausted && (
         <p className="mt-4 text-sm text-rose-500">
-          Deine Credits sind aufgebraucht. Schreib mir für mehr Credits:{' '}
-          <a href="mailto:philipp.kuprecht@student.unisg.ch" className="underline underline-offset-2">
-            philipp.kuprecht@student.unisg.ch
-          </a>
+          Deine Credits sind aufgebraucht.{' '}
+          {isUltra ? (
+            'Warte auf den nächsten Reset.'
+          ) : (
+            <button onClick={() => setUpgradeOpen(true)} className="underline underline-offset-2 font-medium">
+              Jetzt upgraden
+            </button>
+          )}
         </p>
       )}
       <div className="mt-auto pt-4 border-t border-border/50">

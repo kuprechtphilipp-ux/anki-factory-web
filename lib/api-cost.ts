@@ -43,7 +43,7 @@ export async function logApiUsage(
 
 // 1 Credit = 1 Cent
 export const CREDITS_EXHAUSTED_MESSAGE =
-  'Deine Credits sind aufgebraucht. Schreib mir für mehr Credits: philipp.kuprecht@student.unisg.ch'
+  'Deine Credits sind aufgebraucht. Hol dir mit einem Upgrade mehr Credits.'
 
 export function usdToCredits(costUsd: number): number {
   return Math.ceil(costUsd * 100)

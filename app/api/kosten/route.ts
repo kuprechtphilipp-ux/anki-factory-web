@@ -26,7 +26,7 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from('profiles_with_credits')
-    .select('plan, credits_total, credits_used, is_admin, stripe_cancel_at')
+    .select('plan, credits_total, credits_used, credits_reset_at, is_admin, stripe_cancel_at')
     .eq('id', user.id)
     .single()
 
@@ -42,6 +42,7 @@ export async function GET() {
     isAdmin: profile?.is_admin ?? false,
     redeemedCode: redeemedCode ?? null,
     stripeCancelAt: profile?.stripe_cancel_at ?? null,
+    resetAt: profile?.credits_reset_at ?? null,
   }
 
   const rows = (data ?? []) as UsageRow[]
