@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -349,6 +350,17 @@ export default function AccountPage() {
         <a href="mailto:hello@cramo.ch" className="underline hover:text-foreground">
           hello@cramo.ch
         </a>
+      </p>
+      <p className="flex flex-wrap items-center justify-center gap-3 text-center text-xs text-muted-foreground/70">
+        <Link href="/impressum" className="underline hover:text-foreground">
+          Impressum
+        </Link>
+        <Link href="/datenschutz" className="underline hover:text-foreground">
+          Datenschutz
+        </Link>
+        <Link href="/agb" className="underline hover:text-foreground">
+          AGB
+        </Link>
       </p>
     </div>
   )
