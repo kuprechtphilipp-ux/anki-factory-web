@@ -55,6 +55,7 @@ export default function ThemaPage({ params }: Props) {
   const themaName = decodeURIComponent(params.thema)
 
   const [themaId, setThemaId] = useState<number | null>(null)
+  const [themenCount, setThemenCount] = useState<number | null>(null)
   const [loadingThema, setLoadingThema] = useState(true)
   const [activeTab, setActiveTab] = useState('uebersicht')
 
@@ -186,6 +187,11 @@ export default function ThemaPage({ params }: Props) {
       const { data: kursRow } = await supabase
         .from('kurs').select('id').eq('name', kursName).single()
       if (!kursRow) { setLoadingThema(false); return }
+
+      fetch(`/api/themen?kurs_id=${kursRow.id}`)
+        .then(r => r.json())
+        .then((data: { id: number }[]) => setThemenCount(Array.isArray(data) ? data.length : null))
+        .catch(() => {})
 
       const { data: themaRow } = await supabase
         .from('thema').select('id').eq('kurs_id', kursRow.id).eq('name', themaName).single()
@@ -1018,6 +1024,21 @@ export default function ThemaPage({ params }: Props) {
           <button onClick={() => setActiveTab('uebersicht')} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-1">
             <ArrowLeft className="h-3 w-3" />Übersicht
           </button>
+
+          {/* Kurskontext-Hinweis */}
+          {themenCount !== null && (
+            themenCount >= 2 ? (
+              <div className="flex items-start gap-2 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/60 dark:bg-emerald-950/15 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                <BookOpen className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>Cramo kennt {themenCount} Themen dieses Kurses – das hilft der KI bei der Einordnung.</span>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 rounded-xl border border-amber-200/60 dark:border-amber-800/40 bg-amber-50/60 dark:bg-amber-950/15 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>Kurskontext noch begrenzt – nur 1 Thema bekannt. Lege weitere Themen/Kapitel an für bessere Empfehlungen.</span>
+              </div>
+            )
+          )}
 
           {/* PDF Upload */}
           <div className="space-y-2">
