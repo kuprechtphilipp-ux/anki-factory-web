@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, RotateCcw, BookOpen, Check, X } from 'lucide-react'
+import { isTypingInField } from '@/lib/utils'
 import type { Karte } from '@/lib/types'
 
 function shuffle<T>(arr: T[]): T[] {
@@ -243,6 +244,7 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (isTypingInField(e.target)) return
       if (e.key === ' ' && !revealedRef.current) { e.preventDefault(); setRevealed(true) }
       else if (revealedRef.current && e.key === '1') handleNichtGewusstRef.current()
       else if (revealedRef.current && e.key === '4') handleGewusstRef.current()

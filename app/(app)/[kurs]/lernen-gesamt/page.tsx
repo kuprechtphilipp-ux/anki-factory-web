@@ -7,6 +7,7 @@ import { FSRS, generatorParameters } from 'ts-fsrs'
 import { karteToFsrsCard } from '@/lib/fsrs'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, BookOpen, Layers, Flame, Target } from 'lucide-react'
+import { isTypingInField } from '@/lib/utils'
 import type { Karte, FsrsState, Thema } from '@/lib/types'
 
 const clientFsrs = new FSRS(generatorParameters())
@@ -306,6 +307,7 @@ export default function LernenGesamtPage({ params }: { params: { kurs: string } 
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (isTypingInField(e.target)) return
       if (e.key === ' ' && !revealedRef.current) { e.preventDefault(); setRevealed(true) }
       else if (revealedRef.current && e.key === '1') handleRateRef.current(1)
       else if (revealedRef.current && e.key === '2') handleRateRef.current(2)

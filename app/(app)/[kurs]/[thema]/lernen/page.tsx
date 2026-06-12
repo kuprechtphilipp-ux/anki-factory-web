@@ -8,6 +8,7 @@ import { karteToFsrsCard } from '@/lib/fsrs'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, BookOpen, Layers, Flame, Target } from 'lucide-react'
 import { useCramoContext } from '@/components/cramo-context'
+import { isTypingInField } from '@/lib/utils'
 import type { Karte, FsrsState } from '@/lib/types'
 
 const clientFsrs = new FSRS(generatorParameters())
@@ -357,6 +358,7 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (isTypingInField(e.target)) return
       if (e.key === ' ' && !revealedRef.current) {
         e.preventDefault()
         setRevealed(true)

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import { logApiUsage, getCreditStatus, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
+import { getCramoLernfortschritt, type CramoLernfortschritt } from '@/lib/lern-stats'
 import type { CramoLernkontext } from '@/lib/types'
 
 export const maxDuration = 30
@@ -19,12 +20,15 @@ Sei sachlich, hilfsbereit und kurz angebunden, aber freundlich. Beantworte inhal
 Hier darfst du deinen vollen Charakter zeigen: Erzähle (erfundene) Anekdoten aus deinen "Glory Days" durchgemachter Nächte vor Prüfungen, necke den User liebevoll und motiviere ihn auf lockere, augenzwinkernde Art. Hier darfst du ausführlicher und unterhaltsamer schreiben als im Hilfe-Modus.`,
 }
 
+const LAENGEN_REGEL = `Antwortlänge: Passe die Länge deiner Antwort an die Frage an. Kurze, einfache Anfragen (Smalltalk, Bestätigungen, kurze Fakten, "ok"/"danke"/Ja-Nein-Fragen) bekommen eine kurze Antwort von 1-2 Sätzen. Nur bei Fragen, die wirklich eine Erklärung, Herleitung oder mehrere Aspekte erfordern, darfst du ausführlicher werden und ggf. mit Absätzen oder Aufzählungen strukturieren. Antworte nie länger als für die Frage nötig.`
+
 function buildSystemPrompt(
   mode: 'help' | 'fun',
   profile: { fachbereich: string | null; lernziel: string | null; lernfenster: string | null } | null,
-  context?: CramoLernkontext
+  context?: CramoLernkontext,
+  fortschritt?: CramoLernfortschritt
 ): string {
-  let prompt = `${CRAMO_PERSONA}\n\n${MODE_INSTRUCTIONS[mode]}`
+  let prompt = `${CRAMO_PERSONA}\n\n${MODE_INSTRUCTIONS[mode]}\n\n${LAENGEN_REGEL}`
 
   if (profile && (profile.fachbereich || profile.lernziel || profile.lernfenster)) {
     const teile: string[] = []
@@ -35,6 +39,17 @@ function buildSystemPrompt(
       teile.push(`Lernfenster/Stresslevel: ${label}`)
     }
     prompt += `\n\nPasse deinen Ton an folgende Angaben des Users an (beeinflusst nur die Kommunikation, nicht den Inhalt):\n${teile.join('\n')}`
+  }
+
+  if (fortschritt) {
+    const teile: string[] = [
+      `Lern-Streak: ${fortschritt.streak} Tag${fortschritt.streak === 1 ? '' : 'e'} in Folge`,
+      `Fällige Karten insgesamt: ${fortschritt.faelligeKarten}`,
+    ]
+    if (fortschritt.problemKarten > 0) {
+      teile.push(`Karten mit wiederholten Fehlern (Problemkarten): ${fortschritt.problemKarten}`)
+    }
+    prompt += `\n\nLernfortschritt des Users (für persönliche, datengestützte Hinweise/Motivation, wenn es zur Frage passt – dräng es nicht künstlich rein):\n${teile.join('\n')}`
   }
 
   if (context && (context.themaName || context.kursName || context.karteFrage)) {
@@ -75,39 +90,57 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'message erforderlich' }, { status: 400 })
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('fachbereich, lernziel, lernfenster')
-    .eq('id', user.id)
-    .single()
+  const [{ data: profile }, fortschritt] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('fachbereich, lernziel, lernfenster')
+      .eq('id', user.id)
+      .single(),
+    getCramoLernfortschritt(supabase, user.id),
+  ])
 
-  const system = buildSystemPrompt(mode, profile, context)
+  const system = buildSystemPrompt(mode, profile, context, fortschritt)
 
   const messages: Anthropic.MessageParam[] = [
     ...(history ?? []).map((m) => ({ role: m.role, content: m.content })),
     { role: 'user' as const, content: message },
   ]
 
-  try {
-    const msg = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system,
-      messages,
-    })
+  const encoder = new TextEncoder()
 
-    await logApiUsage(supabase, {
-      feature: 'tutor',
-      model: 'claude-haiku-4-5-20251001',
-      inputTokens: msg.usage.input_tokens,
-      outputTokens: msg.usage.output_tokens,
-      userId: user.id,
-    })
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        const anthropicStream = anthropic.messages.stream({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1024,
+          system,
+          messages,
+        })
 
-    const reply = msg.content[0].type === 'text' ? msg.content[0].text : ''
-    return NextResponse.json({ reply })
-  } catch (err) {
-    console.error('[chat] Fehler:', err)
-    return NextResponse.json({ error: 'Cramo ist gerade eingenickt. Versuch es nochmal.' }, { status: 500 })
-  }
+        anthropicStream.on('text', (text) => {
+          controller.enqueue(encoder.encode(text))
+        })
+
+        const finalMessage = await anthropicStream.finalMessage()
+
+        await logApiUsage(supabase, {
+          feature: 'tutor',
+          model: 'claude-haiku-4-5-20251001',
+          inputTokens: finalMessage.usage.input_tokens,
+          outputTokens: finalMessage.usage.output_tokens,
+          userId: user.id,
+        })
+
+        controller.close()
+      } catch (err) {
+        console.error('[chat] Fehler:', err)
+        controller.error(err)
+      }
+    },
+  })
+
+  return new Response(stream, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  })
 }

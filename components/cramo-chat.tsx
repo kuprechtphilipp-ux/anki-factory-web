@@ -11,6 +11,7 @@ import remarkBreaks from 'remark-breaks'
 import { useCramoContext } from '@/components/cramo-context'
 import { CramoIcon } from '@/components/cramo-icon'
 import { cn } from '@/lib/utils'
+import type { CramoLernkontext } from '@/lib/types'
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -47,6 +48,16 @@ function MessageContent({ content }: { content: string }) {
   )
 }
 
+function getSuggestions(mode: 'help' | 'fun', context: CramoLernkontext | null): string[] {
+  if (mode === 'fun') {
+    return ['Motivier mich kurz', 'Erzähl von deinen Glory Days', 'Ich hab keine Lust mehr']
+  }
+  if (context?.karteFrage) {
+    return ['Erkläre das einfacher', 'Gib mir ein Beispiel dazu', 'Frag mich das ab']
+  }
+  return ['Was kannst du für mich tun?', 'Wie lege ich einen neuen Kurs an?']
+}
+
 export function CramoChat({ mode, placeholder, introMessage, className }: CramoChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -58,8 +69,8 @@ export function CramoChat({ mode, placeholder, introMessage, className }: CramoC
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
 
-  async function handleSend() {
-    const text = input.trim()
+  async function handleSend(overrideText?: string) {
+    const text = (overrideText ?? input).trim()
     if (!text || loading) return
 
     const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: text }]
@@ -86,14 +97,40 @@ export function CramoChat({ mode, placeholder, introMessage, className }: CramoC
         return
       }
 
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
         toast.error('Cramo antwortet gerade nicht. Versuch es nochmal.')
         setMessages(messages)
         return
       }
 
-      const { reply } = await res.json() as { reply: string }
-      setMessages([...nextMessages, { role: 'assistant', content: reply }])
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let received = ''
+      let placeholderAdded = false
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value, { stream: true })
+        if (!chunk) continue
+        received += chunk
+        if (!placeholderAdded) {
+          setLoading(false)
+          setMessages([...nextMessages, { role: 'assistant', content: received }])
+          placeholderAdded = true
+        } else {
+          setMessages((prev) => {
+            const copy = [...prev]
+            copy[copy.length - 1] = { role: 'assistant', content: received }
+            return copy
+          })
+        }
+      }
+
+      if (!placeholderAdded) {
+        toast.error('Cramo antwortet gerade nicht. Versuch es nochmal.')
+        setMessages(messages)
+      }
     } catch {
       toast.error('Verbindung zu Cramo fehlgeschlagen.')
       setMessages(messages)
@@ -113,12 +150,27 @@ export function CramoChat({ mode, placeholder, introMessage, className }: CramoC
     <div className={cn('flex flex-col h-full min-h-0', className)}>
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-3 px-1 py-2">
         {messages.length === 0 && introMessage && (
-          <div className="flex gap-2.5">
-            <CramoAvatar />
-            <div className="rounded-2xl rounded-tl-sm bg-muted px-3.5 py-2.5 text-sm leading-relaxed max-w-[85%]">
-              <MessageContent content={introMessage} />
+          <>
+            <div className="flex gap-2.5">
+              <CramoAvatar />
+              <div className="rounded-2xl rounded-tl-sm bg-muted px-3.5 py-2.5 text-sm leading-relaxed max-w-[85%]">
+                <MessageContent content={introMessage} />
+              </div>
             </div>
-          </div>
+            <div className="flex flex-wrap gap-2 pl-[3.25rem]">
+              {getSuggestions(mode, context).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => handleSend(s)}
+                  disabled={loading}
+                  className="rounded-full border border-border/50 bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </>
         )}
 
         {messages.map((m, i) => (
@@ -157,7 +209,7 @@ export function CramoChat({ mode, placeholder, introMessage, className }: CramoC
           className="min-h-9 max-h-32 resize-none text-base md:text-sm"
           disabled={loading}
         />
-        <Button size="icon" onClick={handleSend} disabled={loading || !input.trim()} className="shrink-0">
+        <Button size="icon" onClick={() => handleSend()} disabled={loading || !input.trim()} className="shrink-0">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </div>
