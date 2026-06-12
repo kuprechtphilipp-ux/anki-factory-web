@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine } from 'lucide-react'
+import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { KursStatistik, KursThemaStats } from '@/lib/types'
 
@@ -145,6 +145,16 @@ export default function KursDashboard({ params }: Props) {
   const [stats, setStats] = useState<KursStatistik | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [hintDismissed, setHintDismissed] = useState(true)
+
+  useEffect(() => {
+    setHintDismissed(localStorage.getItem(`cramo:structure-hint-dismissed:${kursName}`) === '1')
+  }, [kursName])
+
+  function dismissHint() {
+    localStorage.setItem(`cramo:structure-hint-dismissed:${kursName}`, '1')
+    setHintDismissed(true)
+  }
 
   useEffect(() => {
     fetch(`/api/kurs-statistik?kurs_name=${encodeURIComponent(kursName)}`)
@@ -235,6 +245,26 @@ export default function KursDashboard({ params }: Props) {
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Hinweis: Kursstruktur vor Generierung anlegen */}
+      {stats.themen.length === 1 && !hintDismissed && (
+        <div className="flex items-start gap-3 rounded-2xl border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
+          <span className="text-base leading-none">💡</span>
+          <p className="flex-1">
+            <span className="font-medium text-foreground">Tipp:</span> Lege am Anfang gleich alle Themen/Kapitel
+            dieses Kurses an (z. B. aus dem Inhaltsverzeichnis) — auch ohne Karten. Die KI nutzt beim Generieren die
+            Liste deiner Themen, um besser einzuschätzen, was schon abgedeckt ist und wie viele Karten sinnvoll sind.
+            Neue Themen legst du über das „+“ neben dem Kurs in der Sidebar an.
+          </p>
+          <button
+            onClick={dismissHint}
+            className="shrink-0 rounded-md p-1 text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors"
+            aria-label="Hinweis schließen"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
 
