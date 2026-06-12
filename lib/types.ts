@@ -210,6 +210,7 @@ export interface StatsData {
   retentionRate: number
   heatmap: { date: string; count: number }[]
   totalCards: number
+  dueNow: number
   weekTotal: number
   avgCardsPerDay: number
   themenBreakdown: ThemaBreakdownRow[]

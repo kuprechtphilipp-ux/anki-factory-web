@@ -103,11 +103,6 @@ export async function GET() {
     .filter(d => d >= toDateStr(startOfWeek))
     .reduce((sum, d) => sum + (combinedMap[d] ?? 0), 0)
 
-  const { count: totalCards } = await supabase
-    .from('karte')
-    .select('id', { count: 'exact', head: true })
-    .neq('fsrs_reps', 0)
-
   const retentionRate = totalReviews > 0 ? Math.round((positiveReviews / totalReviews) * 100) : 0
 
   // ── Globaler Kurs/Thema-Breakdown + Forecast + Verteilungen ──
@@ -144,6 +139,10 @@ export async function GET() {
   }
 
   const reviewedKarten = karten.filter((k) => k.status === 'reviewed')
+
+  // Deckgröße = Karten, die im Lern-Modus auftauchen können (status='reviewed')
+  const totalCards = reviewedKarten.length
+  const dueNow = reviewedKarten.filter((k) => new Date(k.fsrs_due) <= now).length
 
   const themenBreakdown = themen.map((t) => {
     const tk = reviewedKarten.filter((k) => k.thema_id === t.id)
@@ -205,10 +204,10 @@ export async function GET() {
     relearning: reviewedKarten.filter((k) => k.fsrs_state === 3).length,
   }
 
-  // Kartentyp-Verteilung (alle Karten)
+  // Kartentyp-Verteilung (Deck = reviewed Karten)
   const typVerteilung = {
-    basic: karten.filter((k) => k.typ === 'basic').length,
-    cloze: karten.filter((k) => k.typ === 'cloze').length,
+    basic: reviewedKarten.filter((k) => k.typ === 'basic').length,
+    cloze: reviewedKarten.filter((k) => k.typ === 'cloze').length,
   }
 
   return NextResponse.json({
@@ -218,7 +217,8 @@ export async function GET() {
     todayReviews,
     retentionRate,
     heatmap: heatmapArray,
-    totalCards: totalCards ?? 0,
+    totalCards,
+    dueNow,
     weekTotal,
     avgCardsPerDay,
     themenBreakdown,
