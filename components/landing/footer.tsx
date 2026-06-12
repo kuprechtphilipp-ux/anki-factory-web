@@ -59,7 +59,7 @@ export function LandingFooter() {
           <p className="text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} Cramo. Alle Rechte vorbehalten.
           </p>
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
             <a href="mailto:hello@cramo.ch" className="transition-colors hover:text-foreground">
               hello@cramo.ch
             </a>
@@ -68,6 +68,15 @@ export function LandingFooter() {
             </Link>
             <Link href="/signup" className="transition-colors hover:text-foreground">
               Sign Up
+            </Link>
+            <Link href="/impressum" className="transition-colors hover:text-foreground">
+              Impressum
+            </Link>
+            <Link href="/datenschutz" className="transition-colors hover:text-foreground">
+              Datenschutz
+            </Link>
+            <Link href="/agb" className="transition-colors hover:text-foreground">
+              AGB
             </Link>
           </div>
         </div>

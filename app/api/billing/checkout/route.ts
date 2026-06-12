@@ -71,6 +71,7 @@ export async function POST(req: Request) {
     customer: profile?.stripe_customer_id ?? undefined,
     customer_email: profile?.stripe_customer_id ? undefined : (profile?.email ?? user.email ?? undefined),
     allow_promotion_codes: true,
+    consent_collection: { terms_of_service: 'required' },
     metadata: { user_id: user.id, plan: body.plan },
     subscription_data: { metadata: { user_id: user.id, plan: body.plan } },
     success_url: `${origin}${returnTo}?checkout=success&plan=${body.plan}`,

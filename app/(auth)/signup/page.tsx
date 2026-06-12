@@ -17,15 +17,18 @@ import {
 } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
 import { GoogleAuthButton } from '@/components/google-auth-button'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export default function SignupPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!acceptedTerms) return
     setLoading(true)
 
     const supabase = createClient()
@@ -80,7 +83,26 @@ export default function SignupPage() {
               autoComplete="new-password"
             />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id="accept-terms"
+              checked={acceptedTerms}
+              onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+              className="mt-0.5"
+            />
+            <Label htmlFor="accept-terms" className="text-sm font-normal leading-snug text-muted-foreground">
+              Ich akzeptiere die{' '}
+              <Link href="/agb" target="_blank" className="text-primary underline-offset-4 hover:underline">
+                AGB
+              </Link>{' '}
+              und die{' '}
+              <Link href="/datenschutz" target="_blank" className="text-primary underline-offset-4 hover:underline">
+                Datenschutzerklärung
+              </Link>
+              .
+            </Label>
+          </div>
+          <Button type="submit" className="w-full" disabled={loading || !acceptedTerms}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Konto erstellen
           </Button>
@@ -91,6 +113,17 @@ export default function SignupPage() {
           <div className="h-px flex-1 bg-border" />
         </div>
         <GoogleAuthButton />
+        <p className="mt-3 text-center text-xs text-muted-foreground">
+          Mit der Anmeldung über Google akzeptierst du ebenfalls unsere{' '}
+          <Link href="/agb" target="_blank" className="underline underline-offset-2 hover:text-foreground">
+            AGB
+          </Link>{' '}
+          und{' '}
+          <Link href="/datenschutz" target="_blank" className="underline underline-offset-2 hover:text-foreground">
+            Datenschutzerklärung
+          </Link>
+          .
+        </p>
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Bereits ein Konto?{' '}
           <Link href="/login" className="text-primary underline-offset-4 hover:underline">
