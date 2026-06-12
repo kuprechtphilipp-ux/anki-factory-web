@@ -299,6 +299,7 @@ export function AdminPanel() {
           </div>
         ) : (
           <div className="rounded-2xl border border-border/50 bg-card shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-widest text-muted-foreground/70">
@@ -340,6 +341,7 @@ export function AdminPanel() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </TabsContent>
@@ -406,6 +408,7 @@ export function AdminPanel() {
           </div>
         ) : (
           <div className="rounded-2xl border border-border/50 bg-card shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-widest text-muted-foreground/70">
@@ -445,6 +448,7 @@ export function AdminPanel() {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </TabsContent>
@@ -460,6 +464,7 @@ export function AdminPanel() {
             </div>
           ) : (
             <div className="rounded-2xl border border-border/50 bg-card shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-widest text-muted-foreground/70">
@@ -529,6 +534,7 @@ export function AdminPanel() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </div>
@@ -546,6 +552,7 @@ export function AdminPanel() {
             </div>
           ) : (
             <div className="rounded-2xl border border-border/50 bg-card shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-widest text-muted-foreground/70">
@@ -570,6 +577,7 @@ export function AdminPanel() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </div>
@@ -578,6 +586,7 @@ export function AdminPanel() {
           <div className="space-y-3">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Token-Preise (Referenz)</p>
             <div className="rounded-2xl border border-border/50 bg-card shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-widest text-muted-foreground/70">
@@ -596,6 +605,7 @@ export function AdminPanel() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}

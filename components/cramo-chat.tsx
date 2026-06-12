@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Send } from 'lucide-react'
 import { toast } from 'sonner'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 import { useCramoContext } from '@/components/cramo-context'
 import { CramoIcon } from '@/components/cramo-icon'
 import { cn } from '@/lib/utils'
@@ -19,6 +22,29 @@ interface CramoChatProps {
   placeholder?: string
   introMessage?: string
   className?: string
+}
+
+const markdownComponents = {
+  p: ({ ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+  ul: ({ ...props }) => <ul className="mb-2 last:mb-0 list-disc pl-5 space-y-1" {...props} />,
+  ol: ({ ...props }) => <ol className="mb-2 last:mb-0 list-decimal pl-5 space-y-1" {...props} />,
+  li: ({ ...props }) => <li {...props} />,
+  strong: ({ ...props }) => <strong className="font-semibold" {...props} />,
+  a: ({ ...props }) => <a className="underline underline-offset-2 hover:text-primary" target="_blank" rel="noopener noreferrer" {...props} />,
+  code: ({ ...props }) => <code className="rounded bg-background/60 px-1 py-0.5 text-xs" {...props} />,
+  pre: ({ ...props }) => <pre className="mb-2 last:mb-0 overflow-x-auto rounded-lg bg-background/60 p-2 text-xs" {...props} />,
+  blockquote: ({ ...props }) => <blockquote className="border-l-2 border-border pl-3 italic text-muted-foreground" {...props} />,
+  h1: ({ ...props }) => <p className="mb-1 font-semibold" {...props} />,
+  h2: ({ ...props }) => <p className="mb-1 font-semibold" {...props} />,
+  h3: ({ ...props }) => <p className="mb-1 font-semibold" {...props} />,
+}
+
+function MessageContent({ content }: { content: string }) {
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
+      {content}
+    </ReactMarkdown>
+  )
 }
 
 export function CramoChat({ mode, placeholder, introMessage, className }: CramoChatProps) {
@@ -89,8 +115,8 @@ export function CramoChat({ mode, placeholder, introMessage, className }: CramoC
         {messages.length === 0 && introMessage && (
           <div className="flex gap-2.5">
             <CramoAvatar />
-            <div className="rounded-2xl rounded-tl-sm bg-muted px-3.5 py-2.5 text-sm leading-relaxed max-w-[85%] whitespace-pre-wrap">
-              {introMessage}
+            <div className="rounded-2xl rounded-tl-sm bg-muted px-3.5 py-2.5 text-sm leading-relaxed max-w-[85%]">
+              <MessageContent content={introMessage} />
             </div>
           </div>
         )}
@@ -100,13 +126,13 @@ export function CramoChat({ mode, placeholder, introMessage, className }: CramoC
             {m.role === 'assistant' && <CramoAvatar />}
             <div
               className={cn(
-                'rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed max-w-[85%] whitespace-pre-wrap',
+                'rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed max-w-[85%]',
                 m.role === 'user'
-                  ? 'rounded-tr-sm bg-primary text-primary-foreground'
+                  ? 'rounded-tr-sm bg-primary text-primary-foreground whitespace-pre-wrap'
                   : 'rounded-tl-sm bg-muted text-foreground'
               )}
             >
-              {m.content}
+              {m.role === 'assistant' ? <MessageContent content={m.content} /> : m.content}
             </div>
           </div>
         ))}

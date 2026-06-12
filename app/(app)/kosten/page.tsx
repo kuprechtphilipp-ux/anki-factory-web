@@ -299,6 +299,7 @@ export default function KostenPage() {
           </div>
         ) : (
           <div className="rounded-2xl border border-border/50 bg-card shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-widest text-muted-foreground/70">
@@ -325,6 +326,7 @@ export default function KostenPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </div>
