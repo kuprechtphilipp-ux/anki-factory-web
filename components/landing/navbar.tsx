@@ -24,6 +24,7 @@ export function LandingNavbar() {
           ? 'border-b border-border/60 bg-background/80 shadow-sm backdrop-blur-md'
           : 'border-b border-transparent bg-transparent'
       )}
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">

@@ -24,36 +24,45 @@ export function Hero() {
 
   useEffect(() => {
     const text = cramoSayings[sayingIndex]
-    let charIndex = 0
-    let typeInterval: ReturnType<typeof setInterval>
+    const msPerChar = 45
+    let rafId: number
     let displayTimeout: ReturnType<typeof setTimeout>
     let fadeTimeout: ReturnType<typeof setTimeout>
+    let startTime: number | null = null
 
     setTypedText('')
     setBubbleVisible(true)
 
+    // Advance the typed length based on elapsed wall-clock time rather than
+    // tick count, so delayed frames (e.g. during hydration on mobile) catch
+    // up instead of stretching the animation out into slow motion.
+    function tick(now: number) {
+      if (startTime === null) startTime = now
+      const elapsed = now - startTime
+      const charIndex = Math.min(text.length, Math.floor(elapsed / msPerChar))
+      setTypedText(text.slice(0, charIndex))
+      if (charIndex < text.length) {
+        rafId = requestAnimationFrame(tick)
+      } else {
+        displayTimeout = setTimeout(() => {
+          setBubbleVisible(false)
+          fadeTimeout = setTimeout(() => {
+            setSayingIndex((i) => (i + 1) % cramoSayings.length)
+          }, 500)
+        }, 5000)
+      }
+    }
+
     const startDelay = setTimeout(
       () => {
-        typeInterval = setInterval(() => {
-          charIndex += 1
-          setTypedText(text.slice(0, charIndex))
-          if (charIndex >= text.length) {
-            clearInterval(typeInterval)
-            displayTimeout = setTimeout(() => {
-              setBubbleVisible(false)
-              fadeTimeout = setTimeout(() => {
-                setSayingIndex((i) => (i + 1) % cramoSayings.length)
-              }, 500)
-            }, 5000)
-          }
-        }, 45)
+        rafId = requestAnimationFrame(tick)
       },
       sayingIndex === 0 ? 700 : 600
     )
 
     return () => {
       clearTimeout(startDelay)
-      clearInterval(typeInterval)
+      cancelAnimationFrame(rafId)
       clearTimeout(displayTimeout)
       clearTimeout(fadeTimeout)
     }

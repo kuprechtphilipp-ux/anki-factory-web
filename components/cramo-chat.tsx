@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCramoContext } from '@/components/cramo-context'
+import { CramoIcon } from '@/components/cramo-icon'
 import { cn } from '@/lib/utils'
 
 interface ChatMessage {
@@ -127,7 +128,7 @@ export function CramoChat({ mode, placeholder, introMessage, className }: CramoC
           onKeyDown={handleKeyDown}
           placeholder={placeholder ?? 'Schreib Cramo eine Nachricht...'}
           rows={1}
-          className="min-h-9 max-h-32 resize-none text-sm"
+          className="min-h-9 max-h-32 resize-none text-base md:text-sm"
           disabled={loading}
         />
         <Button size="icon" onClick={handleSend} disabled={loading || !input.trim()} className="shrink-0">
@@ -139,11 +140,5 @@ export function CramoChat({ mode, placeholder, introMessage, className }: CramoC
 }
 
 function CramoAvatar() {
-  return (
-    <img
-      src="/icons/Cramo_Icons/Cramo_Fresh_Ai_Chat_Icon.png"
-      alt="Cramo"
-      className="h-10 w-10 shrink-0 rounded-full object-cover"
-    />
-  )
+  return <CramoIcon alt="Cramo" className="h-10 w-10 shrink-0 rounded-full object-cover" />
 }

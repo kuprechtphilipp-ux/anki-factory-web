@@ -1227,7 +1227,7 @@ export default function ThemaPage({ params }: Props) {
                 </button>
 
                 {settingsExpanded && (
-                  <div className="grid grid-cols-2 gap-4 pt-1 animate-fade-in">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 animate-fade-in">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kartentyp-Mix</Label>
@@ -1258,7 +1258,7 @@ export default function ThemaPage({ params }: Props) {
                       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bis Seite</Label>
                       <Input type="number" min={1} placeholder="Ende" value={pageTo} onChange={(e) => setPageTo(e.target.value)} disabled={generating} className="h-9 bg-card" />
                     </div>
-                    <div className="col-span-2 flex items-center justify-between pt-1">
+                    <div className="sm:col-span-2 flex items-center justify-between pt-1">
                       <div className="flex items-center gap-2">
                         <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Vision-Modus</span>
@@ -1273,7 +1273,7 @@ export default function ThemaPage({ params }: Props) {
                       </button>
                     </div>
                     {visionMode && (
-                      <div className="col-span-2 flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 px-3 py-2">
+                      <div className="sm:col-span-2 flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 px-3 py-2">
                         <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                         <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">Analysiert auch Grafiken & Diagramme. Bei komplexen Abbildungen können Batches mit mehr als 20 Seiten das 60-Sekunden-Limit überschreiten.</p>
                       </div>
@@ -1447,7 +1447,7 @@ export default function ThemaPage({ params }: Props) {
 
                 {settingsExpanded && (
                   <div className="space-y-4 animate-fade-in">
-                    <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/50 border border-border/50">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-muted/50 border border-border/50">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kartentyp-Mix</Label>
@@ -1483,7 +1483,7 @@ export default function ThemaPage({ params }: Props) {
                           </div>
                         </>
                       )}
-                      <div className="col-span-2 flex items-center justify-between pt-1">
+                      <div className="sm:col-span-2 flex items-center justify-between pt-1">
                         <div className="flex items-center gap-2">
                           <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Vision-Modus</span>
@@ -1497,7 +1497,7 @@ export default function ThemaPage({ params }: Props) {
                         </button>
                       </div>
                       {visionMode && (
-                        <div className="col-span-2 flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 px-3 py-2">
+                        <div className="sm:col-span-2 flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 px-3 py-2">
                           <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                           <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">Analysiert auch Grafiken & Diagramme. Bei komplexen Abbildungen können Batches mit mehr als 20 Seiten das 60-Sekunden-Limit überschreiten.</p>
                         </div>

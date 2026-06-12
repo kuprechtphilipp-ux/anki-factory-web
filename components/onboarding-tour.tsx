@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
+import { CramoIcon } from '@/components/cramo-icon'
 import type { TourStep } from '@/lib/tour-steps'
 
 interface OnboardingTourProps {
@@ -231,11 +232,7 @@ export function OnboardingTour({ open, onClose, steps, onRequestSidebarOpen, onR
             </div>
 
             <div className="flex items-start gap-3">
-              <img
-                src="/icons/Cramo_Icons/Cramo_Fresh_Ai_Chat_Icon.png"
-                alt="Cramo"
-                className="h-9 w-9 rounded-full object-cover shrink-0"
-              />
+              <CramoIcon alt="Cramo" className="h-9 w-9 rounded-full object-cover shrink-0" />
               <div className="space-y-1 min-w-0">
                 <p className="text-sm font-semibold">{step.title}</p>
                 <p className="text-sm text-muted-foreground leading-relaxed">{step.content}</p>

@@ -49,7 +49,7 @@ export function PlanBanner() {
           <PlanBadge plan={data.plan} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 space-y-4">
+      <PopoverContent align="end" className="w-[calc(100vw-2rem)] sm:w-80 space-y-4">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Credits genutzt</span>
           <span className="font-semibold tabular-nums">

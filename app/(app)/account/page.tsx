@@ -217,7 +217,7 @@ export default function AccountPage() {
         </div>
         <div className="space-y-1.5">
           <Label>Wie ist dein Lernfenster gerade?</Label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {LERNFENSTER_OPTIONS.map((opt) => (
               <button
                 key={opt.value}

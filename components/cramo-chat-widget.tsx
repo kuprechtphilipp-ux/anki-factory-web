@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { CramoChat } from '@/components/cramo-chat'
+import { CramoIcon } from '@/components/cramo-icon'
 import { cn } from '@/lib/utils'
 
 export function CramoChatWidget() {
@@ -29,11 +30,7 @@ export function CramoChatWidget() {
       >
         <div className="flex items-center justify-between border-b border-border/50 px-4 py-3 shrink-0">
           <div className="flex items-center gap-2">
-            <img
-              src="/icons/Cramo_Icons/Cramo_Fresh_Ai_Chat_Icon.png"
-              alt="Cramo"
-              className="h-9 w-9 rounded-full object-cover"
-            />
+            <CramoIcon alt="Cramo" className="h-9 w-9 rounded-full object-cover" />
             <span className="text-sm font-semibold">Cramo fragen</span>
           </div>
           <button
@@ -68,11 +65,7 @@ export function CramoChatWidget() {
             <X className="h-5 w-5 text-foreground" />
           </div>
         ) : (
-          <img
-            src="/icons/Cramo_Icons/Cramo_Fresh_Ai_Chat_Icon.png"
-            alt="Cramo-Chat öffnen"
-            className="h-full w-full object-cover"
-          />
+          <CramoIcon alt="Cramo-Chat öffnen" className="h-full w-full object-cover" />
         )}
       </button>
     </>

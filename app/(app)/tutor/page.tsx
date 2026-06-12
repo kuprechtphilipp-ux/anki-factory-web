@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Flame, BookOpen, HelpCircle, PartyPopper } from 'lucide-react'
 import { CramoChat } from '@/components/cramo-chat'
+import { CramoIcon } from '@/components/cramo-icon'
 
 interface StreakData {
   streak: number
@@ -23,11 +24,7 @@ export default function TutorPage() {
   return (
     <div className="flex flex-col gap-6 h-full">
       <div className="flex items-center gap-3">
-        <img
-          src="/icons/Cramo_Icons/Cramo_Fresh_Ai_Chat_Icon.png"
-          alt="Cramo"
-          className="h-12 w-12 rounded-full object-cover shrink-0"
-        />
+        <CramoIcon alt="Cramo" className="h-12 w-12 rounded-full object-cover shrink-0" />
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Chat</h1>
           <p className="text-sm text-muted-foreground">Cramo hilft dir beim Büffeln — sachlich oder mit vollem Charakter.</p>
