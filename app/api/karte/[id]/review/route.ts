@@ -126,16 +126,21 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Fire-and-forget: log review + upsert daily streak
-  void supabase.from('review_log').insert({
-    karte_id: Number(params.id),
-    thema_id: karte.thema_id,
-    rating,
-    reviewed_at: now.toISOString(),
-  })
-
+  // Log review + Tages-Streak aktualisieren (awaited, da Vercel die
+  // Function sonst vor Abschluss von Fire-and-forget-Promises beendet)
   const todayDate = now.toISOString().slice(0, 10)
-  void supabase.rpc('upsert_lern_streak', { p_datum: todayDate, p_user_id: user.id })
+  const [reviewLogResult, streakResult] = await Promise.all([
+    supabase.from('review_log').insert({
+      karte_id: Number(params.id),
+      thema_id: karte.thema_id,
+      rating,
+      reviewed_at: now.toISOString(),
+    }),
+    supabase.rpc('upsert_lern_streak', { p_datum: todayDate, p_user_id: user.id }),
+  ])
+
+  if (reviewLogResult.error) console.error('review_log insert failed:', reviewLogResult.error)
+  if (streakResult.error) console.error('upsert_lern_streak failed:', streakResult.error)
 
   return NextResponse.json({ updated: data as Karte, nextIntervals })
 }
