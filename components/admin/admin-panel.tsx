@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2, Copy, Wallet, Ban, ShieldOff, Trash2, XCircle } from 'lucide-react'
+import { Loader2, Copy, Wallet, Ban, ShieldOff, Trash2, XCircle, MoreHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -23,7 +23,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import {
   Select,
@@ -32,6 +31,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { CreditDonut } from '@/components/admin/credit-donut'
 import { PlanBadge } from '@/components/plan-badge'
 import { PLAN_ORDER, DEFAULT_PLAN_CONFIG, type PlanConfig } from '@/lib/plans'
@@ -116,6 +121,7 @@ export function AdminPanel() {
 
   // Nutzer-Aktionen (sperren, Abo kuendigen, loeschen)
   const [actingUserId, setActingUserId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null)
 
   // Invite code form
   const [newCodePlan, setNewCodePlan] = useState<Exclude<Plan, 'basic'>>('basic_plus')
@@ -240,6 +246,7 @@ export function AdminPanel() {
       const data = await res.json() as { error?: string }
       if (!res.ok) { toast.error(data.error ?? 'Account konnte nicht gelöscht werden'); return }
       toast.success('Account gelöscht')
+      setDeleteTarget(null)
       await loadUsers()
     } finally {
       setActingUserId(null)
@@ -371,11 +378,15 @@ export function AdminPanel() {
                 {users.map((u) => (
                   <tr key={u.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2">
-                        {u.email ?? '—'}
-                        {u.is_admin && <Badge variant="secondary">Admin</Badge>}
-                        {u.is_blocked && <Badge variant="destructive">Gesperrt</Badge>}
-                        {u.stripe_cancel_at && <Badge variant="outline">Gekündigt</Badge>}
+                      <div className="flex flex-col gap-1">
+                        <span>{u.email ?? '—'}</span>
+                        {(u.is_admin || u.is_blocked || u.stripe_cancel_at) && (
+                          <div className="flex items-center gap-1.5">
+                            {u.is_admin && <Badge variant="secondary">Admin</Badge>}
+                            {u.is_blocked && <Badge variant="destructive">Gesperrt</Badge>}
+                            {u.stripe_cancel_at && <Badge variant="outline">Gekündigt</Badge>}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-2.5">
@@ -391,7 +402,7 @@ export function AdminPanel() {
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">{fmtDate(u.created_at)}</td>
                     <td className="px-4 py-2.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                      <div className="flex items-center justify-end gap-1.5">
                         <Button
                           size="sm"
                           variant="outline"
@@ -403,64 +414,46 @@ export function AdminPanel() {
                         </Button>
 
                         {!u.is_admin && (
-                          <>
-                            {u.stripe_subscription_id && !u.stripe_cancel_at && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-7 text-xs"
+                                className="h-7 w-7 p-0"
                                 disabled={actingUserId === u.id}
-                                onClick={() => handleCancelSubscription(u)}
                               >
-                                {actingUserId === u.id ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <XCircle className="h-3 w-3 mr-1.5" />}
-                                Abo kündigen
+                                {actingUserId === u.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                )}
+                                <span className="sr-only">Weitere Aktionen</span>
                               </Button>
-                            )}
-
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs"
-                              disabled={actingUserId === u.id}
-                              onClick={() => handleToggleBlock(u)}
-                            >
-                              {actingUserId === u.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
-                              ) : u.is_blocked ? (
-                                <ShieldOff className="h-3 w-3 mr-1.5" />
-                              ) : (
-                                <Ban className="h-3 w-3 mr-1.5" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {u.stripe_subscription_id && !u.stripe_cancel_at && (
+                                <DropdownMenuItem onClick={() => handleCancelSubscription(u)}>
+                                  <XCircle className="h-3.5 w-3.5 mr-2" />
+                                  Abo kündigen
+                                </DropdownMenuItem>
                               )}
-                              {u.is_blocked ? 'Entsperren' : 'Sperren'}
-                            </Button>
-
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button size="sm" variant="destructive" className="h-7 text-xs" disabled={actingUserId === u.id}>
-                                  <Trash2 className="h-3 w-3 mr-1.5" />
-                                  Löschen
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Account wirklich löschen?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    {u.email ?? 'Dieser Account'} sowie alle Kurse, Karten und der Lernfortschritt
-                                    werden unwiderruflich gelöscht. Ein bestehendes Stripe-Abo wird ebenfalls gekündigt.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleDeleteUser(u)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Account löschen
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </>
+                              <DropdownMenuItem onClick={() => handleToggleBlock(u)}>
+                                {u.is_blocked ? (
+                                  <ShieldOff className="h-3.5 w-3.5 mr-2" />
+                                ) : (
+                                  <Ban className="h-3.5 w-3.5 mr-2" />
+                                )}
+                                {u.is_blocked ? 'Entsperren' : 'Sperren'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setDeleteTarget(u)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                Löschen
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         )}
                       </div>
                     </td>
@@ -766,6 +759,29 @@ export function AdminPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Account wirklich löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.email ?? 'Dieser Account'} sowie alle Kurse, Karten und der Lernfortschritt
+              werden unwiderruflich gelöscht. Ein bestehendes Stripe-Abo wird ebenfalls gekündigt.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && handleDeleteUser(deleteTarget)}
+              disabled={actingUserId === deleteTarget?.id}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {actingUserId === deleteTarget?.id ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+              Account löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Tabs>
   )
 }
