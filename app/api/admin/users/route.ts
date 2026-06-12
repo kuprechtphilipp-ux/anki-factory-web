@@ -9,9 +9,9 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('profiles_with_credits')
-    .select('id, email, plan, credits_total, credits_used, created_at')
+    .select('id, email, plan, credits_total, credits_used, created_at, is_admin, is_blocked, stripe_subscription_id, stripe_cancel_at')
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data as Pick<Profile, 'id' | 'email' | 'plan' | 'credits_total' | 'credits_used' | 'created_at'>[])
+  return NextResponse.json(data as Pick<Profile, 'id' | 'email' | 'plan' | 'credits_total' | 'credits_used' | 'created_at' | 'is_admin' | 'is_blocked' | 'stripe_subscription_id' | 'stripe_cancel_at'>[])
 }

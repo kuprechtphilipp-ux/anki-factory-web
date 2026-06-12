@@ -28,10 +28,12 @@ export interface Profile {
   plan_expires_at: string | null
   stripe_customer_id: string | null
   stripe_subscription_id: string | null
+  stripe_cancel_at: string | null
   credits_total: number
   credits_used: number
   credits_reset_at: string
   is_admin: boolean
+  is_blocked: boolean
   onboarding_completed: boolean
   fachbereich: string | null
   lernziel: string | null
@@ -250,10 +252,12 @@ export type Database = {
           plan_expires_at?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          stripe_cancel_at?: string | null
           credits_total?: number
           credits_used?: number
           credits_reset_at?: string
           is_admin?: boolean
+          is_blocked?: boolean
           onboarding_completed?: boolean
           fachbereich?: string | null
           lernziel?: string | null
@@ -268,10 +272,12 @@ export type Database = {
           plan_expires_at?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          stripe_cancel_at?: string | null
           credits_total?: number
           credits_used?: number
           credits_reset_at?: string
           is_admin?: boolean
+          is_blocked?: boolean
           onboarding_completed?: boolean
           fachbereich?: string | null
           lernziel?: string | null

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2, Copy, Wallet } from 'lucide-react'
+import { Loader2, Copy, Wallet, Ban, ShieldOff, Trash2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -14,6 +14,17 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import {
   Select,
   SelectContent,
@@ -34,6 +45,10 @@ interface AdminUser {
   credits_total: number
   credits_used: number
   created_at: string
+  is_admin: boolean
+  is_blocked: boolean
+  stripe_subscription_id: string | null
+  stripe_cancel_at: string | null
 }
 
 interface AdminInviteCode extends InviteCode {
@@ -98,6 +113,9 @@ export function AdminPanel() {
   const [creditDialogUser, setCreditDialogUser] = useState<AdminUser | null>(null)
   const [creditsToAdd, setCreditsToAdd] = useState('')
   const [savingCredits, setSavingCredits] = useState(false)
+
+  // Nutzer-Aktionen (sperren, Abo kuendigen, loeschen)
+  const [actingUserId, setActingUserId] = useState<string | null>(null)
 
   // Invite code form
   const [newCodePlan, setNewCodePlan] = useState<Exclude<Plan, 'basic'>>('basic_plus')
@@ -186,6 +204,45 @@ export function AdminPanel() {
       await loadUsers()
     } finally {
       setSavingCredits(false)
+    }
+  }
+
+  async function handleToggleBlock(targetUser: AdminUser) {
+    setActingUserId(targetUser.id)
+    try {
+      const res = await fetch(`/api/admin/users/${targetUser.id}/block`, { method: 'POST' })
+      const data = await res.json() as { is_blocked?: boolean; error?: string }
+      if (!res.ok) { toast.error(data.error ?? 'Aktion fehlgeschlagen'); return }
+      toast.success(data.is_blocked ? 'Nutzer gesperrt' : 'Nutzer entsperrt')
+      await loadUsers()
+    } finally {
+      setActingUserId(null)
+    }
+  }
+
+  async function handleCancelSubscription(targetUser: AdminUser) {
+    setActingUserId(targetUser.id)
+    try {
+      const res = await fetch(`/api/admin/users/${targetUser.id}/cancel-subscription`, { method: 'POST' })
+      const data = await res.json() as { error?: string }
+      if (!res.ok) { toast.error(data.error ?? 'Abo konnte nicht gekündigt werden'); return }
+      toast.success('Abo gekündigt — läuft bis Ende der Periode')
+      await loadUsers()
+    } finally {
+      setActingUserId(null)
+    }
+  }
+
+  async function handleDeleteUser(targetUser: AdminUser) {
+    setActingUserId(targetUser.id)
+    try {
+      const res = await fetch(`/api/admin/users/${targetUser.id}`, { method: 'DELETE' })
+      const data = await res.json() as { error?: string }
+      if (!res.ok) { toast.error(data.error ?? 'Account konnte nicht gelöscht werden'); return }
+      toast.success('Account gelöscht')
+      await loadUsers()
+    } finally {
+      setActingUserId(null)
     }
   }
 
@@ -313,7 +370,14 @@ export function AdminPanel() {
               <tbody>
                 {users.map((u) => (
                   <tr key={u.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-2.5">{u.email ?? '—'}</td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        {u.email ?? '—'}
+                        {u.is_admin && <Badge variant="secondary">Admin</Badge>}
+                        {u.is_blocked && <Badge variant="destructive">Gesperrt</Badge>}
+                        {u.stripe_cancel_at && <Badge variant="outline">Gekündigt</Badge>}
+                      </div>
+                    </td>
                     <td className="px-4 py-2.5">
                       <PlanBadge plan={u.plan} />
                     </td>
@@ -327,15 +391,78 @@ export function AdminPanel() {
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">{fmtDate(u.created_at)}</td>
                     <td className="px-4 py-2.5 text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs"
-                        onClick={() => { setCreditDialogUser(u); setCreditsToAdd('') }}
-                      >
-                        <Wallet className="h-3 w-3 mr-1.5" />
-                        Credits aufladen
-                      </Button>
+                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => { setCreditDialogUser(u); setCreditsToAdd('') }}
+                        >
+                          <Wallet className="h-3 w-3 mr-1.5" />
+                          Credits
+                        </Button>
+
+                        {!u.is_admin && (
+                          <>
+                            {u.stripe_subscription_id && !u.stripe_cancel_at && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                disabled={actingUserId === u.id}
+                                onClick={() => handleCancelSubscription(u)}
+                              >
+                                {actingUserId === u.id ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <XCircle className="h-3 w-3 mr-1.5" />}
+                                Abo kündigen
+                              </Button>
+                            )}
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              disabled={actingUserId === u.id}
+                              onClick={() => handleToggleBlock(u)}
+                            >
+                              {actingUserId === u.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
+                              ) : u.is_blocked ? (
+                                <ShieldOff className="h-3 w-3 mr-1.5" />
+                              ) : (
+                                <Ban className="h-3 w-3 mr-1.5" />
+                              )}
+                              {u.is_blocked ? 'Entsperren' : 'Sperren'}
+                            </Button>
+
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="destructive" className="h-7 text-xs" disabled={actingUserId === u.id}>
+                                  <Trash2 className="h-3 w-3 mr-1.5" />
+                                  Löschen
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Account wirklich löschen?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    {u.email ?? 'Dieser Account'} sowie alle Kurse, Karten und der Lernfortschritt
+                                    werden unwiderruflich gelöscht. Ein bestehendes Stripe-Abo wird ebenfalls gekündigt.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteUser(u)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Account löschen
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
