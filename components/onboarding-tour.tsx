@@ -36,10 +36,20 @@ function getBubblePosition(rect: DOMRect, placement: TourStep['placement'] = 'bo
   const vh = window.innerHeight
   const width = Math.min(BUBBLE_WIDTH, vw - 24)
 
+  // Side placements need room for the bubble next to the target. On narrow
+  // screens (e.g. wide sidebar nav items), that room isn't there — fall
+  // back to top/bottom so the bubble doesn't end up covering its target.
+  let effectivePlacement = placement
+  if (placement === 'right' && rect.right + GAP + width > vw) {
+    effectivePlacement = rect.bottom + GAP + BUBBLE_HEIGHT_ESTIMATE <= vh ? 'bottom' : 'top'
+  } else if (placement === 'left' && rect.left - GAP - width < 0) {
+    effectivePlacement = rect.bottom + GAP + BUBBLE_HEIGHT_ESTIMATE <= vh ? 'bottom' : 'top'
+  }
+
   let top: number
   let left: number
 
-  switch (placement) {
+  switch (effectivePlacement) {
     case 'top':
       top = rect.top - GAP - BUBBLE_HEIGHT_ESTIMATE
       left = rect.left + rect.width / 2 - width / 2
