@@ -320,7 +320,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
           )}
         >
           <Sparkles className="h-4 w-4 shrink-0" />
-          AI Tutor
+          Chat
         </Link>
         <Link
           href="/kosten"

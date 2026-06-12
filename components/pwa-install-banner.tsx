@@ -11,6 +11,15 @@ const READY_KEY = 'pwa-prompt-ready'
 const READY_EVENT = 'pwa-prompt-ready'
 const SHOW_DELAY_MS = 1500
 
+// Dismiss check: mobile = once per browser session, desktop = cooldown across sessions
+function isDismissed(isMobile: boolean): boolean {
+  if (isMobile) return !!sessionStorage.getItem(DISMISS_KEY)
+  const dismissed = localStorage.getItem(DISMISS_KEY)
+  if (!dismissed) return false
+  const daysAgo = (Date.now() - Number(dismissed)) / 86_400_000
+  return daysAgo < DISMISS_DAYS
+}
+
 export function PwaInstallBanner() {
   const [platform, setPlatform] = useState<Platform>(null)
   const [deferredPrompt, setDeferredPrompt] = useState<Event & { prompt: () => Promise<void> } | null>(null)
@@ -31,16 +40,7 @@ export function PwaInstallBanner() {
     const isAndroid = /android/i.test(ua)
     const isMobile = isIos || isAndroid
 
-    // Dismiss check: mobile = once per browser session, desktop = cooldown across sessions
-    if (isMobile) {
-      if (sessionStorage.getItem(DISMISS_KEY)) return
-    } else {
-      const dismissed = localStorage.getItem(DISMISS_KEY)
-      if (dismissed) {
-        const daysAgo = (Date.now() - Number(dismissed)) / 86_400_000
-        if (daysAgo < DISMISS_DAYS) return
-      }
-    }
+    if (isDismissed(isMobile)) return
 
     const cleanupFns: Array<() => void> = []
 
@@ -73,6 +73,8 @@ export function PwaInstallBanner() {
       // Android & Desktop: wait for beforeinstallprompt
       const handler = (e: Event) => {
         e.preventDefault()
+        // Chrome may re-fire this event later in the session; respect a dismiss in the meantime
+        if (isDismissed(isMobile)) return
         setDeferredPrompt(e as Event & { prompt: () => Promise<void> })
         setPlatform('android')
         reveal()

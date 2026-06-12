@@ -29,7 +29,7 @@ export default function TutorPage() {
           className="h-12 w-12 rounded-full object-cover shrink-0"
         />
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">AI Tutor</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Chat</h1>
           <p className="text-sm text-muted-foreground">Cramo hilft dir beim Büffeln — sachlich oder mit vollem Charakter.</p>
         </div>
       </div>
