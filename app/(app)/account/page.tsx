@@ -24,6 +24,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { LERNFENSTER_OPTIONS, type Lernfenster, type Plan } from '@/lib/types'
+import { PLAN_LABELS } from '@/lib/plans'
 
 interface ProfileData {
   fachbereich: string | null
@@ -324,6 +325,9 @@ export default function AccountPage() {
               <AlertDialogDescription>
                 Diese Aktion kann nicht rückgängig gemacht werden. Alle deine Kurse, Karten und dein
                 Lernfortschritt werden dauerhaft gelöscht.
+                {profile?.base_plan && profile.base_plan !== 'basic' && (
+                  <> Dein {PLAN_LABELS[profile.base_plan]}-Abo wird dabei sofort gekündigt.</>
+                )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
