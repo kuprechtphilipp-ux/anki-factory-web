@@ -62,7 +62,7 @@ export function PlanBanner() {
 
   const body = (
     <div className="space-y-4">
-      <div className="flex items-center justify-between text-sm">
+      <div className={`flex items-center justify-between text-sm ${isMobile ? 'pr-7' : ''}`}>
         <span className="text-muted-foreground">Credits genutzt</span>
         <span className="font-semibold tabular-nums">
           {data.credits_used} / {data.credits_total}
