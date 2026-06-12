@@ -56,7 +56,7 @@ export function RedeemInviteCode({ redeemedCode, onRedeemed }: RedeemInviteCodeP
         value={code}
         onChange={(e) => setCode(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') handleRedeem() }}
-        className="text-sm"
+        className="text-base md:text-sm"
         disabled={loading}
       />
       <Button onClick={handleRedeem} disabled={loading || !code.trim()} className="shrink-0">

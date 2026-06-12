@@ -49,6 +49,18 @@ export const CRAMO_TOUR_STEPS: TourStep[] = [
     placement: 'bottom',
   },
   {
+    target: 'phone-widget',
+    title: 'Cramo am Handy',
+    content: 'Scann hier den QR-Code, um Cramo auf dem Handy zu öffnen und unterwegs weiterzulernen. Kurse anlegen und Karten generieren machst du am besten hier am Laptop oder Tablet.',
+    placement: 'bottom',
+  },
+  {
+    target: 'laptop-widget',
+    title: 'Cramo am Laptop',
+    content: 'Hier findest du den Link zu Cramo für deinen Laptop oder Tablet. Lege dort deine Kurse an und generiere deine Karten — danach kannst du hier am Handy weiterlernen.',
+    placement: 'bottom',
+  },
+  {
     target: 'lightbulb-button',
     title: 'Bis bald',
     content: 'Falls du diese Tour oder deine Angaben nochmal ändern willst: einfach hier klicken. Viel Erfolg!',

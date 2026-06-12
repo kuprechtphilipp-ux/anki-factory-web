@@ -9,6 +9,7 @@ import { CramoChatWidget } from '@/components/cramo-chat-widget'
 import { OnboardingModal } from '@/components/onboarding-modal'
 import { OnboardingTour } from '@/components/onboarding-tour'
 import { PlanBanner } from '@/components/plan-banner'
+import { CrossDeviceWidget } from '@/components/cross-device-widget'
 import { Button } from '@/components/ui/button'
 import { Menu, Search, Lightbulb } from 'lucide-react'
 import { toast } from 'sonner'
@@ -147,6 +148,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <kbd className="ml-1 rounded border border-border/60 bg-card px-1 text-[10px] font-mono">⌘K</kbd>
             </button>
             <PlanBanner />
+            <CrossDeviceWidget />
             <button
               onClick={() => setOnboardingOpen(true)}
               data-tour="lightbulb-button"

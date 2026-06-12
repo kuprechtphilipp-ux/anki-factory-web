@@ -155,7 +155,10 @@ export default function KursePage() {
           </div>
           <div>
             <p className="text-base font-medium">Noch keine Kurse</p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1 sm:hidden">
+              Lege deine Kurse am besten am Laptop oder Tablet an und generiere dort deine Karten aus deinen PDF-Dokumenten.
+            </p>
+            <p className="text-sm text-muted-foreground mt-1 hidden sm:block">
               Lege einen Kurs über das <span className="font-semibold">+</span> in der Sidebar an.
             </p>
           </div>
