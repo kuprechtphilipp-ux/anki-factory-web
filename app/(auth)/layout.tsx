@@ -6,7 +6,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="relative flex min-h-dvh items-center justify-center bg-background p-4">
       <Link
         href="/"
-        className="absolute left-4 top-4 flex items-center gap-2.5 sm:left-6 sm:top-6"
+        className="absolute left-4 top-[calc(1rem+env(safe-area-inset-top))] flex items-center gap-2.5 sm:left-6 sm:top-[calc(1.5rem+env(safe-area-inset-top))]"
       >
         <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-border/60 shadow-sm">
           <Image
