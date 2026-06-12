@@ -149,6 +149,8 @@ export async function POST(req: Request) {
 
 LANGUAGE — READ THIS FIRST: Detect the language used in the SOURCE CARDS below and write your ENTIRE response — every question, every option, and every explanation — in that exact same language. Do not translate, and do not default to German or English unless that is the language of the cards.
 
+SPELLING: Pay close attention to correct spelling, grammar and punctuation in that language (for German, this includes umlauts ä/ö/ü and ß). Proofread each string before including it in the output.
+
 TOPIC CONTEXT: "${topicContext}"
 
 YOUR TASK:
@@ -190,6 +192,7 @@ ${distractorText}`
   const msg = await anthropic.messages.create({
     model,
     max_tokens: modus === 'quick' ? 4096 : 8192,
+    temperature: 0.7,
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }],
   })

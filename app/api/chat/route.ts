@@ -22,13 +22,15 @@ Hier darfst du deinen vollen Charakter zeigen: Erzähle (erfundene) Anekdoten au
 
 const LAENGEN_REGEL = `Antwortlänge: Passe die Länge deiner Antwort an die Frage an. Kurze, einfache Anfragen (Smalltalk, Bestätigungen, kurze Fakten, "ok"/"danke"/Ja-Nein-Fragen) bekommen eine kurze Antwort von 1-2 Sätzen. Nur bei Fragen, die wirklich eine Erklärung, Herleitung oder mehrere Aspekte erfordern, darfst du ausführlicher werden und ggf. mit Absätzen oder Aufzählungen strukturieren. Antworte nie länger als für die Frage nötig.`
 
+const RECHTSCHREIB_REGEL = `Achte penibel auf korrekte deutsche Rechtschreibung, Grammatik und Zeichensetzung (insbesondere Umlaute ä/ö/ü und ß). Lies deine Antwort vor dem Absenden gedanklich noch einmal durch und korrigiere Tippfehler.`
+
 function buildSystemPrompt(
   mode: 'help' | 'fun',
   profile: { fachbereich: string | null; lernziel: string | null; lernfenster: string | null } | null,
   context?: CramoLernkontext,
   fortschritt?: CramoLernfortschritt
 ): string {
-  let prompt = `${CRAMO_PERSONA}\n\n${MODE_INSTRUCTIONS[mode]}\n\n${LAENGEN_REGEL}`
+  let prompt = `${CRAMO_PERSONA}\n\n${MODE_INSTRUCTIONS[mode]}\n\n${LAENGEN_REGEL}\n\n${RECHTSCHREIB_REGEL}`
 
   if (profile && (profile.fachbereich || profile.lernziel || profile.lernfenster)) {
     const teile: string[] = []
@@ -114,6 +116,7 @@ export async function POST(req: Request) {
         const anthropicStream = anthropic.messages.stream({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 1024,
+          temperature: 0.7,
           system,
           messages,
         })
