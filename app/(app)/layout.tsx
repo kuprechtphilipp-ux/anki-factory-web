@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Menu, Search, Lightbulb } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Lernfenster, Plan } from '@/lib/types'
-import { CRAMO_TOUR_STEPS } from '@/lib/tour-steps'
+import { getCramoTourSteps } from '@/lib/tour-steps'
 import { PLAN_LABELS } from '@/lib/plans'
 
 const DEFAULT_WIDTH = 256
@@ -40,6 +40,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [onboardingOpen, setOnboardingOpen] = useState(false)
   const [tourOpen, setTourOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Keep in sync with CrossDeviceWidget's breakpoint: it renders the
+  // laptop-widget on mobile and the phone-widget on desktop, and the tour
+  // step for that widget must target whichever one actually exists.
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    setIsMobile(mq.matches)
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-width')
@@ -189,7 +201,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           setTourOpen(false)
           markPwaPromptReady()
         }}
-        steps={CRAMO_TOUR_STEPS}
+        steps={getCramoTourSteps(isMobile)}
         onRequestSidebarOpen={() => setSidebarOpen(true)}
         onRequestSidebarClose={() => setSidebarOpen(false)}
       />

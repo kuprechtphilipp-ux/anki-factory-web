@@ -34,6 +34,22 @@ interface PlanInfo {
   credits_total: number
 }
 
+// PWAs resuming from the background can briefly have a stale session
+// cookie, causing the first request after launch to fail. Retry once
+// after a short delay before surfacing an error to the user.
+async function patchProfile(body: Record<string, unknown>): Promise<Response> {
+  const opts = {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }
+  const res = await fetch('/api/profile', opts)
+  if (res.ok) return res
+
+  await new Promise((resolve) => setTimeout(resolve, 600))
+  return fetch('/api/profile', opts)
+}
+
 export function OnboardingModal({ open, onOpenChange, initial, onSaved }: OnboardingModalProps) {
   const [step, setStep] = useState<1 | 2>(1)
   const [fachbereich, setFachbereich] = useState('')
@@ -54,14 +70,10 @@ export function OnboardingModal({ open, onOpenChange, initial, onSaved }: Onboar
   async function handleNext() {
     setSaving(true)
     try {
-      const res = await fetch('/api/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fachbereich: fachbereich.trim() || null,
-          lernziel: lernziel.trim() || null,
-          lernfenster,
-        }),
+      const res = await patchProfile({
+        fachbereich: fachbereich.trim() || null,
+        lernziel: lernziel.trim() || null,
+        lernfenster,
       })
       if (!res.ok) {
         toast.error('Konnte Angaben nicht speichern.')
@@ -83,11 +95,7 @@ export function OnboardingModal({ open, onOpenChange, initial, onSaved }: Onboar
   async function handleFinish() {
     setSaving(true)
     try {
-      const res = await fetch('/api/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ onboarding_completed: true }),
-      })
+      const res = await patchProfile({ onboarding_completed: true })
       if (!res.ok) {
         toast.error('Konnte Angaben nicht speichern.')
         return

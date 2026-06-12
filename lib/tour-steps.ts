@@ -5,7 +5,12 @@ export interface TourStep {
   placement?: 'top' | 'bottom' | 'left' | 'right'
 }
 
-export const CRAMO_TOUR_STEPS: TourStep[] = [
+// Steps shared by desktop and mobile. The cross-device-widget step is
+// inserted separately by getCramoTourSteps() since only one of the two
+// widgets (phone-widget / laptop-widget) ever exists on a given device —
+// having both as separate steps caused one to always be silently skipped,
+// which threw off the "Schritt X von Y" counter.
+const BASE_STEPS_BEFORE_DEVICE_WIDGET: TourStep[] = [
   {
     target: 'nav-kurse',
     title: 'Deine Kurse',
@@ -48,22 +53,36 @@ export const CRAMO_TOUR_STEPS: TourStep[] = [
     content: 'Hier oben siehst du immer deinen aktuellen Plan und deine Credits. Klick drauf, um zu upgraden oder einen Einladungscode einzulösen.',
     placement: 'bottom',
   },
-  {
-    target: 'phone-widget',
-    title: 'Cramo am Handy',
-    content: 'Scann hier den QR-Code, um Cramo auf dem Handy zu öffnen und unterwegs weiterzulernen. Kurse anlegen und Karten generieren machst du am besten hier am Laptop oder Tablet.',
-    placement: 'bottom',
-  },
-  {
-    target: 'laptop-widget',
-    title: 'Cramo am Laptop',
-    content: 'Hier findest du den Link zu Cramo für deinen Laptop oder Tablet. Lege dort deine Kurse an und generiere deine Karten — danach kannst du hier am Handy weiterlernen.',
-    placement: 'bottom',
-  },
-  {
-    target: 'lightbulb-button',
-    title: 'Bis bald',
-    content: 'Falls du diese Tour oder deine Angaben nochmal ändern willst: einfach hier klicken. Viel Erfolg!',
-    placement: 'bottom',
-  },
 ]
+
+const PHONE_WIDGET_STEP: TourStep = {
+  target: 'phone-widget',
+  title: 'Cramo am Handy',
+  content: 'Scann hier den QR-Code, um Cramo auf dem Handy zu öffnen und unterwegs weiterzulernen. Kurse anlegen und Karten generieren machst du am besten hier am Laptop oder Tablet.',
+  placement: 'bottom',
+}
+
+const LAPTOP_WIDGET_STEP: TourStep = {
+  target: 'laptop-widget',
+  title: 'Cramo am Laptop',
+  content: 'Hier findest du den Link zu Cramo für deinen Laptop oder Tablet. Lege dort deine Kurse an und generiere deine Karten — danach kannst du hier am Handy weiterlernen.',
+  placement: 'bottom',
+}
+
+const LIGHTBULB_STEP: TourStep = {
+  target: 'lightbulb-button',
+  title: 'Bis bald',
+  content: 'Falls du diese Tour oder deine Angaben nochmal ändern willst: einfach hier klicken. Viel Erfolg!',
+  placement: 'bottom',
+}
+
+// CrossDeviceWidget renders LaptopWidget on mobile and PhoneWidget on
+// desktop — only one of the two targets ever exists, so the tour must
+// pick the matching step for the current device.
+export function getCramoTourSteps(isMobile: boolean): TourStep[] {
+  return [
+    ...BASE_STEPS_BEFORE_DEVICE_WIDGET,
+    isMobile ? LAPTOP_WIDGET_STEP : PHONE_WIDGET_STEP,
+    LIGHTBULB_STEP,
+  ]
+}
