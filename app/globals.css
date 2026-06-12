@@ -84,6 +84,29 @@
   animation: fade-in 0.25s ease-out both;
 }
 
+@keyframes float-card {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50% { transform: translateY(-14px) rotate(-2deg); }
+}
+
+.animate-float-card {
+  animation: float-card 6s ease-in-out infinite;
+}
+
+@keyframes flip-card {
+  0%, 40% { transform: rotateY(0deg); }
+  50%, 90% { transform: rotateY(180deg); }
+  100% { transform: rotateY(360deg); }
+}
+
+.animate-flip-card {
+  animation: flip-card 8s ease-in-out infinite;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
 /* Smooth theme transitions */
 html {
   transition: background-color 0.2s ease, color 0.2s ease;
