@@ -1069,7 +1069,8 @@ export default function ThemaPage({ params }: Props) {
                     <p className="text-sm font-semibold text-amber-900 dark:text-amber-300">Kurskontext noch begrenzt</p>
                     <p className="text-xs text-amber-700/90 dark:text-amber-400/80 mt-0.5">
                       Cramo kennt bisher nur 1 Thema in diesem Kurs. Lege in der <span className="font-semibold">Sidebar</span> unter
-                      deinem Kurs weitere Themen/Kapitel an — das hilft der KI bei der Einordnung.
+                      deinem Kurs weitere Themen/Kapitel an — auch ohne Inhalte hilft das Cramo dabei, deine
+                      Kursstruktur zu verstehen und Karten besser einzuordnen.
                     </p>
                   </div>
                   <button

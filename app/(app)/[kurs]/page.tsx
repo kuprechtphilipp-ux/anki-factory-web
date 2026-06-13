@@ -7,7 +7,7 @@ import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine, X, 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import type { KursStatistik, KursThemaStats, Thema } from '@/lib/types'
+import { FOCUS_NEW_THEMA_EVENT, type KursStatistik, type KursThemaStats, type Thema } from '@/lib/types'
 
 interface Props {
   params: { kurs: string }
@@ -274,12 +274,21 @@ export default function KursDashboard({ params }: Props) {
       {stats.themen.length === 1 && !hintDismissed && (
         <div className="flex items-start gap-3 rounded-2xl border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
           <Lightbulb className="h-4 w-4 text-muted-foreground/60 shrink-0 mt-0.5" />
-          <p className="flex-1">
-            <span className="font-medium text-foreground">Tipp:</span> Lege am Anfang gleich alle Themen/Kapitel
-            dieses Kurses an (z. B. aus dem Inhaltsverzeichnis) — auch ohne Karten. Die KI nutzt beim Generieren die
-            Liste deiner Themen, um besser einzuschätzen, was schon abgedeckt ist und wie viele Karten sinnvoll sind.
-            Neue Themen legst du über das „+“ neben dem Kurs in der <span className="font-semibold text-foreground">Sidebar</span> an.
-          </p>
+          <div className="flex-1 space-y-2">
+            <p>
+              <span className="font-medium text-foreground">Tipp:</span> Lege am Anfang gleich alle Themen/Kapitel
+              dieses Kurses an (z. B. aus dem Inhaltsverzeichnis) — auch ohne Karten. Die KI nutzt beim Generieren die
+              Liste deiner Themen, um besser einzuschätzen, was schon abgedeckt ist und wie viele Karten sinnvoll sind.
+              Neue Themen legst du über das „+“ neben dem Kurs in der <span className="font-semibold text-foreground">Sidebar</span> an.
+            </p>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent(FOCUS_NEW_THEMA_EVENT, { detail: { kursId: stats.kurs_id } }))}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card hover:bg-muted px-2.5 py-1 text-xs font-medium text-foreground transition-colors"
+            >
+              <Plus className="h-3 w-3" />
+              Thema anlegen
+            </button>
+          </div>
           <button
             onClick={dismissHint}
             className="shrink-0 rounded-md p-1 text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors"
@@ -366,8 +375,8 @@ export default function KursDashboard({ params }: Props) {
         </div>
       )}
 
-      {/* Generate CTA — erst sinnvoll, wenn mind. ein Thema existiert */}
-      {stats.themen.length > 0 && (
+      {/* Generate CTA — nur bei genau einem Thema eindeutig, sonst hat jede ThemaCard ihren eigenen Link */}
+      {stats.themen.length === 1 && (
         <button
           onClick={() => {
             window.location.href = `/${encodeURIComponent(kursName)}/${encodeURIComponent(stats.themen[0].name)}`
