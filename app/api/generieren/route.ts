@@ -264,9 +264,11 @@ ${existingList}`
 
     if (useVision) {
       let visionBuffer: Buffer<ArrayBufferLike> = pdfBuffer
+      let wasCropped = false
       if (visualDeckMode && pageFrom && pageTo) {
         try {
           visionBuffer = await cropPdfToPages(pdfBuffer, parseInt(pageFrom), parseInt(pageTo))
+          wasCropped = true
         } catch (err) {
           console.error('[generieren] PDF-Crop fehlgeschlagen, sende komplettes PDF:', err)
         }
@@ -276,7 +278,12 @@ ${existingList}`
       if (conceptsList && conceptsList.length > 0) {
         userText += `\n\nFokus auf diese Schlüsselkonzepte:\n${conceptsList.map(c => `- ${c}`).join('\n')}`
       }
-      if (pageFrom && pageTo) userText += ` Seiten ${pageFrom}–${pageTo}.`
+      if (wasCropped) {
+        // Das gesendete PDF enthält NUR den Seitenbereich pageFrom–pageTo, neu durchnummeriert ab 1.
+        // Claude muss für "slide_nummer" trotzdem die ORIGINALEN Seitenzahlen verwenden, da das
+        // Frontend slide_nummer zum Rendern der Seite aus dem KOMPLETTEN Original-PDF nutzt.
+        userText += ` Dieses PDF enthält die Original-Seiten ${pageFrom}–${pageTo} (Dokumentseite 1 = Original-Seite ${pageFrom}, Dokumentseite 2 = Original-Seite ${parseInt(pageFrom!) + 1}, usw.). Setze "slide_nummer" IMMER auf die ORIGINAL-Seitenzahl (Dokumentseite + ${parseInt(pageFrom!) - 1}), nicht auf die Seitenzahl innerhalb dieses Ausschnitts.`
+      } else if (pageFrom && pageTo) userText += ` Seiten ${pageFrom}–${pageTo}.`
       else if (pageFrom) userText += ` Ab Seite ${pageFrom}.`
       else if (pageTo) userText += ` Bis Seite ${pageTo}.`
       userContent = [

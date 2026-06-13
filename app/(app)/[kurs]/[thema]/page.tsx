@@ -449,6 +449,8 @@ export default function ThemaPage({ params }: Props) {
     // Visual-Deck-Modus: für Karten mit bild_relevant + slide_nr die entsprechende
     // PDF-Seite clientseitig rendern und als image_b64 anhängen (keine Server-Calls).
     if (visualDeckMode) {
+      // TEMP-DEBUG: zeigt, ob Claude bild_relevant/slide_nr überhaupt liefert — vor Merge entfernen
+      console.log('[visual-deck debug]', karten.map(k => ({ frage: (k.frage ?? k.cloze_text ?? '').slice(0, 40), bild_relevant: k.bild_relevant, slide_nr: k.slide_nr })))
       const cardsWithImage = karten.filter(k => k.bild_relevant && k.slide_nr)
       if (cardsWithImage.length > 0) {
         const pdfBytes = await pdfFile.arrayBuffer()
