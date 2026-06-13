@@ -66,9 +66,14 @@ export default function KursePage() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
   async function loadData() {
-    const { data: kursData } = await supabase.from('kurs').select('*').order('name')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setLoading(false); return }
+    const { data: kursData } = await supabase.from('kurs').select('*').eq('user_id', user.id).order('name')
     if (!kursData) { setLoading(false); return }
-    const { data: themenData } = await supabase.from('thema').select('*').order('name')
+    const kursIds = kursData.map((k) => k.id)
+    const { data: themenData } = kursIds.length > 0
+      ? await supabase.from('thema').select('*').in('kurs_id', kursIds).order('name')
+      : { data: [] }
     const themen = (themenData ?? []) as Thema[]
     const withThemen = (kursData as Kurs[]).map((k) => ({
       ...k,

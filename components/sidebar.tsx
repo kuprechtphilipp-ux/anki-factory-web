@@ -124,9 +124,14 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
   }
 
   async function load() {
-    const { data: kursData } = await supabase.from('kurs').select('*').order('name')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data: kursData } = await supabase.from('kurs').select('*').eq('user_id', user.id).order('name')
     if (!kursData) return
-    const { data: themenData } = await supabase.from('thema').select('*').order('name')
+    const kursIds = kursData.map((k) => k.id)
+    const { data: themenData } = kursIds.length > 0
+      ? await supabase.from('thema').select('*').in('kurs_id', kursIds).order('name')
+      : { data: [] }
     const themen = (themenData ?? []) as Thema[]
     const loaded = (kursData as Kurs[]).map((k) => ({
       ...k,
