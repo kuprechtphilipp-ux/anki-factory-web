@@ -177,6 +177,7 @@ export interface KursThemaStats {
 }
 
 export interface KursStatistik {
+  kurs_id: number
   due_heute: number
   due_7_tage: number[]
   total_karten: number

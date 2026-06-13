@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { KursStatistik, KursThemaStats } from '@/lib/types'
+import { Input } from '@/components/ui/input'
+import { toast } from 'sonner'
+import type { KursStatistik, KursThemaStats, Thema } from '@/lib/types'
 
 interface Props {
   params: { kurs: string }
@@ -141,11 +144,34 @@ function ThemaCard({ thema, kursName }: { thema: KursThemaStats; kursName: strin
 
 export default function KursDashboard({ params }: Props) {
   const kursName = decodeURIComponent(params.kurs)
+  const router = useRouter()
 
   const [stats, setStats] = useState<KursStatistik | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [hintDismissed, setHintDismissed] = useState(true)
+
+  const [showNewThema, setShowNewThema] = useState(false)
+  const [newThemaName, setNewThemaName] = useState('')
+  const [savingThema, setSavingThema] = useState(false)
+
+  async function handleAddThema() {
+    const name = newThemaName.trim()
+    if (!name || !stats) return
+    setSavingThema(true)
+    try {
+      const res = await fetch('/api/themen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kurs_id: stats.kurs_id, name }),
+      })
+      if (!res.ok) { toast.error('Thema konnte nicht angelegt werden'); return }
+      const thema = await res.json() as Thema
+      router.push(`/${encodeURIComponent(kursName)}/${encodeURIComponent(thema.name)}`)
+    } finally {
+      setSavingThema(false)
+    }
+  }
 
   useEffect(() => {
     setHintDismissed(localStorage.getItem(`cramo:structure-hint-dismissed:${kursName}`) === '1')
@@ -281,12 +307,31 @@ export default function KursDashboard({ params }: Props) {
       ) : (
         <div className="rounded-2xl border border-dashed border-border/60 p-8 text-center space-y-3">
           <p className="text-sm text-muted-foreground">Noch keine Themen angelegt.</p>
-          <Button asChild variant="outline" size="sm" className="gap-1.5">
-            <Link href="/kurse">
+          {showNewThema ? (
+            <div className="mx-auto flex max-w-xs gap-1.5">
+              <Input
+                autoFocus
+                placeholder="Themaname, z. B. Kapitel 1"
+                value={newThemaName}
+                onChange={(e) => setNewThemaName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddThema() }}
+                className="h-8 text-sm"
+              />
+              <Button
+                size="sm"
+                className="h-8 px-2.5"
+                onClick={handleAddThema}
+                disabled={savingThema || !newThemaName.trim()}
+              >
+                {savingThema ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
+          ) : (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowNewThema(true)}>
               <Plus className="h-3.5 w-3.5" />
               Thema anlegen
-            </Link>
-          </Button>
+            </Button>
+          )}
         </div>
       )}
 

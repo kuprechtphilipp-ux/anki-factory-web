@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { Kurs, Thema } from '@/lib/types'
-import { GraduationCap, BookOpen, Zap, Pencil, Trash2, Check, X, Flame, Bell } from 'lucide-react'
+import { GraduationCap, BookOpen, Zap, Pencil, Trash2, Check, X, Flame, Bell, Loader2, FolderPlus, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,11 +54,17 @@ function ZeroOrNum({ n }: { n: number }) {
 }
 
 export default function KursePage() {
+  const router = useRouter()
   const [kurse, setKurse] = useState<KursWithThemen[]>([])
   const [loading, setLoading] = useState(true)
   const [tableStats, setTableStats] = useState<ThemaStats[]>([])
   const [tableLoading, setTableLoading] = useState(false)
   const [streak, setStreak] = useState<StreakData | null>(null)
+
+  // Erster Kurs (Onboarding-CTA im Leerzustand)
+  const [showFirstKurs, setShowFirstKurs] = useState(false)
+  const [firstKursName, setFirstKursName] = useState('')
+  const [savingFirstKurs, setSavingFirstKurs] = useState(false)
 
   // Rename state: kursId → editing name
   const [renamingId, setRenamingId] = useState<number | null>(null)
@@ -124,6 +131,24 @@ export default function KursePage() {
     }
   }
 
+  async function handleCreateFirstKurs() {
+    const name = firstKursName.trim()
+    if (!name) return
+    setSavingFirstKurs(true)
+    try {
+      const res = await fetch('/api/kurse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      if (!res.ok) { toast.error('Kurs konnte nicht angelegt werden'); return }
+      const kurs = await res.json() as Kurs
+      router.push(`/${encodeURIComponent(kurs.name)}`)
+    } finally {
+      setSavingFirstKurs(false)
+    }
+  }
+
   async function handleDelete(kurs: KursWithThemen) {
     if (!confirm(`Kurs "${kurs.name}" und alle Themen/Karten löschen?`)) return
     setDeletingId(kurs.id)
@@ -154,7 +179,7 @@ export default function KursePage() {
     return (
       <div>
         <h1 className="text-[1.75rem] font-semibold tracking-tight mb-8">Kurse</h1>
-        <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+        <div className="flex flex-col items-center justify-center py-16 sm:py-24 text-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
             <GraduationCap className="h-8 w-8 text-muted-foreground/50" />
           </div>
@@ -163,9 +188,48 @@ export default function KursePage() {
             <p className="text-sm text-muted-foreground mt-1 sm:hidden">
               Lege deine Kurse am besten am Laptop oder Tablet an und generiere dort deine Karten aus deinen PDF-Dokumenten.
             </p>
-            <p className="text-sm text-muted-foreground mt-1 hidden sm:block">
-              Lege einen Kurs über das <span className="font-semibold">+</span> in der Sidebar an.
-            </p>
+          </div>
+
+          {/* Desktop-Onboarding: USP (PDF → Karten) sichtbar machen */}
+          <div className="hidden sm:flex flex-col items-center gap-6 mt-2">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-semibold">1</span>
+                Kurs anlegen
+              </span>
+              <span className="text-muted-foreground/30">→</span>
+              <span className="flex items-center gap-1.5">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-semibold">2</span>
+                Thema hinzufügen
+              </span>
+              <span className="text-muted-foreground/30">→</span>
+              <span className="flex items-center gap-1.5">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-semibold">3</span>
+                PDF hochladen &amp; Karten generieren
+                <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+              </span>
+            </div>
+
+            {showFirstKurs ? (
+              <div className="flex gap-1.5">
+                <Input
+                  autoFocus
+                  placeholder="Kursname, z. B. Biologie"
+                  value={firstKursName}
+                  onChange={(e) => setFirstKursName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleCreateFirstKurs() }}
+                  className="h-10 w-56 text-sm"
+                />
+                <Button onClick={handleCreateFirstKurs} disabled={savingFirstKurs || !firstKursName.trim()} className="h-10">
+                  {savingFirstKurs ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Anlegen'}
+                </Button>
+              </div>
+            ) : (
+              <Button size="lg" className="gap-2" onClick={() => setShowFirstKurs(true)}>
+                <FolderPlus className="h-4 w-4" />
+                Ersten Kurs erstellen
+              </Button>
+            )}
           </div>
         </div>
       </div>

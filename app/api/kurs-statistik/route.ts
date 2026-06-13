@@ -20,6 +20,7 @@ export async function GET(req: Request) {
 
   if (themen.length === 0) {
     return NextResponse.json({
+      kurs_id: kursRow.id,
       due_heute: 0,
       due_7_tage: [0, 0, 0, 0, 0, 0, 0],
       total_karten: 0,
@@ -115,6 +116,7 @@ export async function GET(req: Request) {
   })
 
   return NextResponse.json({
+    kurs_id: kursRow.id,
     due_heute: dueHeute,
     due_7_tage: due7Tage,
     total_karten: karten.length,
