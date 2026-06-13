@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { Kurs, Thema } from '@/lib/types'
+import { KURSE_UPDATED_EVENT, type Kurs, type Thema } from '@/lib/types'
 import { GraduationCap, BookOpen, Zap, Pencil, Trash2, Check, X, Flame, Bell, Loader2, FolderPlus, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -112,6 +112,11 @@ export default function KursePage() {
     fetch('/api/streak').then(r => r.json()).then(setStreak).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    window.addEventListener(KURSE_UPDATED_EVENT, loadData)
+    return () => window.removeEventListener(KURSE_UPDATED_EVENT, loadData)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleRename(kurs: KursWithThemen) {
     const name = renameValue.trim()
     if (!name || name === kurs.name) { setRenamingId(null); return }
@@ -126,6 +131,7 @@ export default function KursePage() {
       toast.success(`Kurs umbenannt in "${name}"`)
       setRenamingId(null)
       await loadData()
+      window.dispatchEvent(new Event(KURSE_UPDATED_EVENT))
     } finally {
       setRenameSaving(false)
     }
@@ -143,6 +149,7 @@ export default function KursePage() {
       })
       if (!res.ok) { toast.error('Kurs konnte nicht angelegt werden'); return }
       const kurs = await res.json() as Kurs
+      window.dispatchEvent(new Event(KURSE_UPDATED_EVENT))
       router.push(`/${encodeURIComponent(kurs.name)}`)
     } finally {
       setSavingFirstKurs(false)
@@ -157,6 +164,7 @@ export default function KursePage() {
       if (!res.ok) { toast.error('Löschen fehlgeschlagen'); return }
       toast.success(`Kurs "${kurs.name}" gelöscht`)
       await loadData()
+      window.dispatchEvent(new Event(KURSE_UPDATED_EVENT))
     } finally {
       setDeletingId(null)
     }

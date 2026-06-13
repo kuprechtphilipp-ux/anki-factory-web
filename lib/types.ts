@@ -1,3 +1,7 @@
+// Wird gefeuert, wenn Kurse/Themen angelegt, umbenannt oder gelöscht werden,
+// damit Sidebar und Hauptbereich synchron bleiben.
+export const KURSE_UPDATED_EVENT = 'kurse-updated'
+
 export type KartTyp = 'basic' | 'cloze'
 export type KartStatus = 'neu' | 'reviewed' | 'exportiert' | 'verworfen'
 // FSRS states: 0=New, 1=Learning, 2=Review, 3=Relearning

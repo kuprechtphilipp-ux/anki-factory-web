@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
-import type { Kurs, Thema } from '@/lib/types'
+import { KURSE_UPDATED_EVENT, type Kurs, type Thema } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import {
   ChevronDown,
@@ -155,6 +155,11 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
   useEffect(() => { load() }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { loadAdminStatus() }, [])
 
+  useEffect(() => {
+    window.addEventListener(KURSE_UPDATED_EVENT, load)
+    return () => window.removeEventListener(KURSE_UPDATED_EVENT, load)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   function toggleKurs(id: number) {
     setExpanded((prev) => {
       const next = new Set(prev)
@@ -178,6 +183,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
       setNewKursName('')
       setShowNewKurs(false)
       await load()
+      window.dispatchEvent(new Event(KURSE_UPDATED_EVENT))
       setExpanded((prev) => new Set(prev).add(kurs.id))
     } finally {
       setSavingKurs(false)
@@ -190,6 +196,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
     if (!res.ok) { toast.error('Löschen fehlgeschlagen'); return }
     toast.success(`Kurs "${kurs.name}" gelöscht`)
     await load()
+    window.dispatchEvent(new Event(KURSE_UPDATED_EVENT))
     if (pathname.startsWith(`/${encodeURIComponent(kurs.name)}`)) router.push('/kurse')
   }
 
@@ -204,6 +211,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
     if (!res.ok) { toast.error('Umbenennen fehlgeschlagen'); return }
     setRenamingKursId(null)
     await load()
+    window.dispatchEvent(new Event(KURSE_UPDATED_EVENT))
     if (pathname.startsWith(`/${encodeURIComponent(kurs.name)}`)) {
       router.push(`/${encodeURIComponent(name)}`)
     }
@@ -225,6 +233,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
       setNewThemaName('')
       setShowNewThema(null)
       await load()
+      window.dispatchEvent(new Event(KURSE_UPDATED_EVENT))
       if (kurs) {
         router.push(`/${encodeURIComponent(kurs.name)}/${encodeURIComponent(thema.name)}`)
       }
@@ -239,6 +248,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
     if (!res.ok) { toast.error('Löschen fehlgeschlagen'); return }
     toast.success(`Thema "${thema.name}" gelöscht`)
     await load()
+    window.dispatchEvent(new Event(KURSE_UPDATED_EVENT))
     const href = `/${encodeURIComponent(kurs.name)}/${encodeURIComponent(thema.name)}`
     if (pathname.startsWith(href)) router.push('/kurse')
   }
@@ -254,6 +264,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
     if (!res.ok) { toast.error('Umbenennen fehlgeschlagen'); return }
     setRenamingThemaId(null)
     await load()
+    window.dispatchEvent(new Event(KURSE_UPDATED_EVENT))
     const oldHref = `/${encodeURIComponent(kurs.name)}/${encodeURIComponent(thema.name)}`
     if (pathname.startsWith(oldHref)) {
       router.push(`/${encodeURIComponent(kurs.name)}/${encodeURIComponent(name)}`)

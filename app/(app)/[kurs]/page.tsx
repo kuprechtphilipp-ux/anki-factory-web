@@ -365,33 +365,33 @@ export default function KursDashboard({ params }: Props) {
         </div>
       )}
 
-      {/* Generate CTA */}
-      <button
-        onClick={() => {
-          if (stats.themen.length > 0) {
+      {/* Generate CTA — erst sinnvoll, wenn mind. ein Thema existiert */}
+      {stats.themen.length > 0 && (
+        <button
+          onClick={() => {
             window.location.href = `/${encodeURIComponent(kursName)}/${encodeURIComponent(stats.themen[0].name)}`
-          }
-        }}
-        className="group relative w-full overflow-hidden rounded-2xl border border-violet-200/50 dark:border-violet-800/30 p-4 text-left transition-all hover:border-violet-300/70 hover:shadow-md"
-        style={{ background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(243 75% 59% / 0.04) 50%, hsl(var(--card)) 100%)' }}
-      >
-        <div
-          className="animate-shimmer absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl"
-          style={{ background: 'linear-gradient(90deg, transparent 0%, hsl(243 75% 59% / 0.06) 50%, transparent 100%)' }}
-        />
-        <div className="relative flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 shrink-0">
-              <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400 group-hover:animate-spin" style={{ animationDuration: '2s' }} />
+          }}
+          className="group relative w-full overflow-hidden rounded-2xl border border-violet-200/50 dark:border-violet-800/30 p-4 text-left transition-all hover:border-violet-300/70 hover:shadow-md"
+          style={{ background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(243 75% 59% / 0.04) 50%, hsl(var(--card)) 100%)' }}
+        >
+          <div
+            className="animate-shimmer absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl"
+            style={{ background: 'linear-gradient(90deg, transparent 0%, hsl(243 75% 59% / 0.06) 50%, transparent 100%)' }}
+          />
+          <div className="relative flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 shrink-0">
+                <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400 group-hover:animate-spin" style={{ animationDuration: '2s' }} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Neues Material generieren</p>
+                <p className="text-xs text-muted-foreground">PDF → Flashcards in Sekunden</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold">Neues Material generieren</p>
-              <p className="text-xs text-muted-foreground">PDF → Flashcards in Sekunden</p>
-            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-violet-600 group-hover:translate-x-0.5 transition-all" />
           </div>
-          <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-violet-600 group-hover:translate-x-0.5 transition-all" />
-        </div>
-      </button>
+        </button>
+      )}
     </div>
   )
 }
