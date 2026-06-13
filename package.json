@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "generate-image": "node --env-file=.env.local scripts/generate-image.mjs"
+    "generate-image": "node --env-file=.env.local scripts/generate-image.mjs",
+    "postinstall": "cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/pdf.worker.min.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

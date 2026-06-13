@@ -3,10 +3,10 @@
 import * as pdfjsLib from 'pdfjs-dist'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString()
+// Worker liegt als statisches Asset in public/ (via "postinstall"-Script aus
+// node_modules kopiert) — vermeidet Webpack/Terser-Probleme mit dem
+// `import.meta`/ESM-Code im pdfjs-Worker-Bundle.
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
 
 const MAX_WIDTH = 800
 
