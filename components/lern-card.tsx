@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Eye } from 'lucide-react'
+import { KarteMarkdown } from '@/components/karte-markdown'
 import type { Karte } from '@/lib/types'
 
 interface Props {
@@ -62,9 +63,10 @@ export function LernCard({ karte, current, total, onRate, loading }: Props) {
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-4">
             {isCloze ? 'Lückentext' : 'Frage'}
           </p>
-          <p className="text-xl leading-relaxed font-medium whitespace-pre-wrap text-foreground">
-            {questionText}
-          </p>
+          <KarteMarkdown
+            content={questionText}
+            className="text-xl leading-relaxed font-medium whitespace-pre-wrap text-foreground"
+          />
         </div>
 
         {/* Answer (revealed) */}
@@ -75,16 +77,14 @@ export function LernCard({ karte, current, total, onRate, loading }: Props) {
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-3">
                 Antwort
               </p>
-              <p
-                className="text-base leading-relaxed whitespace-pre-wrap text-foreground"
-                dangerouslySetInnerHTML={{
-                  __html: answerText.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-primary">$1</strong>'),
-                }}
+              <KarteMarkdown
+                content={answerText}
+                className="text-base leading-relaxed whitespace-pre-wrap text-foreground [&_strong]:text-primary"
               />
               {karte.kontext && (
-                <p className="mt-4 text-sm text-muted-foreground border-l-2 border-primary/30 pl-3.5 italic leading-relaxed">
-                  {karte.kontext}
-                </p>
+                <div className="mt-4 text-sm text-muted-foreground border-l-2 border-primary/30 pl-3.5 italic leading-relaxed">
+                  <KarteMarkdown content={karte.kontext} />
+                </div>
               )}
               {karte.image_b64 && (
                 <img

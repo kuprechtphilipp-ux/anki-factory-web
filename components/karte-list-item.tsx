@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ChevronDown, ChevronRight, Pencil, Trash2, Check, X } from 'lucide-react'
 import { ExpandableImage } from '@/components/expandable-image'
+import { KarteMarkdown } from '@/components/karte-markdown'
 import { toast } from 'sonner'
 import type { Karte, KartStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -248,11 +249,11 @@ export function KarteListItem({ karte, onUpdate, onDelete }: Props) {
                 <>
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-0.5 uppercase tracking-wide">Frage</p>
-                    <p className="whitespace-pre-wrap">{karte.frage || '–'}</p>
+                    <KarteMarkdown content={karte.frage || '–'} className="whitespace-pre-wrap" />
                   </div>
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-0.5 uppercase tracking-wide">Antwort</p>
-                    <p className="whitespace-pre-wrap">{karte.antwort || '–'}</p>
+                    <KarteMarkdown content={karte.antwort || '–'} className="whitespace-pre-wrap" />
                   </div>
                 </>
               ) : (
@@ -267,7 +268,7 @@ export function KarteListItem({ karte, onUpdate, onDelete }: Props) {
               {karte.kontext && (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-0.5 uppercase tracking-wide">Kontext</p>
-                  <p className="whitespace-pre-wrap text-muted-foreground">{karte.kontext}</p>
+                  <KarteMarkdown content={karte.kontext} className="whitespace-pre-wrap text-muted-foreground" />
                 </div>
               )}
 

@@ -55,6 +55,17 @@ FILTER — stelle dir vor jeder Karte diese Fragen:
 ✗ Kann man es aus dem Kernprinzip ableiten? → keine eigene Karte nötig
 ✗ Wäre diese Karte frustrierend weil die Antwort zu lang zum Merken ist?
 
+FORMELN:
+Mathematische Formeln oder Variablen IMMER in LaTeX-Syntax schreiben, damit sie korrekt
+gerendert werden — Inline mit \`$...$\`, abgesetzte Formeln mit \`$$...$$\`.
+Beispiel: "$1 + r_{nominal} = (1 + r_{real}) \\cdot (1 + i)$" statt "1 + r_nominal = (1 + r_real) · (1 + i)".
+Verwende Subscripts (\`_{...}\`), Superscripts (\`^{...}\`), Brüche (\`\\frac{}{}\`) etc. korrekt.
+WICHTIG: Da die Antwort als JSON zurückgegeben wird, müssen Backslashes in LaTeX-Befehlen
+korrekt als \\\\ escaped werden (z.B. \\\\frac, \\\\cdot), damit gültiges JSON entsteht.
+WICHTIG bei cloze_text: Innerhalb von {{cN::...}}-Markern KEINE geschweiften Klammern { }
+in der LaTeX-Syntax verwenden (bricht die Cloze-Erkennung) — z.B. \\\\sigma_ij statt
+\\\\sigma_{ij}, oder die Formel ausserhalb des Markers platzieren.
+
 TAGS:
 - Erster Tag: "core" (Prüfungsessentiell) oder "detail" (Vertiefung)
 - Max. 10–15% der Karten bekommen zusätzlich "fokus" (fast sicher in der Prüfung — sehr restriktiv!)
