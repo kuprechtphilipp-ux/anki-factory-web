@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ChevronDown, ChevronRight, Pencil, Trash2, Check, X } from 'lucide-react'
+import { ExpandableImage } from '@/components/expandable-image'
 import { toast } from 'sonner'
 import type { Karte, KartStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -271,7 +272,7 @@ export function KarteListItem({ karte, onUpdate, onDelete }: Props) {
               )}
 
               {karte.image_b64 && (
-                <img
+                <ExpandableImage
                   src={`data:image/jpeg;base64,${karte.image_b64}`}
                   alt="Folienbild"
                   className="max-h-40 object-contain rounded border"

@@ -7,6 +7,7 @@ import { FSRS, generatorParameters } from 'ts-fsrs'
 import { karteToFsrsCard } from '@/lib/fsrs'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, BookOpen, Layers, Flame, Target } from 'lucide-react'
+import { ExpandableImage } from '@/components/expandable-image'
 import { isTypingInField } from '@/lib/utils'
 import type { Karte, FsrsState, Thema } from '@/lib/types'
 
@@ -455,12 +456,6 @@ export default function LernenGesamtPage({ params }: { params: { kurs: string } 
             </div>
           )}
 
-          {currentKarte?.image_b64 && (
-            <div className="border-b border-border/50 bg-muted/20 px-8 pt-6 pb-4">
-              <img src={`data:image/jpeg;base64,${currentKarte.image_b64}`} alt="Folienbild" className="w-full max-h-40 object-contain rounded-lg" />
-            </div>
-          )}
-
           <div className="p-5 sm:p-10 flex flex-col flex-1">
             {returningCard && (
               <div className="absolute top-4 right-4 rounded-full px-2.5 py-1 text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 animate-pulse">
@@ -496,6 +491,13 @@ export default function LernenGesamtPage({ params }: { params: { kurs: string } 
                     <p className="mt-4 text-sm italic text-muted-foreground border-l-2 border-primary/30 pl-4 leading-relaxed">
                       {currentKarte.kontext}
                     </p>
+                  )}
+                  {currentKarte?.image_b64 && (
+                    <ExpandableImage
+                      src={`data:image/jpeg;base64,${currentKarte.image_b64}`}
+                      alt="Folienbild"
+                      className="mt-4 w-full max-h-48 object-contain rounded-lg border border-border/50"
+                    />
                   )}
                 </div>
               )}

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ChevronLeft, ChevronRight, Check, X, Loader2 } from 'lucide-react'
+import { ExpandableImage } from '@/components/expandable-image'
 import type { Karte, KartTyp } from '@/lib/types'
 
 interface Props {
@@ -87,7 +88,7 @@ export function ReviewCard({ karte, current, total, onPrev, onNext, onAccept, on
       {/* Slide image */}
       {karte.image_b64 && (
         <div className="border-b border-border/50 px-5 py-4 bg-muted/20">
-          <img
+          <ExpandableImage
             src={`data:image/jpeg;base64,${karte.image_b64}`}
             alt="Folienbild"
             className="w-full max-h-52 object-contain rounded-lg"

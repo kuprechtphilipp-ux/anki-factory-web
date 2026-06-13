@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, RotateCcw, BookOpen, Check, X } from 'lucide-react'
+import { ExpandableImage } from '@/components/expandable-image'
 import { isTypingInField } from '@/lib/utils'
 import type { Karte } from '@/lib/types'
 
@@ -405,16 +406,6 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
             </div>
           )}
 
-          {current?.image_b64 && (
-            <div className="border-b border-border/50 bg-muted/20 px-8 pt-6 pb-4">
-              <img
-                src={`data:image/jpeg;base64,${current.image_b64}`}
-                alt="Folienbild"
-                className="w-full max-h-40 object-contain rounded-lg"
-              />
-            </div>
-          )}
-
           <div className="p-5 sm:p-10 flex flex-col flex-1">
             <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/50 mb-5">
               {isCloze ? 'Lückentext' : 'Frage'}
@@ -433,6 +424,13 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
                     <p className="mt-4 text-sm italic text-muted-foreground border-l-2 border-primary/30 pl-4 leading-relaxed">
                       {current.kontext}
                     </p>
+                  )}
+                  {current?.image_b64 && (
+                    <ExpandableImage
+                      src={`data:image/jpeg;base64,${current.image_b64}`}
+                      alt="Folienbild"
+                      className="mt-4 w-full max-h-48 object-contain rounded-lg border border-border/50"
+                    />
                   )}
                 </div>
               )}
