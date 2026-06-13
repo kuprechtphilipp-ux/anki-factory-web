@@ -68,12 +68,24 @@ KARTENTYPEN:
 - 'cloze': Lückentext mit {{c1::Begriff}} — optimal für Begriffe, Definitionen, Prozessschritte
 
 BILD-RELEVANZ (bild_relevant):
-Setze "bild_relevant": true NUR wenn die Karte ohne ein Bild der Original-Folie
-deutlich schwerer zu verstehen oder zu lernen wäre — z.B. chemische
-Strukturformeln, Diagramme, Schaubilder, Grafiken, die sich nicht sinnvoll in
-Text übersetzen lassen. Für die meisten Karten (Text, Definitionen, Formeln
-die im antwort-Feld abbildbar sind) gilt "bild_relevant": false. Erwarte, dass
-nur eine kleine Minderheit der Karten bild_relevant: true hat.
+Setze "bild_relevant": true, wenn die zugehörige Folie eine visuelle Darstellung
+zeigt, die für das Verständnis oder Lernen der Karte hilfreich ist und sich
+nicht sinnvoll in Text übersetzen lässt — z.B.:
+- Strukturformeln/Moleküldiagramme, auch mit farbigen Markierungen oder
+  Beschriftungen einzelner Gruppen/Bereiche
+- Reaktionsmechanismen mit Pfeilen, Elektronenverschiebungen
+- Klassifizierungs-/Stammbäume, Schaubilder mit mehreren verbundenen/
+  beschrifteten Elementen
+- Vergleichstabellen oder Übersichten mit Formeln/Strukturen statt reinem Text
+
+Setze "bild_relevant": false, wenn die Karte rein textlich/begrifflich ist und
+die relevante Information vollständig im antwort-Feld wiedergegeben werden
+kann (Definitionen, einzelne kurze Formeln, Aufzählungen) — auch wenn die
+Folie zusätzlich ein einfaches Symbol oder eine kurze Formel zeigt.
+
+Beurteile jede Karte einzeln anhand ihrer Folie. Es gibt keine Vorgabe für den
+Anteil an bild_relevant: true Karten — im Zweifel für die Karte entscheiden,
+die am meisten von der visuellen Darstellung profitiert.
 
 Gib ausschliesslich ein JSON-Array zurück, kein Markdown, kein Kommentar:
 [
