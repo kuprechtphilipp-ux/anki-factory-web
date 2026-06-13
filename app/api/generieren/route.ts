@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import pdf from 'pdf-parse'
+import { PDFDocument } from 'pdf-lib'
 import { logApiUsage, getCreditStatus, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
 
 export const maxDuration = 300
@@ -117,6 +118,24 @@ function parseJson(raw: string): RawCard[] {
   return JSON.parse(cleaned)
 }
 
+// Schneidet das PDF auf den angegebenen Seitenbereich zu (1-indexiert, inklusiv).
+// Verhindert, dass im Visual-Deck-Modus pro Batch das komplette PDF als
+// Vision-Dokument an Claude geschickt wird (Timeout-Risiko bei vielen Seiten).
+async function cropPdfToPages(buffer: Buffer, fromPage: number, toPage: number): Promise<Buffer> {
+  const srcDoc = await PDFDocument.load(buffer)
+  const totalPages = srcDoc.getPageCount()
+  const fromIdx = Math.max(0, fromPage - 1)
+  const toIdx = Math.min(totalPages - 1, toPage - 1)
+  const indices: number[] = []
+  for (let i = fromIdx; i <= toIdx; i++) indices.push(i)
+
+  const newDoc = await PDFDocument.create()
+  const copiedPages = await newDoc.copyPages(srcDoc, indices)
+  copiedPages.forEach((page) => newDoc.addPage(page))
+  const bytes = await newDoc.save()
+  return Buffer.from(bytes)
+}
+
 async function extractPageTexts(buffer: Buffer): Promise<string[]> {
   const pages: string[] = []
   await pdf(buffer, {
@@ -155,7 +174,10 @@ export async function POST(req: Request) {
 
     const pageFrom = (formData.get('page_from') as string | null) || null
     const pageTo = (formData.get('page_to') as string | null) || null
-    const useVision = (formData.get('vision') as string) === 'true'
+    const visualDeckMode = (formData.get('visual_deck') as string) === 'true'
+    // Visual-Deck-Modus erzwingt Vision serverseitig, unabhängig vom Vision-Toggle
+    // des bestehenden Standardpfads.
+    const useVision = visualDeckMode || (formData.get('vision') as string) === 'true'
     const batchSize = parseInt((formData.get('batch_size') as string) ?? '20') || 20
     const conceptsRaw = formData.get('concepts') as string | null
     const conceptsList = conceptsRaw ? (JSON.parse(conceptsRaw) as string[]) : null
@@ -230,7 +252,15 @@ ${existingList}`
     let userContent: Anthropic.MessageParam['content']
 
     if (useVision) {
-      const pdfBase64 = pdfBuffer.toString('base64')
+      let visionBuffer: Buffer<ArrayBufferLike> = pdfBuffer
+      if (visualDeckMode && pageFrom && pageTo) {
+        try {
+          visionBuffer = await cropPdfToPages(pdfBuffer, parseInt(pageFrom), parseInt(pageTo))
+        } catch (err) {
+          console.error('[generieren] PDF-Crop fehlgeschlagen, sende komplettes PDF:', err)
+        }
+      }
+      const pdfBase64 = visionBuffer.toString('base64')
       let userText = `Analysiere alle Folien strategisch und erstelle Flashcards. Richtwert: ~${batchSize} Karten — aber entscheide selbst was sinnvoll ist. Berücksichtige Text, Grafiken und Diagramme.`
       if (conceptsList && conceptsList.length > 0) {
         userText += `\n\nFokus auf diese Schlüsselkonzepte:\n${conceptsList.map(c => `- ${c}`).join('\n')}`

@@ -107,6 +107,7 @@ export default function ThemaPage({ params }: Props) {
   const [currentBatchTargetCards, setCurrentBatchTargetCards] = useState<number | undefined>()
 
   const [visionMode, setVisionMode] = useState(false)
+  const [visualDeckMode, setVisualDeckMode] = useState(false)
   const [completedBatches, setCompletedBatches] = useState<Set<number>>(() => new Set<number>())
 
   // Feedback modal state
@@ -291,7 +292,7 @@ export default function ThemaPage({ params }: Props) {
       const form = new FormData()
       form.append('pdf', pdfFile)
       if (themaId != null) form.append('thema_id', String(themaId))
-      const res = await fetch('/api/prescan', { method: 'POST', body: form })
+      const res = await fetch(visualDeckMode ? '/api/prescan-text' : '/api/prescan', { method: 'POST', body: form })
       const json = await res.json()
       if (!res.ok || json.error) {
         setScanError(json.message ?? json.error ?? 'Pre-Scan fehlgeschlagen')
@@ -413,6 +414,7 @@ export default function ThemaPage({ params }: Props) {
     form.append('cloze_anteil', String(clozeMix))
     form.append('batch_size', String(overrideBatchSize ?? batchSize))
     form.append('vision', visionMode ? 'true' : 'false')
+    form.append('visual_deck', visualDeckMode ? 'true' : 'false')
     if (from) form.append('page_from', from)
     if (to) form.append('page_to', to)
     if (conceptsList && conceptsList.length > 0) {
@@ -1122,6 +1124,28 @@ export default function ThemaPage({ params }: Props) {
               />
             </div>
           </div>
+
+          {/* ── Komplexe visuelle Folien (Beta) ── */}
+          <button
+            onClick={() => setVisualDeckMode(v => !v)}
+            disabled={generating || scanStep !== 'idle'}
+            className={`w-full flex items-center justify-between gap-2 rounded-xl border px-4 py-2.5 text-left transition-colors disabled:opacity-50 ${
+              visualDeckMode
+                ? 'border-violet-300 dark:border-violet-700 bg-violet-50/60 dark:bg-violet-950/20'
+                : 'border-border/50 hover:border-violet-200 dark:hover:border-violet-800/50'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Eye className={`h-3.5 w-3.5 ${visualDeckMode ? 'text-violet-600 dark:text-violet-400' : 'text-muted-foreground'}`} />
+              <div>
+                <span className="text-xs font-semibold">Komplexe visuelle Folien</span>
+                <span className="ml-1.5 text-[10px] text-muted-foreground">(Beta) · z.B. Chemie-Strukturen, Diagramme</span>
+              </div>
+            </div>
+            <div className={`relative h-5 w-9 rounded-full transition-colors shrink-0 ${visualDeckMode ? 'bg-primary' : 'bg-muted-foreground/30'}`}>
+              <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${visualDeckMode ? 'translate-x-4' : 'translate-x-0.5'}`} />
+            </div>
+          </button>
 
           {/* ── Pre-Scan: Scanning state ── */}
           {scanStep === 'scanning' && (
