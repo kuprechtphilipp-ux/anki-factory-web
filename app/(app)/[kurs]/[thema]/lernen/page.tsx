@@ -8,6 +8,7 @@ import { karteToFsrsCard } from '@/lib/fsrs'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, BookOpen, Layers, Flame, Target } from 'lucide-react'
 import { ExpandableImage } from '@/components/expandable-image'
+import { KarteMarkdown } from '@/components/karte-markdown'
 import { useCramoContext } from '@/components/cramo-context'
 import { isTypingInField } from '@/lib/utils'
 import type { Karte, FsrsState } from '@/lib/types'
@@ -44,10 +45,8 @@ function maskCloze(text: string): string {
   return text.replace(/\{\{c\d+::([^}]+)\}\}/g, '[...]')
 }
 
-function htmlAnswer(text: string): string {
-  return text
-    .replace(/\{\{c\d+::([^}]+)\}\}/g, '<strong class="text-primary">$1</strong>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong class="text-primary">$1</strong>')
+function unmaskCloze(text: string): string {
+  return text.replace(/\{\{c\d+::([^}]+)\}\}/g, (_, answer) => `**${answer}**`)
 }
 
 function formatRelative(isoDate: string): string {
@@ -211,8 +210,8 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
   const questionText = currentKarte
     ? (isCloze ? maskCloze(currentKarte.cloze_text ?? currentKarte.frage) : currentKarte.frage)
     : ''
-  const answerHtml = currentKarte
-    ? (isCloze ? htmlAnswer(currentKarte.cloze_text ?? currentKarte.antwort) : htmlAnswer(currentKarte.antwort))
+  const answerText = currentKarte
+    ? (isCloze ? unmaskCloze(currentKarte.cloze_text ?? currentKarte.antwort) : currentKarte.antwort)
     : ''
 
   const learningCount = filteredQueue.filter(i => i.karte.fsrs_state === 1 || i.karte.fsrs_state === 3).length
@@ -585,18 +584,15 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
             </div>
 
             <div className="flex-1">
-              <p className="text-xl font-medium leading-relaxed whitespace-pre-wrap">{questionText}</p>
+              <KarteMarkdown content={questionText} className="text-xl font-medium leading-relaxed whitespace-pre-wrap" />
 
               {revealed && (
                 <div className="mt-6 pt-6 border-t border-border/40 animate-fade-in">
-                  <p
-                    className="text-lg leading-relaxed whitespace-pre-wrap"
-                    dangerouslySetInnerHTML={{ __html: answerHtml }}
-                  />
+                  <KarteMarkdown content={answerText} className="text-lg leading-relaxed whitespace-pre-wrap [&_strong]:text-primary" />
                   {currentKarte?.kontext && (
-                    <p className="mt-4 text-sm italic text-muted-foreground border-l-2 border-primary/30 pl-4 leading-relaxed">
-                      {currentKarte.kontext}
-                    </p>
+                    <div className="mt-4 text-sm italic text-muted-foreground border-l-2 border-primary/30 pl-4 leading-relaxed">
+                      <KarteMarkdown content={currentKarte.kontext} />
+                    </div>
                   )}
                   {currentKarte?.image_b64 && (
                     <ExpandableImage

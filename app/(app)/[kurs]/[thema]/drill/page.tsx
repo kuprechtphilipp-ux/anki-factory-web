@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, RotateCcw, BookOpen, Check, X } from 'lucide-react'
 import { ExpandableImage } from '@/components/expandable-image'
+import { KarteMarkdown } from '@/components/karte-markdown'
 import { isTypingInField } from '@/lib/utils'
 import type { Karte } from '@/lib/types'
 
@@ -22,10 +23,8 @@ function maskCloze(text: string): string {
   return text.replace(/\{\{c\d+::([^}]+)\}\}/g, '[...]')
 }
 
-function htmlAnswer(text: string): string {
-  return text
-    .replace(/\{\{c\d+::([^}]+)\}\}/g, '<strong class="text-primary">$1</strong>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong class="text-primary">$1</strong>')
+function unmaskCloze(text: string): string {
+  return text.replace(/\{\{c\d+::([^}]+)\}\}/g, (_, answer) => `**${answer}**`)
 }
 
 export default function DrillPage({ params }: { params: { kurs: string; thema: string } }) {
@@ -86,8 +85,8 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
   const questionText = current
     ? (isCloze ? maskCloze(current.cloze_text ?? current.frage) : current.frage)
     : ''
-  const answerHtml = current
-    ? (isCloze ? htmlAnswer(current.cloze_text ?? current.antwort) : htmlAnswer(current.antwort))
+  const answerText = current
+    ? (isCloze ? unmaskCloze(current.cloze_text ?? current.antwort) : current.antwort)
     : ''
 
   const answered = totalCards - deck.length
@@ -412,18 +411,15 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
             </p>
 
             <div className="flex-1">
-              <p className="text-xl font-medium leading-relaxed whitespace-pre-wrap">{questionText}</p>
+              <KarteMarkdown content={questionText} className="text-xl font-medium leading-relaxed whitespace-pre-wrap" />
 
               {revealed && (
                 <div className="mt-6 pt-6 border-t border-border/40 animate-fade-in">
-                  <p
-                    className="text-lg leading-relaxed whitespace-pre-wrap"
-                    dangerouslySetInnerHTML={{ __html: answerHtml }}
-                  />
+                  <KarteMarkdown content={answerText} className="text-lg leading-relaxed whitespace-pre-wrap [&_strong]:text-primary" />
                   {current?.kontext && (
-                    <p className="mt-4 text-sm italic text-muted-foreground border-l-2 border-primary/30 pl-4 leading-relaxed">
-                      {current.kontext}
-                    </p>
+                    <div className="mt-4 text-sm italic text-muted-foreground border-l-2 border-primary/30 pl-4 leading-relaxed">
+                      <KarteMarkdown content={current.kontext} />
+                    </div>
                   )}
                   {current?.image_b64 && (
                     <ExpandableImage
