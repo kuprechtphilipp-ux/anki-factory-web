@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine, X } from 'lucide-react'
+import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine, X, Lightbulb } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
@@ -256,7 +256,7 @@ export default function KursDashboard({ params }: Props) {
             </Link>
           </div>
         </div>
-      ) : (
+      ) : totalKartenGesamt > 0 ? (
         <div className="relative overflow-hidden rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50/60 to-transparent dark:from-emerald-950/15 p-5 shadow-card">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30 shrink-0">
@@ -264,20 +264,16 @@ export default function KursDashboard({ params }: Props) {
             </div>
             <div>
               <p className="font-semibold">Alles im Plan</p>
-              <p className="text-sm text-muted-foreground">
-                {totalKartenGesamt > 0
-                  ? `${totalKartenGesamt} Karten · alle Themen erledigt`
-                  : 'Noch keine Karten in diesem Kurs'}
-              </p>
+              <p className="text-sm text-muted-foreground">{totalKartenGesamt} Karten · alle Themen erledigt</p>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Hinweis: Kursstruktur vor Generierung anlegen */}
       {stats.themen.length === 1 && !hintDismissed && (
         <div className="flex items-start gap-3 rounded-2xl border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
-          <span className="text-base leading-none">💡</span>
+          <Lightbulb className="h-4 w-4 text-muted-foreground/60 shrink-0 mt-0.5" />
           <p className="flex-1">
             <span className="font-medium text-foreground">Tipp:</span> Lege am Anfang gleich alle Themen/Kapitel
             dieses Kurses an (z. B. aus dem Inhaltsverzeichnis) — auch ohne Karten. Die KI nutzt beim Generieren die
@@ -306,7 +302,12 @@ export default function KursDashboard({ params }: Props) {
         </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-border/60 p-8 text-center space-y-3">
-          <p className="text-sm text-muted-foreground">Noch keine Themen angelegt.</p>
+          <div>
+            <p className="text-sm font-medium text-foreground">Noch keine Themen angelegt</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Lege dein erstes Thema an — danach kannst du direkt ein PDF hochladen und Karten generieren.
+            </p>
+          </div>
           {showNewThema ? (
             <div className="mx-auto flex max-w-xs gap-1.5">
               <Input

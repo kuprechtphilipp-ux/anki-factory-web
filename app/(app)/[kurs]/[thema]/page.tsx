@@ -919,81 +919,83 @@ export default function ThemaPage({ params }: Props) {
             </div>
           )}
 
-          {/* ── Lernmodi ── */}
-          <div className="space-y-3">
-            {/* Hero: Lernen */}
-            <Link
-              href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}
-              className="group relative flex overflow-hidden rounded-2xl border border-border/50 bg-card hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5 p-5"
-            >
-              <div className="flex items-start gap-4 flex-1 min-w-0">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 group-hover:bg-primary/25 transition-colors">
-                  <Brain className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-foreground">Lernen</p>
-                    {dueCount != null && dueCount > 0 && (
-                      <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[11px] font-medium">
-                        {dueCount} fällig heute
-                      </span>
+          {/* ── Lernmodi — nur wenn Deck nicht leer ── */}
+          {bannerState !== 'D' && (
+            <div className="space-y-3">
+              {/* Hero: Lernen */}
+              <Link
+                href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}
+                className="group relative flex overflow-hidden rounded-2xl border border-border/50 bg-card hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5 p-5"
+              >
+                <div className="flex items-start gap-4 flex-1 min-w-0">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 group-hover:bg-primary/25 transition-colors">
+                    <Brain className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-foreground">Lernen</p>
+                      {dueCount != null && dueCount > 0 && (
+                        <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[11px] font-medium">
+                          {dueCount} fällig heute
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">Spaced Repetition · FSRS-Algorithmus</p>
+                    {retentionEst != null && (
+                      <p className="text-xs text-muted-foreground/70 mt-1">~{retentionEst}% geschätzte Retention</p>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">Spaced Repetition · FSRS-Algorithmus</p>
-                  {retentionEst != null && (
-                    <p className="text-xs text-muted-foreground/70 mt-1">~{retentionEst}% geschätzte Retention</p>
-                  )}
                 </div>
+              </Link>
+
+              {/* Secondary modes */}
+              <div className="grid grid-cols-3 gap-2">
+                <Link
+                  href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/drill`}
+                  className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                    <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Drill</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">Ohne Zeitdruck</p>
+                  </div>
+                </Link>
+
+                <Link
+                  href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/quiz`}
+                  className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+                    <BookOpen className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Quiz</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">Multiple Choice</p>
+                  </div>
+                </Link>
+
+                <Link
+                  href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/schriftlich`}
+                  className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                    <PenLine className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Schriftlich</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">KI-Feedback</p>
+                  </div>
+                </Link>
               </div>
-            </Link>
-
-            {/* Secondary modes */}
-            <div className="grid grid-cols-3 gap-2">
-              <Link
-                href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/drill`}
-                className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                  <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">Drill</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">Ohne Zeitdruck</p>
-                </div>
-              </Link>
-
-              <Link
-                href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/quiz`}
-                className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
-                  <BookOpen className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">Quiz</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">Multiple Choice</p>
-                </div>
-              </Link>
-
-              <Link
-                href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/schriftlich`}
-                className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
-                  <PenLine className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">Schriftlich</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">KI-Feedback</p>
-                </div>
-              </Link>
             </div>
-          </div>
+          )}
 
           {/* ── Generate Magic CTA ── */}
           <button
             onClick={() => setActiveTab('generieren')}
-            className="group relative w-full overflow-hidden rounded-2xl border border-border/50 bg-card p-4 text-left shadow-card transition-all hover:border-primary/30 hover:-translate-y-0.5"
+            className={`group relative w-full overflow-hidden rounded-2xl bg-card text-left shadow-card transition-all hover:border-primary/30 hover:-translate-y-0.5 ${bannerState === 'D' ? 'border-2 border-primary/30 p-5' : 'border border-border/50 p-4'}`}
           >
             <div
               className="animate-shimmer absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl"
