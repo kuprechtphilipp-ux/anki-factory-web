@@ -152,7 +152,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
     setDueMap(newDueMap)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { loadAdminStatus() }, [])
 
   function toggleKurs(id: number) {
