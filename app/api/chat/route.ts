@@ -24,13 +24,15 @@ const LAENGEN_REGEL = `Antwortlänge: Passe die Länge deiner Antwort an die Fra
 
 const RECHTSCHREIB_REGEL = `Achte penibel auf korrekte deutsche Rechtschreibung, Grammatik und Zeichensetzung (insbesondere Umlaute ä/ö/ü und ß). Lies deine Antwort vor dem Absenden gedanklich noch einmal durch und korrigiere Tippfehler.`
 
+const MOTIVATIONS_REGEL = `Wenn du am Ende einer Antwort motivierst: locker und mit Humor, nicht mit Druck. Vermeide Sätze wie "du solltest dich sputen", "du hast noch viel vor dir", Hinweise auf die Uhrzeit/Nachtschicht oder die Anzahl fälliger Karten als Drohung – das stresst nur. Nutze solche Zahlen höchstens für einen augenzwinkernden Spruch, nie als Mahnung.`
+
 function buildSystemPrompt(
   mode: 'help' | 'fun',
   profile: { fachbereich: string | null; lernziel: string | null; lernfenster: string | null } | null,
   context?: CramoLernkontext,
   fortschritt?: CramoLernfortschritt
 ): string {
-  let prompt = `${CRAMO_PERSONA}\n\n${MODE_INSTRUCTIONS[mode]}\n\n${LAENGEN_REGEL}\n\n${RECHTSCHREIB_REGEL}`
+  let prompt = `${CRAMO_PERSONA}\n\n${MODE_INSTRUCTIONS[mode]}\n\n${LAENGEN_REGEL}\n\n${RECHTSCHREIB_REGEL}\n\n${MOTIVATIONS_REGEL}`
 
   if (profile && (profile.fachbereich || profile.lernziel || profile.lernfenster)) {
     const teile: string[] = []
@@ -51,7 +53,7 @@ function buildSystemPrompt(
     if (fortschritt.problemKarten > 0) {
       teile.push(`Karten mit wiederholten Fehlern (Problemkarten): ${fortschritt.problemKarten}`)
     }
-    prompt += `\n\nLernfortschritt des Users (für persönliche, datengestützte Hinweise/Motivation, wenn es zur Frage passt – dräng es nicht künstlich rein):\n${teile.join('\n')}`
+    prompt += `\n\nLernfortschritt des Users (für persönliche, datengestützte Hinweise/Motivation, wenn es zur Frage passt – dräng es nicht künstlich rein, und nutze die Zahlen für lockere Sprüche statt Druck, siehe Motivations-Regel):\n${teile.join('\n')}`
   }
 
   if (context && (context.themaName || context.kursName || context.karteFrage)) {
