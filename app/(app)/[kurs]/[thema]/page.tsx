@@ -17,6 +17,7 @@ import Link from 'next/link'
 import { FeedbackModal } from '@/components/feedback-modal'
 import { FactoryLoader } from '@/components/factory-loader'
 import type { Karte, KartTyp, PrescanResult, PrescanBatch, AktivitaetTag } from '@/lib/types'
+import { loadPdfDocument, renderPageToBase64 } from '@/lib/pdf-render'
 
 const PAGE_SIZE = 20
 
@@ -442,12 +443,32 @@ export default function ThemaPage({ params }: Props) {
       toast.error(json.message ?? json.error ?? `Serverfehler ${res.status}`)
       return null
     }
-    const { karten, count } = json as { karten: Partial<Karte>[]; count: number }
+    const { karten, count } = json as { karten: (Partial<Karte> & { bild_relevant?: boolean })[]; count: number }
     if (!count || count === 0) { toast.warning('Keine Karten generiert – PDF möglicherweise leer.'); return 0 }
+
+    // Visual-Deck-Modus: für Karten mit bild_relevant + slide_nr die entsprechende
+    // PDF-Seite clientseitig rendern und als image_b64 anhängen (keine Server-Calls).
+    if (visualDeckMode) {
+      const cardsWithImage = karten.filter(k => k.bild_relevant && k.slide_nr)
+      if (cardsWithImage.length > 0) {
+        const pdfBytes = await pdfFile.arrayBuffer()
+        const pdfDoc = await loadPdfDocument(pdfBytes)
+        for (const karte of cardsWithImage) {
+          const image = await renderPageToBase64(pdfDoc, karte.slide_nr!)
+          if (image) karte.image_b64 = image
+        }
+      }
+    }
+    const kartenToSave = karten.map((karte) => {
+      const rest = { ...karte }
+      delete rest.bild_relevant
+      return rest
+    })
+
     const saveRes = await fetch('/api/karten', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(karten),
+      body: JSON.stringify(kartenToSave),
     })
     if (!saveRes.ok) { toast.error('Karten generiert, aber Speichern fehlgeschlagen.'); return null }
     return count

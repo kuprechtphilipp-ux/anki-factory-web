@@ -57,17 +57,6 @@ export function LernCard({ karte, current, total, onRate, loading }: Props) {
 
       {/* Main card */}
       <div className="rounded-2xl bg-card shadow-card border border-border/50 overflow-hidden">
-        {/* Slide image */}
-        {karte.image_b64 && (
-          <div className="border-b border-border/50 bg-muted/20 px-6 pt-5">
-            <img
-              src={`data:image/jpeg;base64,${karte.image_b64}`}
-              alt="Folienbild"
-              className="w-full max-h-48 object-contain rounded-lg"
-            />
-          </div>
-        )}
-
         {/* Question */}
         <div className="px-7 pt-7 pb-6">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-4">
@@ -96,6 +85,13 @@ export function LernCard({ karte, current, total, onRate, loading }: Props) {
                 <p className="mt-4 text-sm text-muted-foreground border-l-2 border-primary/30 pl-3.5 italic leading-relaxed">
                   {karte.kontext}
                 </p>
+              )}
+              {karte.image_b64 && (
+                <img
+                  src={`data:image/jpeg;base64,${karte.image_b64}`}
+                  alt="Folienbild"
+                  className="mt-4 w-full max-h-48 object-contain rounded-lg border border-border/50"
+                />
               )}
             </div>
           </>

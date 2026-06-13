@@ -67,6 +67,14 @@ KARTENTYPEN:
 - 'basic': Klassische Frage/Antwort-Karte
 - 'cloze': Lückentext mit {{c1::Begriff}} — optimal für Begriffe, Definitionen, Prozessschritte
 
+BILD-RELEVANZ (bild_relevant):
+Setze "bild_relevant": true NUR wenn die Karte ohne ein Bild der Original-Folie
+deutlich schwerer zu verstehen oder zu lernen wäre — z.B. chemische
+Strukturformeln, Diagramme, Schaubilder, Grafiken, die sich nicht sinnvoll in
+Text übersetzen lassen. Für die meisten Karten (Text, Definitionen, Formeln
+die im antwort-Feld abbildbar sind) gilt "bild_relevant": false. Erwarte, dass
+nur eine kleine Minderheit der Karten bild_relevant: true hat.
+
 Gib ausschliesslich ein JSON-Array zurück, kein Markdown, kein Kommentar:
 [
   {
@@ -76,7 +84,8 @@ Gib ausschliesslich ein JSON-Array zurück, kein Markdown, kein Kommentar:
     "cloze_text": "",
     "kontext_erklaerung": "...",
     "slide_nummer": <int>,
-    "tags": ["core", "fokus", "tag1"]
+    "tags": ["core", "fokus", "tag1"],
+    "bild_relevant": false
   },
   {
     "typ": "cloze",
@@ -85,7 +94,8 @@ Gib ausschliesslich ein JSON-Array zurück, kein Markdown, kein Kommentar:
     "cloze_text": "...",
     "kontext_erklaerung": "...",
     "slide_nummer": <int>,
-    "tags": ["core", "tag1"]
+    "tags": ["core", "tag1"],
+    "bild_relevant": false
   }
 ]`
 
@@ -108,6 +118,7 @@ interface RawCard {
   kontext_erklaerung: string
   slide_nummer: number
   tags: string[]
+  bild_relevant?: boolean
 }
 
 function parseJson(raw: string): RawCard[] {
@@ -355,6 +366,9 @@ ${existingList}`
       slide_nr: card.slide_nummer ?? null,
       tags: card.tags ?? [],
       status: 'neu',
+      // Transient, kein DB-Feld — wird vom Frontend genutzt, um clientseitig
+      // ein Bild der PDF-Seite zu rendern, und vor dem Speichern entfernt.
+      bild_relevant: card.bild_relevant ?? false,
     }))
 
     return NextResponse.json({ karten: kartenInsert, count: kartenInsert.length })

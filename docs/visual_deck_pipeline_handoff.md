@@ -89,21 +89,56 @@ umbiegen.
 UND Generierung (Vision erzwungen + Batch-Crop). Noch nicht getestet —
 Validierung mit Test-PDF steht aus.
 
-## Nächste Schritte
+## Bereits umgesetzt (Schritt 3 — fertig, tsc + eslint clean, noch NICHT getestet)
 
-### Schritt 3: Bild-Einbettung
-- `RawCard`-Interface in `/api/generieren/route.ts` (bzw. neuem Pfad) um
-  `bild_relevant: boolean` erweitern + Prompt-Anweisung ergänzen (additiv, neues
-  Feld im JSON-Schema — sollte bestehenden Output nicht verändern, da bestehender
-  Prompt/Pfad davon unberührt bleibt)
-- `pdfjs-dist` als Dependency hinzufügen
-- Im Frontend: nach Erhalt der generierten Karten, für Karten mit
-  `bild_relevant === true` und vorhandener `slide_nummer`, die entsprechende
-  PDF-Seite rendern (Canvas → PNG, downscale auf ~800px Breite) → base64 → in
-  `karte.image_b64` vor dem Speichern via `/api/karten` POST
-- Whole-page-Bild als MVP (kein Crop auf Bildausschnitt — würde Bounding-Box-
-  Koordinaten von Claude brauchen, mehr Prompt-Komplexität, Risiko für
-  bestehenden Output)
+1. **`package.json`**: `pdfjs-dist` (v6) als neue Dependency hinzugefügt.
+
+2. **`app/api/generieren/route.ts`**:
+   - `RawCard`-Interface um `bild_relevant?: boolean` erweitert
+   - `SYSTEM_PROMPT_BASE` um Abschnitt "BILD-RELEVANZ" ergänzt + beide
+     JSON-Schema-Beispiele um `"bild_relevant": false` erweitert — additiv,
+     gilt für BEIDE Pfade (Standard + Visual-Deck), da nur ein gemeinsamer
+     Prompt existiert. Erwartung: kaum Einfluss auf bestehenden Output, da
+     Anweisung klar auf "Minderheit der Karten" abzielt.
+   - `kartenInsert` enthält jetzt zusätzlich `bild_relevant: card.bild_relevant ?? false`
+     — **transientes Feld, KEINE DB-Spalte**, wird vom Frontend vor dem
+     Speichern wieder entfernt (siehe unten)
+
+3. **Neue Datei `lib/pdf-render.ts`** (clientseitig, pdfjs-dist):
+   - `loadPdfDocument(pdfBytes)` — lädt das PDF einmal
+   - `renderPageToBase64(pdf, pageNumber)` — rendert eine 1-indexierte Seite
+     auf Canvas, downscaled auf max. 800px Breite, Export als **JPEG** (Qualität
+     0.85, weisser Hintergrund statt Transparenz) — JPEG bewusst gewählt, weil
+     `lern-card.tsx`/`review-card.tsx`/`karte-list-item.tsx` bereits
+     `data:image/jpeg;base64,${karte.image_b64}` hart-codiert erwarten
+   - Worker via `new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url)`
+
+4. **UI** in [`app/(app)/[kurs]/[thema]/page.tsx`](../app/(app)/%5Bkurs%5D/%5Bthema%5D/page.tsx),
+   `runGenerieren`:
+   - wenn `visualDeckMode`: für alle Karten mit `bild_relevant && slide_nr`
+     wird einmal `loadPdfDocument` aufgerufen, dann pro Karte
+     `renderPageToBase64` → Ergebnis in `karte.image_b64`
+   - `bild_relevant` wird aus jeder Karte entfernt (`delete`), bevor das Array
+     an `/api/karten` POST geht (sonst Supabase-Insert-Fehler, da keine
+     DB-Spalte)
+   - Whole-page-Bild als MVP (kein Crop auf Bildausschnitt — würde
+     Bounding-Box-Koordinaten von Claude brauchen)
+
+5. **`components/lern-card.tsx`**: Bild (`karte.image_b64`) wird nicht mehr
+   permanent oben angezeigt, sondern erst im `revealed`-Block nach
+   Antwort/Kontext — dient als zusätzlicher visueller Kontext zur Antwort,
+   ohne die Frage zu spoilern. Review-Tab (`review-card.tsx`) und Karten-Liste
+   (`karte-list-item.tsx`) unverändert (Bild weiterhin permanent sichtbar —
+   dort geht's um Review/Editieren, kein Spoiler-Risiko).
+
+**Noch zu tun:**
+- Mit Chemie-PDF testen: erzeugt Claude sinnvolle `bild_relevant: true`
+  Markierungen? Werden Bilder korrekt gerendert und angezeigt
+  (Review-Tab + Lern-Modus)?
+- Prüfen, ob bestehender Standardpfad (ohne Visual-Deck-Toggle) durch die
+  Prompt-Änderung (neues `bild_relevant`-Feld im Schema) unverändert bleibt
+  (Output-Qualität/Kartenmenge gleich wie vorher)
+- `npx tsc --noEmit` + `npx eslint` bereits clean, aber noch nicht committed/gepusht
 
 ### Validierung
 - Test-PDF liegt unter `/Users/philippkuprecht/Downloads/OC1_25_PPP_05_Funktionelle_Gr_Nomenklatur (1).pdf`
