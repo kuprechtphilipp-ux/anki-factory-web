@@ -278,7 +278,7 @@ export default function KursDashboard({ params }: Props) {
             <span className="font-medium text-foreground">Tipp:</span> Lege am Anfang gleich alle Themen/Kapitel
             dieses Kurses an (z. B. aus dem Inhaltsverzeichnis) — auch ohne Karten. Die KI nutzt beim Generieren die
             Liste deiner Themen, um besser einzuschätzen, was schon abgedeckt ist und wie viele Karten sinnvoll sind.
-            Neue Themen legst du über das „+“ neben dem Kurs in der Sidebar an.
+            Neue Themen legst du über das „+“ neben dem Kurs in der <span className="font-semibold text-foreground">Sidebar</span> an.
           </p>
           <button
             onClick={dismissHint}

@@ -16,7 +16,7 @@ import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, 
 import Link from 'next/link'
 import { FeedbackModal } from '@/components/feedback-modal'
 import { FactoryLoader } from '@/components/factory-loader'
-import type { Karte, KartTyp, PrescanResult, PrescanBatch, AktivitaetTag } from '@/lib/types'
+import { FOCUS_NEW_THEMA_EVENT, type Karte, type KartTyp, type PrescanResult, type PrescanBatch, type AktivitaetTag } from '@/lib/types'
 import { loadPdfDocument, renderPageToBase64 } from '@/lib/pdf-render'
 
 const PAGE_SIZE = 20
@@ -56,6 +56,7 @@ export default function ThemaPage({ params }: Props) {
   const themaName = decodeURIComponent(params.thema)
 
   const [themaId, setThemaId] = useState<number | null>(null)
+  const [kursId, setKursId] = useState<number | null>(null)
   const [themenCount, setThemenCount] = useState<number | null>(null)
   const [loadingThema, setLoadingThema] = useState(true)
   const [activeTab, setActiveTab] = useState('uebersicht')
@@ -189,6 +190,7 @@ export default function ThemaPage({ params }: Props) {
       const { data: kursRow } = await supabase
         .from('kurs').select('id').eq('name', kursName).single()
       if (!kursRow) { setLoadingThema(false); return }
+      setKursId(kursRow.id)
 
       fetch(`/api/themen?kurs_id=${kursRow.id}`)
         .then(r => r.json())
@@ -1058,9 +1060,27 @@ export default function ThemaPage({ params }: Props) {
                 <span>Cramo kennt {themenCount} Themen dieses Kurses – das hilft der KI bei der Einordnung.</span>
               </div>
             ) : (
-              <div className="flex items-start gap-2 rounded-xl border border-amber-200/60 dark:border-amber-800/40 bg-amber-50/60 dark:bg-amber-950/15 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                <span>Kurskontext noch begrenzt – nur 1 Thema bekannt. Lege weitere Themen/Kapitel an für bessere Empfehlungen.</span>
+              <div className="flex items-start gap-3 rounded-2xl border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-br from-amber-50/70 to-transparent dark:from-amber-950/15 p-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-300">Kurskontext noch begrenzt</p>
+                    <p className="text-xs text-amber-700/90 dark:text-amber-400/80 mt-0.5">
+                      Cramo kennt bisher nur 1 Thema in diesem Kurs. Lege in der <span className="font-semibold">Sidebar</span> unter
+                      deinem Kurs weitere Themen/Kapitel an — das hilft der KI bei der Einordnung.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => kursId != null && window.dispatchEvent(new CustomEvent(FOCUS_NEW_THEMA_EVENT, { detail: { kursId } }))}
+                    disabled={kursId == null}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300/60 dark:border-amber-700/40 bg-amber-100/70 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300 transition-colors disabled:opacity-50"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Thema anlegen
+                  </button>
+                </div>
               </div>
             )
           )}

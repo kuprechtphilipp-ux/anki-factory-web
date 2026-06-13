@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
-import { KURSE_UPDATED_EVENT, type Kurs, type Thema } from '@/lib/types'
+import { FOCUS_NEW_THEMA_EVENT, KURSE_UPDATED_EVENT, type FocusNewThemaDetail, type Kurs, type Thema } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import {
   ChevronDown,
@@ -159,6 +159,19 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
     window.addEventListener(KURSE_UPDATED_EVENT, load)
     return () => window.removeEventListener(KURSE_UPDATED_EVENT, load)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Hauptbereich bittet darum, das "Thema anlegen"-Feld eines Kurses zu öffnen
+  useEffect(() => {
+    function onFocusNewThema(e: Event) {
+      const detail = (e as CustomEvent<FocusNewThemaDetail>).detail
+      if (!detail) return
+      setExpanded((prev) => new Set(prev).add(detail.kursId))
+      setNewThemaName('')
+      setShowNewThema(detail.kursId)
+    }
+    window.addEventListener(FOCUS_NEW_THEMA_EVENT, onFocusNewThema)
+    return () => window.removeEventListener(FOCUS_NEW_THEMA_EVENT, onFocusNewThema)
+  }, [])
 
   function toggleKurs(id: number) {
     setExpanded((prev) => {

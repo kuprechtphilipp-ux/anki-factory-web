@@ -2,6 +2,14 @@
 // damit Sidebar und Hauptbereich synchron bleiben.
 export const KURSE_UPDATED_EVENT = 'kurse-updated'
 
+// Wird gefeuert, wenn der Hauptbereich den User zum "Thema anlegen"-Eingabefeld
+// des angegebenen Kurses in der Sidebar führen will (öffnet ggf. die Sidebar
+// auf Mobile, klappt den Kurs auf und zeigt das Eingabefeld).
+export const FOCUS_NEW_THEMA_EVENT = 'focus-new-thema'
+export interface FocusNewThemaDetail {
+  kursId: number
+}
+
 export type KartTyp = 'basic' | 'cloze'
 export type KartStatus = 'neu' | 'reviewed' | 'exportiert' | 'verworfen'
 // FSRS states: 0=New, 1=Learning, 2=Review, 3=Relearning

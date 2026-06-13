@@ -13,7 +13,7 @@ import { CrossDeviceWidget } from '@/components/cross-device-widget'
 import { Button } from '@/components/ui/button'
 import { Menu, Search, Lightbulb } from 'lucide-react'
 import { toast } from 'sonner'
-import type { Lernfenster, Plan } from '@/lib/types'
+import { FOCUS_NEW_THEMA_EVENT, type Lernfenster, type Plan } from '@/lib/types'
 import { getCramoTourSteps } from '@/lib/tour-steps'
 import { PLAN_LABELS } from '@/lib/plans'
 
@@ -59,6 +59,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const w = Number(saved)
       if (w >= MIN_WIDTH && w <= MAX_WIDTH) setSidebarWidth(w)
     }
+  }, [])
+
+  // Hauptbereich bittet darum, zur Sidebar zu springen (z. B. "Thema anlegen")
+  useEffect(() => {
+    function onFocusNewThema() { setSidebarOpen(true) }
+    window.addEventListener(FOCUS_NEW_THEMA_EVENT, onFocusNewThema)
+    return () => window.removeEventListener(FOCUS_NEW_THEMA_EVENT, onFocusNewThema)
   }, [])
 
   useEffect(() => {
