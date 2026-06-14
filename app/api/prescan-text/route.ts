@@ -170,7 +170,7 @@ Berücksichtige diese Präferenzen — aber überschreibe sie nicht wenn der Inh
 
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 3500,
+      max_tokens: 6000,
       system: systemPrompt,
       messages: [
         {
