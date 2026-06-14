@@ -296,7 +296,7 @@ export default function ThemaPage({ params }: Props) {
       const form = new FormData()
       form.append('pdf', pdfFile)
       if (themaId != null) form.append('thema_id', String(themaId))
-      const res = await fetch(visualDeckMode ? '/api/prescan-text' : '/api/prescan', { method: 'POST', body: form })
+      const res = await fetch('/api/prescan-text', { method: 'POST', body: form })
       const json = await res.json()
       if (!res.ok || json.error) {
         setScanError(json.message ?? json.error ?? 'Pre-Scan fehlgeschlagen')
@@ -1181,27 +1181,44 @@ export default function ThemaPage({ params }: Props) {
             </div>
           </div>
 
-          {/* ── Komplexe visuelle Folien (Beta) ── */}
-          <button
-            onClick={() => setVisualDeckMode(v => !v)}
-            disabled={generating || scanStep !== 'idle'}
-            className={`w-full flex items-center justify-between gap-2 rounded-xl border px-4 py-2.5 text-left transition-colors disabled:opacity-50 ${
-              visualDeckMode
-                ? 'border-violet-300 dark:border-violet-700 bg-violet-50/60 dark:bg-violet-950/20'
-                : 'border-border/50 hover:border-violet-200 dark:hover:border-violet-800/50'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Eye className={`h-3.5 w-3.5 ${visualDeckMode ? 'text-violet-600 dark:text-violet-400' : 'text-muted-foreground'}`} />
-              <div>
-                <span className="text-xs font-semibold">Komplexe visuelle Folien</span>
-                <span className="ml-1.5 text-[10px] text-muted-foreground">(Beta) · z.B. Chemie-Strukturen, Diagramme</span>
-              </div>
+          {/* ── Generierungsmodus: Standard vs. Visual ── */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Generierungsmodus</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                onClick={() => setVisualDeckMode(false)}
+                disabled={generating || scanStep !== 'idle'}
+                className={`flex flex-col gap-1 rounded-xl border px-4 py-2.5 text-left transition-colors disabled:opacity-50 ${
+                  !visualDeckMode
+                    ? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20'
+                    : 'border-border/50 hover:border-primary/30'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Zap className={`h-3.5 w-3.5 ${!visualDeckMode ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <span className="text-xs font-semibold">Cramo Standard</span>
+                  <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5">Empfohlen</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-snug">Günstig & schnell · ideal für textbasierte Folien</p>
+              </button>
+              <button
+                onClick={() => setVisualDeckMode(true)}
+                disabled={generating || scanStep !== 'idle'}
+                className={`flex flex-col gap-1 rounded-xl border px-4 py-2.5 text-left transition-colors disabled:opacity-50 ${
+                  visualDeckMode
+                    ? 'border-violet-300 dark:border-violet-700 bg-violet-50/60 dark:bg-violet-950/20 ring-1 ring-violet-300/40'
+                    : 'border-border/50 hover:border-violet-200 dark:hover:border-violet-800/50'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Eye className={`h-3.5 w-3.5 ${visualDeckMode ? 'text-violet-600 dark:text-violet-400' : 'text-muted-foreground'}`} />
+                  <span className="text-xs font-semibold">Cramo Visual</span>
+                  <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5">~5-7x Credits</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-snug">Mit Folienbildern · für Diagramme, Strukturformeln, Chemie/Bio</p>
+              </button>
             </div>
-            <div className={`relative h-5 w-9 rounded-full transition-colors shrink-0 ${visualDeckMode ? 'bg-primary' : 'bg-muted-foreground/30'}`}>
-              <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${visualDeckMode ? 'translate-x-4' : 'translate-x-0.5'}`} />
-            </div>
-          </button>
+          </div>
 
           {/* ── Pre-Scan: Scanning state ── */}
           {scanStep === 'scanning' && (
