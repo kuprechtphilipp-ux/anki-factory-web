@@ -217,12 +217,12 @@ export default function KursDashboard({ params }: Props) {
   const totalKartenGesamt = stats.themen.reduce((s, t) => s + t.total + t.neu, 0)
 
   return (
-    <div className="max-w-3xl space-y-8">
+    <div className="max-w-3xl lg:max-w-4xl xl:max-w-6xl space-y-8">
       {/* Header */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">Kurs</p>
+        <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">Kurs</p>
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
-          <h1 className="text-[1.75rem] font-semibold tracking-tight">{kursName}</h1>
+          <h1 className="text-[1.75rem] lg:text-3xl xl:text-4xl font-semibold tracking-tight">{kursName}</h1>
           {stats.themen.length >= 2 && (
             <Link
               href={`/${encodeURIComponent(kursName)}/lernen-gesamt`}
@@ -238,18 +238,18 @@ export default function KursDashboard({ params }: Props) {
 
       {/* Combined CTA Hero */}
       {stats.due_heute > 0 ? (
-        <div className="relative overflow-hidden rounded-2xl bg-primary/5 border border-primary/20 p-5 shadow-card">
+        <div className="relative overflow-hidden rounded-2xl bg-primary/5 border border-primary/20 p-5 lg:p-6 shadow-card">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Kurs-Session</p>
-              <p className="text-2xl font-bold tabular-nums">
+              <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Kurs-Session</p>
+              <p className="text-2xl lg:text-3xl font-bold tabular-nums">
                 <span className="text-primary">{stats.due_heute}</span> Karten fällig
               </p>
-              <p className="text-sm text-muted-foreground">Aus allen Themen dieses Kurses</p>
+              <p className="text-sm lg:text-base text-muted-foreground">Aus allen Themen dieses Kurses</p>
             </div>
             <Link
               href={`/${encodeURIComponent(kursName)}/lernen-gesamt`}
-              className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2.5 text-sm font-semibold transition-colors shadow-sm"
+              className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2.5 text-sm lg:text-base font-semibold transition-colors shadow-sm"
             >
               <Brain className="h-4 w-4" />
               Alle lernen
@@ -257,14 +257,14 @@ export default function KursDashboard({ params }: Props) {
           </div>
         </div>
       ) : totalKartenGesamt > 0 ? (
-        <div className="relative overflow-hidden rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50/60 to-transparent dark:from-emerald-950/15 p-5 shadow-card">
+        <div className="relative overflow-hidden rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50/60 to-transparent dark:from-emerald-950/15 p-5 lg:p-6 shadow-card">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30 shrink-0">
               <Zap className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="font-semibold">Alles im Plan</p>
-              <p className="text-sm text-muted-foreground">{totalKartenGesamt} Karten · alle Themen erledigt</p>
+              <p className="font-semibold lg:text-lg">Alles im Plan</p>
+              <p className="text-sm lg:text-base text-muted-foreground">{totalKartenGesamt} Karten · alle Themen erledigt</p>
             </div>
           </div>
         </div>
@@ -302,8 +302,8 @@ export default function KursDashboard({ params }: Props) {
       {/* Thema Health Grid */}
       {stats.themen.length > 0 ? (
         <div className="space-y-3">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Themen</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Themen</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {stats.themen.map((thema) => (
               <ThemaCard key={thema.id} thema={thema} kursName={kursName} />
             ))}
