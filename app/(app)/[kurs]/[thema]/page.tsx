@@ -100,6 +100,8 @@ export default function ThemaPage({ params }: Props) {
   const [activeTab, setActiveTab] = useState('uebersicht')
 
   const [pdfFile, setPdfFile] = useState<File | null>(null)
+  const [altklausurFile, setAltklausurFile] = useState<File | null>(null)
+  const altklausurInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [batchSize, setBatchSize] = useState(20)
   const [clozeMix, setClozeMix] = useState(50)
@@ -408,6 +410,8 @@ export default function ThemaPage({ params }: Props) {
       setLastGenLod(`${clozeMix}% Cloze`)
       setPdfFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
+      setAltklausurFile(null)
+      if (altklausurInputRef.current) altklausurInputRef.current.value = ''
       resetPrescan()
       toast.success(`Generierung fertig · ${totalCount} Karten total`)
     } catch (err) {
@@ -456,6 +460,7 @@ export default function ThemaPage({ params }: Props) {
     form.append('batch_size', String(overrideBatchSize ?? batchSize))
     form.append('vision', visionMode ? 'true' : 'false')
     form.append('visual_deck', visualDeckMode ? 'true' : 'false')
+    if (altklausurFile) form.append('altklausur', altklausurFile)
     if (from) form.append('page_from', from)
     if (to) form.append('page_to', to)
     if (conceptsList && conceptsList.length > 0) {
@@ -560,6 +565,8 @@ export default function ThemaPage({ params }: Props) {
       } else {
         setPdfFile(null)
         if (fileInputRef.current) fileInputRef.current.value = ''
+        setAltklausurFile(null)
+        if (altklausurInputRef.current) altklausurInputRef.current.value = ''
         resetPrescan()
         toast.success(`${count} Karten generiert und gespeichert`)
       }
@@ -819,7 +826,7 @@ export default function ThemaPage({ params }: Props) {
                   {daysSinceLastSession != null && (
                     <p className="text-sm lg:text-base text-violet-200">
                       {daysSinceLastSession === 0
-                        ? 'Heute schon gelernt — weiter so'
+                        ? 'Heute schon gelernt, weiter so'
                         : daysSinceLastSession === 1
                         ? 'Letzte Session gestern'
                         : `Letzte Session vor ${daysSinceLastSession} Tagen`}
@@ -1227,6 +1234,59 @@ export default function ThemaPage({ params }: Props) {
                 }}
               />
             </div>
+          </div>
+
+          {/* ── Altklausur-Upload (optional) ── */}
+          <div className="rounded-2xl border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/60 to-transparent dark:from-violet-950/15 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
+                <FileText className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Hast du eine Altklausur?</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                  Lade sie hoch (optional) für noch passendere Karten. Funktioniert aber auch sehr gut ohne.
+                </p>
+              </div>
+            </div>
+            {altklausurFile ? (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2 ml-12">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                  <span className="text-xs font-medium truncate">{altklausurFile.name}</span>
+                </div>
+                <button
+                  onClick={() => { setAltklausurFile(null); if (altklausurInputRef.current) altklausurInputRef.current.value = '' }}
+                  className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                  title="Altklausur entfernen"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => altklausurInputRef.current?.click()}
+                className="ml-12 inline-flex items-center gap-1.5 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card hover:bg-violet-50 dark:hover:bg-violet-950/20 px-3 py-1.5 text-xs font-medium text-violet-700 dark:text-violet-300 transition-colors"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Altklausur hochladen (PDF)
+              </button>
+            )}
+            <input
+              ref={altklausurInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null
+                if (file && file.size > 10 * 1024 * 1024) {
+                  toast.error('Altklausur zu groß (max. 10 MB).')
+                  e.target.value = ''
+                  return
+                }
+                setAltklausurFile(file)
+              }}
+            />
           </div>
 
           {/* ── Generierungsmodus: Standard vs. Visual ── */}

@@ -208,6 +208,8 @@ export async function POST(req: Request) {
     if (!file) return NextResponse.json({ error: 'Kein PDF hochgeladen (field: pdf)' }, { status: 400 })
     if (!themaId) return NextResponse.json({ error: 'thema_id fehlt' }, { status: 400 })
 
+    const altklausurFile = formData.get('altklausur') as File | null
+
     const pageFrom = (formData.get('page_from') as string | null) || null
     const pageTo = (formData.get('page_to') as string | null) || null
     const visualDeckMode = (formData.get('visual_deck') as string) === 'true'
@@ -274,12 +276,33 @@ ${existingList}`
       }
     }
 
+    // ── Altklausur context (optional) ────────────────────────────────────────
+    let altklausurKontext = ''
+    if (altklausurFile) {
+      try {
+        const altklausurBuffer = Buffer.from(await altklausurFile.arrayBuffer())
+        const altklausurData = await pdf(altklausurBuffer)
+        const altklausurText = altklausurData.text.trim().slice(0, 6000)
+        if (altklausurText) {
+          altklausurKontext = `\n\nALTKLAUSUR-KONTEXT:
+Diese Altklausur zeigt, wie Prüfungsfragen zu diesem Thema typischerweise aussehen:
+${altklausurText}
+
+Nutze diesen Kontext, um Art, Schwierigkeitsgrad und Schwerpunkte der Flashcards am
+tatsächlichen Prüfungsstil auszurichten. Übernimm keine Fragen wörtlich aus der Altklausur.`
+        }
+      } catch (err) {
+        console.error('[generieren] Altklausur-Text konnte nicht extrahiert werden:', err)
+      }
+    }
+
     const pdfBuffer = Buffer.from(await file.arrayBuffer())
 
     const dynamicSystemPrompt =
       SYSTEM_PROMPT_BASE +
       kursKontext +
       duplicateHint +
+      altklausurKontext +
       '\n' +
       getKartentypInstructions(clozeProzent, batchSize)
 
