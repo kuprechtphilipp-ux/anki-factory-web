@@ -127,7 +127,7 @@ export function PwaInstallBanner() {
             <p className="text-xs text-muted-foreground mt-0.5">
               {platform === 'ios'
                 ? 'Zum Startbildschirm hinzufügen'
-                : 'Als App installieren — ohne App Store'}
+                : 'Als App installieren, ohne App Store'}
             </p>
 
             {platform === 'ios' ? (

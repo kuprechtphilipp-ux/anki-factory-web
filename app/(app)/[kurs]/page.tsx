@@ -277,7 +277,7 @@ export default function KursDashboard({ params }: Props) {
           <div className="flex-1 space-y-2">
             <p>
               <span className="font-medium text-foreground">Tipp:</span> Lege am Anfang gleich alle Themen/Kapitel
-              dieses Kurses an (z. B. aus dem Inhaltsverzeichnis) — auch ohne Karten. Cramo nutzt beim Generieren die
+              dieses Kurses an (z. B. aus dem Inhaltsverzeichnis), auch wenn sie noch keine Karten enthalten. Cramo nutzt beim Generieren die
               Liste deiner Themen, um besser einzuschätzen, was schon abgedeckt ist und wie viele Karten sinnvoll sind.
               Neue Themen legst du über das „+“ neben dem Kurs in der <span className="font-semibold text-foreground">Sidebar</span> an.
             </p>
@@ -314,7 +314,7 @@ export default function KursDashboard({ params }: Props) {
           <div>
             <p className="text-sm font-medium text-foreground">Noch keine Themen angelegt</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Lege dein erstes Thema an — danach kannst du direkt ein PDF hochladen und Karten generieren.
+              Lege dein erstes Thema an. Danach kannst du direkt ein PDF hochladen und Karten generieren.
             </p>
           </div>
           {showNewThema ? (
@@ -348,7 +348,7 @@ export default function KursDashboard({ params }: Props) {
       {/* Upcoming Reviews Chart */}
       {stats.total_karten > 0 && (
         <div className="space-y-3">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Fälligkeiten — nächste 7 Tage</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Fälligkeiten der nächsten 7 Tage</p>
           <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card">
             <div className="flex items-end gap-2 h-24">
               {stats.due_7_tage.map((count, i) => (

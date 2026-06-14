@@ -44,6 +44,7 @@ Rate the answer on a 0–100 scale:
 - 0–29: Incorrect or irrelevant
 
 IMPORTANT: Write the feedback in the same language as the question and model answer.
+Do not use em dashes ("—") in the feedback. Use normal punctuation (period, comma, colon) or a conjunction instead.
 korrekt = true if score >= 60.
 
 Respond ONLY with valid JSON: {"score":85,"feedback":"Short, constructive feedback (1–2 sentences)","korrekt":true}`

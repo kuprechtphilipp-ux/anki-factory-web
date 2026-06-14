@@ -124,7 +124,7 @@ function CreditsDonut({ credits, onChanged }: { credits: CreditsInfo; onChanged?
         {isUltra ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <PartyPopper className="h-4 w-4 shrink-0 text-amber-500" />
-            <span>Höchster Plan erreicht — mehr Credits gibt es aktuell nicht.</span>
+            <span>Höchster Plan erreicht. Mehr Credits gibt es aktuell nicht.</span>
           </div>
         ) : (
           <Button size="sm" variant="outline" onClick={() => setUpgradeOpen(true)}>
@@ -248,7 +248,7 @@ export default function KostenPage() {
 
       {/* 30-Tage Chart */}
       <div className="space-y-3">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Kosten — letzte 30 Tage</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Kosten der letzten 30 Tage</p>
         <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200">
           <div className="flex items-end gap-[3px] h-24">
             {data.proTag.map((t, i) => (

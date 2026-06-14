@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react'
 import { Sparkles, Check, Brain } from 'lucide-react'
 
 const STUDY_TIPS = [
-  'Active Recall: Dein Gehirn lernt am effektivsten, wenn du dich aktiv abfragst — nicht durch passives Durchlesen.',
+  'Active Recall: Dein Gehirn lernt am effektivsten, wenn du dich aktiv abfragst, statt nur passiv zu lesen.',
   'Spaced Repetition spart bis zu 50% der Lernzeit: Karten kurz vor dem Vergessen zu wiederholen ist weitaus effizienter als massen-lernen.',
-  'Der FSRS-Algorithmus berechnet für jede Karte den exakten Moment, bevor du sie vergisst — und plant genau dort die Wiederholung.',
+  'Der FSRS-Algorithmus berechnet für jede Karte den exakten Moment, bevor du sie vergisst, und plant genau dort die Wiederholung.',
   'Schlaf festigt Wissen: Im Tiefschlaf überträgt das Gehirn neu Gelerntes ins Langzeitgedächtnis. Lerne also lieber abends als nachts.',
   'Pareto-Prinzip: 80% der Klausurpunkte stammen oft aus 20% des Stoffs. Fokus-Karten markieren genau diesen Kernstoff.',
   'Feynman-Technik: Erkläre ein Konzept in einfachen Worten. Wenn du strauchlerst, ist das die Lücke in deinem Verständnis.',

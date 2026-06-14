@@ -11,13 +11,13 @@ const CRAMO_URL = 'cramo.ch'
 
 const desktopTip = (
   <div className="rounded-lg bg-muted/50 p-2.5 text-xs text-muted-foreground leading-relaxed">
-    💡 Tipp: Lege hier deine Kurse an und generiere deine Karten aus deinen PDF-/Uni-Dokumenten — dafür hast du am Laptop oder Tablet am meisten Platz.
+    💡 Tipp: Lege hier deine Kurse an und generiere deine Karten aus deinen PDF-/Uni-Dokumenten. Dafür hast du am Laptop oder Tablet am meisten Platz.
   </div>
 )
 
 const mobileTip = (
   <div className="rounded-lg bg-muted/50 p-2.5 text-xs text-muted-foreground leading-relaxed">
-    💡 Tipp: Lege deine Kurse am Laptop oder Tablet an und generiere dort deine Karten aus deinen PDF-/Uni-Dokumenten — danach kannst du hier am Handy weiterlernen.
+    💡 Tipp: Lege deine Kurse am Laptop oder Tablet an und generiere dort deine Karten aus deinen PDF-/Uni-Dokumenten. Danach kannst du hier am Handy weiterlernen.
   </div>
 )
 
@@ -80,7 +80,7 @@ function PhoneWidget() {
               </div>
             </div>
             <div className="rounded-lg bg-muted/50 p-2.5 text-xs text-muted-foreground leading-relaxed">
-              Danach öffnet sich Cramo wie eine eigene App — auch offline nutzbar.
+              Danach öffnet sich Cramo wie eine eigene App, auch offline nutzbar.
             </div>
           </div>
         )}

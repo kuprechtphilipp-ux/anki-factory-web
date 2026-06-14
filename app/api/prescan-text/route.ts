@@ -25,6 +25,8 @@ KARTENMENGE — Bestimme die optimale Anzahl basierend auf:
 - Richtwert: 10–20 Karten für ein Standard-Thema, nur mehr wenn inhaltlich zwingend nötig
 - Lieber 12 präzise Karten als 25 mittelmässige
 
+SCHREIBSTIL: Verwende in allen Textfeldern keine Gedankenstriche ("—"). Formuliere stattdessen mit Punkt, Komma, Doppelpunkt oder einer Konjunktion.
+
 Gib NUR dieses JSON-Objekt zurück, kein Markdown, kein Text davor oder danach:
 {
   "thema": "kurzer Titel des Themas (max 5 Wörter)",

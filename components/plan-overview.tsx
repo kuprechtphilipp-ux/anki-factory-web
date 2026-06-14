@@ -116,7 +116,7 @@ export function PlanOverview({ plan, isAdmin = false, redeemedCode = null, planE
               {isCurrent && stripeCancelAt && (
                 <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-rose-500/10 px-2.5 py-1.5">
                   <p className="text-xs text-rose-500 font-medium">
-                    Gekündigt — läuft bis {fmtDate(stripeCancelAt)}
+                    Gekündigt, aktiv bis {fmtDate(stripeCancelAt)}
                   </p>
                   <Button
                     size="sm"

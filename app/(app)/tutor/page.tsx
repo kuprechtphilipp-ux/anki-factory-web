@@ -27,7 +27,7 @@ export default function TutorPage() {
         <CramoIcon alt="Cramo" className="h-12 w-12 rounded-full object-cover shrink-0" />
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Chat</h1>
-          <p className="text-sm text-muted-foreground">Cramo hilft dir beim Büffeln — sachlich oder mit vollem Charakter.</p>
+          <p className="text-sm text-muted-foreground">Cramo hilft dir beim Büffeln, ganz sachlich oder mit vollem Charakter.</p>
         </div>
       </div>
 
@@ -72,7 +72,7 @@ export default function TutorPage() {
           </div>
           <CramoChat
             mode="fun"
-            introMessage="Na, schon wieder am Büffeln? Erzähl mir, was ansteht — ich hab da auch ein paar Geschichten aus meinen besten Nächten auf Lager."
+            introMessage="Na, schon wieder am Büffeln? Erzähl mir, was ansteht. Ich hab da auch ein paar Geschichten aus meinen besten Nächten auf Lager."
             placeholder="Schreib Cramo..."
             className="flex-1 min-h-0"
           />

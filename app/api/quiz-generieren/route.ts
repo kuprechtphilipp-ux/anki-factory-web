@@ -174,6 +174,8 @@ Generate exactly ${anzahl} multiple-choice questions, one per SOURCE CARD. Each 
 
 ${schwierigkeitInstruktion}
 
+STYLE: Do not use em dashes ("—") in any question, option, or explanation. Use normal punctuation (period, comma, colon) or a conjunction instead.
+
 Return ONLY a valid JSON array — no markdown, no explanation outside the JSON. Remember: every string value must be in the SAME LANGUAGE as the source cards.
 [{"frage":"...","optionen":["A: ...","B: ...","C: ...","D: ..."],"richtig":0,"erklaerung":"${erklaerungInstruktion}","karte_id":123}]`
 

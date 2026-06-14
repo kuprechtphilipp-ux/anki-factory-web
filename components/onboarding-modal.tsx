@@ -122,7 +122,7 @@ export function OnboardingModal({ open, onOpenChange, initial, onSaved }: Onboar
             <>
               <DialogTitle className="text-center">Hey, ich bin Cramo</DialogTitle>
               <DialogDescription className="text-center">
-                Bevor wir loslegen, ein paar schnelle Fragen — dann weiß ich, wie ich am besten mit dir rede.
+                Bevor wir loslegen, noch ein paar schnelle Fragen, damit ich weiß, wie ich am besten mit dir rede.
               </DialogDescription>
             </>
           ) : (
@@ -179,7 +179,7 @@ export function OnboardingModal({ open, onOpenChange, initial, onSaved }: Onboar
             </div>
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Diese Angaben beeinflussen nur, wie Cramo mit dir spricht — nicht, wie deine Karteikarten erstellt werden.
+              Diese Angaben beeinflussen nur, wie Cramo mit dir spricht, nicht wie deine Karteikarten erstellt werden.
             </p>
           </div>
         ) : (

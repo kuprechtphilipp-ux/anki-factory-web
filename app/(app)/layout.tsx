@@ -97,7 +97,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         { description: 'Du kannst dein Abo jederzeit unter Account & Profil verwalten.' }
       )
     } else if (checkout === 'cancel') {
-      toast.info('Checkout abgebrochen — dein Plan wurde nicht geändert.')
+      toast.info('Checkout abgebrochen. Dein Plan wurde nicht geändert.')
     }
 
     params.delete('checkout')

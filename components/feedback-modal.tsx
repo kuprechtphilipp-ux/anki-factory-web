@@ -149,7 +149,7 @@ export function FeedbackModal({ open, onClose, themaId, kartenCount, lodUsed }: 
           <div className="px-6 py-6 space-y-5 animate-fade-in">
             <div>
               <p className="text-base font-semibold">Was war gut oder nicht?</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Optional — wähle was zutrifft.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Optional, wähle einfach, was zutrifft.</p>
             </div>
 
             <div className="space-y-4">
@@ -205,7 +205,7 @@ export function FeedbackModal({ open, onClose, themaId, kartenCount, lodUsed }: 
           <div className="px-6 py-6 space-y-5 animate-fade-in">
             <div>
               <p className="text-base font-semibold">Noch etwas?</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Freitext — komplett optional.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Freitext, komplett optional.</p>
             </div>
 
             <Textarea

@@ -238,7 +238,7 @@ export default function AccountPage() {
           </div>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Diese Angaben beeinflussen nur, wie Cramo mit dir spricht — nicht, wie deine Karteikarten erstellt werden.
+          Diese Angaben beeinflussen nur, wie Cramo mit dir spricht, nicht wie deine Karteikarten erstellt werden.
         </p>
         <Button onClick={handleSaveProfile} disabled={savingProfile}>
           {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Speichern'}

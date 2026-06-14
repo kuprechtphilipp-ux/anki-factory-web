@@ -98,6 +98,8 @@ Beurteile jede Karte einzeln anhand ihrer Folie. Es gibt keine Vorgabe für den
 Anteil an bild_relevant: true Karten — im Zweifel für die Karte entscheiden,
 die am meisten von der visuellen Darstellung profitiert.
 
+SCHREIBSTIL: Verwende in Fragen, Antworten und Erklärungen keine Gedankenstriche ("—"). Formuliere stattdessen mit Punkt, Komma, Doppelpunkt oder einer Konjunktion.
+
 Gib ausschliesslich ein JSON-Array zurück, kein Markdown, kein Kommentar:
 [
   {

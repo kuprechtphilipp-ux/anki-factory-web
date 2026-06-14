@@ -266,7 +266,7 @@ export default function KursePage() {
                     {streak.streak} {streak.streak === 1 ? 'Tag' : 'Tage'}
                   </p>
                   <p className="text-xs text-orange-700/70 dark:text-orange-300/60 mt-0.5">
-                    {streak.learnedToday ? 'Heute schon gelernt ✓' : 'Streak in Gefahr — heute noch lernen!'}
+                    {streak.learnedToday ? 'Heute schon gelernt ✓' : 'Jetzt noch lernen, sonst ist der Streak weg!'}
                   </p>
                 </div>
               </div>
@@ -283,8 +283,8 @@ export default function KursePage() {
               <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
                 <Bell className="h-4 w-4 text-primary shrink-0" />
                 <p className="text-sm text-foreground">
-                  Heute noch nicht gelernt —{' '}
-                  <span className="font-semibold text-primary">{streak.dueCount} Karten</span> fällig
+                  Heute warten noch{' '}
+                  <span className="font-semibold text-primary">{streak.dueCount} Karten</span> auf dich
                 </p>
               </div>
             )

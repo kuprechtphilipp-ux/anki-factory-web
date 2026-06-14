@@ -51,7 +51,7 @@ export default function AlleKartenPage({ params }: Props) {
   return (
     <div>
       <p className="text-sm text-muted-foreground mb-1">{kursName}</p>
-      <h1 className="text-2xl font-bold mb-6">{themaName} — Alle Karten</h1>
+      <h1 className="text-2xl font-bold mb-6">Alle Karten zu {themaName}</h1>
 
       <div className="max-w-2xl space-y-4">
         <div className="flex items-center gap-3">

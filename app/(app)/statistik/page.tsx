@@ -142,7 +142,7 @@ function ForecastChart({ forecast30 }: { forecast30: number[] }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">FSRS-Forecast — fällige Karten</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Fällige Karten im FSRS-Forecast</p>
         <div className="flex items-center gap-1 rounded-lg border border-border/50 p-0.5">
           {([7, 30] as const).map((d) => (
             <button
@@ -402,7 +402,7 @@ function Heatmap({ heatmap }: { heatmap: { date: string; count: number }[] }) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-          Lernaktivität — {showFullYear ? 'letzte 365 Tage' : 'letzte 3 Monate'}
+          Lernaktivität ({showFullYear ? 'letzte 365 Tage' : 'letzte 3 Monate'})
         </p>
         <button
           onClick={() => setShowFullYear((v) => !v)}
@@ -541,7 +541,7 @@ export default function StatistikPage() {
       {stats.streak === 0 && stats.bestStreak > 0 && (
         <div className="rounded-2xl border border-border/50 bg-muted/30 px-6 py-4">
           <p className="text-sm text-muted-foreground">
-            Kein aktiver Streak — dein Rekord war{' '}
+            Kein aktiver Streak. Dein Rekord war{' '}
             <span className="font-semibold text-foreground">{stats.bestStreak} Tage</span>. Heute lernen, um wieder anzufangen! 🎯
           </p>
         </div>
@@ -628,7 +628,7 @@ export default function StatistikPage() {
                 {stats.retentionRate >= 90 ? '🌟 Ausgezeichnet! Du erinnerst dich an fast alles.' :
                  stats.retentionRate >= 80 ? '✅ Gut! Ziel: 85–90%.' :
                  stats.retentionRate >= 70 ? '⚠️ Okay. Mehr regelmäßige Reviews helfen.' :
-                 '🔁 Karten werden zu selten wiederholt — öfter üben!'}
+                 '🔁 Karten werden zu selten wiederholt, öfter üben hilft!'}
               </p>
             </div>
           ) : (
@@ -658,7 +658,7 @@ export default function StatistikPage() {
 
           {hasPerformanceData ? (
             <div className="space-y-3">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Performance-Trends — letzte Sessions</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Performance-Trends der letzten Sessions</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Sparkline label="Drill" data={stats.performanceTrends.drill} color="hsl(38 92% 50%)" />
                 <Sparkline label="Quiz" data={stats.performanceTrends.quiz} color="hsl(238 84% 67%)" />

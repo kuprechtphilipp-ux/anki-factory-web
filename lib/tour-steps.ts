@@ -20,7 +20,7 @@ const BASE_STEPS_BEFORE_DEVICE_WIDGET: TourStep[] = [
   {
     target: 'nav-tutor',
     title: 'Ich bin hier drüben',
-    content: 'Im AI-Tutor-Tab kannst du mir ernsthafte Fragen zum Stoff stellen — oder einfach mit mir quatschen, wenn du Motivation brauchst.',
+    content: 'Im AI-Tutor-Tab kannst du mir ernsthafte Fragen zum Stoff stellen oder einfach mit mir quatschen, wenn du Motivation brauchst.',
     placement: 'right',
   },
   {
@@ -32,7 +32,7 @@ const BASE_STEPS_BEFORE_DEVICE_WIDGET: TourStep[] = [
   {
     target: 'nav-statistik',
     title: 'Dein Lernfortschritt',
-    content: 'Streaks, fällige Karten, Quiz-Ergebnisse — hier siehst du auf einen Blick, wie\'s läuft.',
+    content: 'Hier siehst du auf einen Blick, wie\'s läuft: Streaks, fällige Karten, Quiz-Ergebnisse.',
     placement: 'right',
   },
   {
@@ -44,7 +44,7 @@ const BASE_STEPS_BEFORE_DEVICE_WIDGET: TourStep[] = [
   {
     target: 'cramo-widget',
     title: 'Ich bin immer erreichbar',
-    content: 'Egal wo du gerade bist — über dieses Icon kannst du mich jederzeit kurz etwas fragen, auch während du lernst.',
+    content: 'Egal wo du gerade bist, über dieses Icon kannst du mich jederzeit kurz etwas fragen, auch während du lernst.',
     placement: 'left',
   },
   {
@@ -65,7 +65,7 @@ const PHONE_WIDGET_STEP: TourStep = {
 const LAPTOP_WIDGET_STEP: TourStep = {
   target: 'laptop-widget',
   title: 'Cramo am Laptop',
-  content: 'Hier findest du den Link zu Cramo für deinen Laptop oder Tablet. Lege dort deine Kurse an und generiere deine Karten — danach kannst du hier am Handy weiterlernen.',
+  content: 'Hier findest du den Link zu Cramo für deinen Laptop oder Tablet. Lege dort deine Kurse an und generiere deine Karten. Danach kannst du hier am Handy weiterlernen.',
   placement: 'bottom',
 }
 

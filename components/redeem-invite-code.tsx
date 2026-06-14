@@ -39,7 +39,7 @@ export function RedeemInviteCode({ redeemedCode, onRedeemed }: RedeemInviteCodeP
         return
       }
       const result = data[0] as { plan: Plan; credits: number; expires_at: string | null }
-      toast.success(`Code eingelöst — du bist jetzt auf Plan ${result.plan} mit ${result.credits} Credits`)
+      toast.success(`Code eingelöst! Du bist jetzt auf Plan ${result.plan} mit ${result.credits} Credits`)
       setCode('')
       onRedeemed(result.plan, result.credits, result.expires_at)
     } catch {
