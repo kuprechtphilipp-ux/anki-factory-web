@@ -83,6 +83,7 @@ export async function POST(req: Request) {
   // Resolve thema/kurs names for context
   let themaName = ''
   let kursNameResolved = kurs_name ?? ''
+  let altklausurKontext = ''
 
   let query = supabase.from('karte').select('*').eq('status', 'reviewed')
 
@@ -90,11 +91,12 @@ export async function POST(req: Request) {
     query = query.eq('thema_id', Number(thema_id))
     const { data: themaRow } = await supabase
       .from('thema')
-      .select('name, kurs_id')
+      .select('name, kurs_id, altklausur_kontext')
       .eq('id', Number(thema_id))
       .single()
     if (themaRow) {
       themaName = themaRow.name
+      altklausurKontext = themaRow.altklausur_kontext ?? ''
       if (!kursNameResolved) {
         const { data: kursRow } = await supabase.from('kurs').select('name').eq('id', themaRow.kurs_id).single()
         kursNameResolved = kursRow?.name ?? ''
@@ -145,6 +147,10 @@ export async function POST(req: Request) {
     ? 'Max. 15 Wörter: why the correct answer is right. Same language as the cards.'
     : 'One sentence: why the correct answer is right and why it matters. Same language as the cards.'
 
+  const altklausurBlock = altklausurKontext
+    ? `\n\nPAST EXAM REFERENCE: The following text is from a past exam for this topic. Use it to align question style, phrasing, topic emphasis and difficulty with how this course is actually examined — but do not reuse its questions verbatim.\n${altklausurKontext.slice(0, 6000)}`
+    : ''
+
   const systemPrompt = `You are an expert exam question designer. Your goal is to create questions that test genuine conceptual understanding — the kind that appears in university exams — not simple recall of flashcard text.
 
 LANGUAGE — READ THIS FIRST: Detect the language used in the SOURCE CARDS below and write your ENTIRE response — every question, every option, and every explanation — in that exact same language. Do not translate, and do not default to German or English unless that is the language of the cards.
@@ -177,7 +183,7 @@ ${schwierigkeitInstruktion}
 STYLE: Do not use em dashes ("—") in any question, option, or explanation. Use normal punctuation (period, comma, colon) or a conjunction instead.
 
 Return ONLY a valid JSON array — no markdown, no explanation outside the JSON. Remember: every string value must be in the SAME LANGUAGE as the source cards.
-[{"frage":"...","optionen":["A: ...","B: ...","C: ...","D: ..."],"richtig":0,"erklaerung":"${erklaerungInstruktion}","karte_id":123}]`
+[{"frage":"...","optionen":["A: ...","B: ...","C: ...","D: ..."],"richtig":0,"erklaerung":"${erklaerungInstruktion}","karte_id":123}]${altklausurBlock}`
 
   const userMessage = `SOURCE CARDS (generate one question per card):
 

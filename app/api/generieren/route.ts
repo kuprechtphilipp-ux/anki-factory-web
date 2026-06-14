@@ -290,6 +290,13 @@ ${altklausurText}
 
 Nutze diesen Kontext, um Art, Schwierigkeitsgrad und Schwerpunkte der Flashcards am
 tatsächlichen Prüfungsstil auszurichten. Übernimm keine Fragen wörtlich aus der Altklausur.`
+
+          // Persistieren, damit Quiz-Generierung & Schriftlich-Bewertung diesen
+          // Kontext spaeter ebenfalls nutzen koennen (auch ohne erneuten Upload).
+          await supabase
+            .from('thema')
+            .update({ altklausur_kontext: altklausurText })
+            .eq('id', Number(themaId))
         }
       } catch (err) {
         console.error('[generieren] Altklausur-Text konnte nicht extrahiert werden:', err)

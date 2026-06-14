@@ -17,11 +17,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'credits_exhausted', message: CREDITS_EXHAUSTED_MESSAGE }, { status: 402 })
   }
 
-  const { frage, musterantwort, nutzerantwort, kontext } = await req.json() as {
+  const { frage, musterantwort, nutzerantwort, kontext, altklausur_kontext } = await req.json() as {
     frage: string
     musterantwort: string
     nutzerantwort: string
     kontext?: string
+    altklausur_kontext?: string
   }
 
   if (!frage || !musterantwort || !nutzerantwort) {
@@ -29,12 +30,15 @@ export async function POST(req: Request) {
   }
 
   const contextBlock = kontext ? `\nContext: ${kontext}` : ''
+  const altklausurBlock = altklausur_kontext
+    ? `\n\nPAST EXAM REFERENCE for this topic (use it to judge how detailed/complete an answer needs to be to satisfy this exam's expectations):\n${altklausur_kontext.slice(0, 6000)}`
+    : ''
 
   const prompt = `You are evaluating a student's answer against a model answer for a flashcard.
 
 Question: ${frage}
 Model answer: ${musterantwort}${contextBlock}
-Student's answer: ${nutzerantwort}
+Student's answer: ${nutzerantwort}${altklausurBlock}
 
 Rate the answer on a 0–100 scale:
 - 90–100: Completely correct, all key points covered
