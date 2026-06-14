@@ -14,8 +14,54 @@ const geistSans = localFont({
 })
 
 export const metadata: Metadata = {
-  title: 'Cramo Learning',
-  description: 'AI-powered Flashcards für Prüfungsvorbereitung',
+  metadataBase: new URL('https://www.cramo.ch'),
+  title: {
+    default: 'Cramo – KI-Lernkarten aus deinen PDFs',
+    template: '%s | Cramo',
+  },
+  description:
+    'Cramo verwandelt deine Vorlesungsfolien und PDFs automatisch in Lernkarten und merkt sich mit Spaced Repetition (FSRS), wann du sie wiederholen musst. Jetzt kostenlos starten.',
+  keywords: [
+    'Cramo',
+    'Lernkarten',
+    'Karteikarten',
+    'Flashcards',
+    'Spaced Repetition',
+    'Prüfungsvorbereitung',
+    'KI Lernen',
+    'PDF zu Lernkarten',
+  ],
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'de_CH',
+    url: 'https://www.cramo.ch',
+    siteName: 'Cramo',
+    title: 'Cramo – KI-Lernkarten aus deinen PDFs',
+    description:
+      'PDF hochladen, KI macht Karteikarten. Cramo plant deine Wiederholungen mit Spaced Repetition (FSRS).',
+    images: [
+      {
+        url: '/images/cramo-marketing-hero.png',
+        width: 1024,
+        height: 576,
+        alt: 'Cramo Learning – KI-gestützte Lernkarten',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Cramo – KI-Lernkarten aus deinen PDFs',
+    description:
+      'PDF hochladen, KI macht Karteikarten. Cramo plant deine Wiederholungen mit Spaced Repetition (FSRS).',
+    images: ['/images/cramo-marketing-hero.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
