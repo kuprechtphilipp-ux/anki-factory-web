@@ -1227,10 +1227,11 @@ export default function ThemaPage({ params }: Props) {
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 shrink-0">
                   <ScanSearch className="h-4.5 w-4.5 text-violet-600 dark:text-violet-400 animate-pulse" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-sm font-semibold">Cramo analysiert dein Dokument...</p>
                   <p className="text-xs text-muted-foreground">Ermittle optimale Einstellungen</p>
                 </div>
+                <Loader2 className="h-4 w-4 text-violet-500 dark:text-violet-400 animate-spin shrink-0" />
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-violet-200/50 dark:bg-violet-900/30">
                 <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-violet-500 to-violet-400 animate-pulse" />

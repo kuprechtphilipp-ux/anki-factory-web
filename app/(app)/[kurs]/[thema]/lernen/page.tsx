@@ -478,6 +478,7 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
       <div className="flex items-center justify-center p-1 rounded-xl w-full max-w-sm mx-auto mb-7 bg-background/60 dark:bg-muted/30 backdrop-blur-md border border-border/40 shadow-sm relative z-20">
         <button
           onClick={() => setPriorityFilter('alle')}
+          title="Alle fälligen Karten dieses Themas, unabhängig von ihrer Priorität."
           className={`flex items-center justify-center gap-1.5 flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${
             priorityFilter === 'alle'
               ? 'bg-primary/10 text-primary border border-primary/10 shadow-sm font-semibold scale-105'
@@ -489,6 +490,7 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
         </button>
         <button
           onClick={() => setPriorityFilter('core')}
+          title="Core: Prüfungsessentielles Grundlagenwissen. Lernt nur Karten mit diesem Tag."
           className={`flex items-center justify-center gap-1.5 flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${
             priorityFilter === 'core'
               ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/10 shadow-sm font-semibold scale-105'
@@ -500,6 +502,7 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
         </button>
         <button
           onClick={() => setPriorityFilter('fokus')}
+          title="Fokus: Höchste Priorität — Inhalte, die mit hoher Wahrscheinlichkeit in der Prüfung vorkommen. Lernt nur Karten mit diesem Tag."
           className={`flex items-center justify-center gap-1.5 flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${
             priorityFilter === 'fokus'
               ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/10 shadow-sm font-semibold scale-105'

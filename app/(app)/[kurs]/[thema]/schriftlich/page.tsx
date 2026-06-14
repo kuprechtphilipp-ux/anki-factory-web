@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Loader2, ArrowLeft, PenLine, CheckCircle2, XCircle, RotateCcw, Coins } from 'lucide-react'
+import { useCramoContext } from '@/components/cramo-context'
 import type { Karte } from '@/lib/types'
 import { estimateSchriftlichCredits } from '@/lib/quiz-cost'
 
@@ -77,6 +78,21 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
     setPageState('playing')
     setTimeout(() => textareaRef.current?.focus(), 100)
   }
+
+  const { setContext, clearContext } = useCramoContext()
+  useEffect(() => {
+    if (pageState !== 'playing') return
+    const karte = sessionKarten[currentIdx]
+    if (!karte) return
+    setContext({
+      kursName,
+      themaName,
+      karteFrage: karte.typ === 'cloze' ? getClozeDisplay(karte.cloze_text ?? '') : karte.frage,
+      karteAntwort: karte.typ === 'cloze' ? getClozeAnswer(karte.cloze_text ?? '') : karte.antwort,
+      karteKontext: karte.kontext ?? undefined,
+    })
+  }, [pageState, sessionKarten, currentIdx, kursName, themaName, setContext])
+  useEffect(() => () => clearContext(), [clearContext])
 
   async function handleSubmit() {
     if (!userAnswer.trim() || submitted) return

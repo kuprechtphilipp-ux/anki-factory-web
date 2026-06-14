@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, RotateCcw, BookOpen, Check, X } from 'lucide-react'
 import { ExpandableImage } from '@/components/expandable-image'
 import { KarteMarkdown } from '@/components/karte-markdown'
+import { useCramoContext } from '@/components/cramo-context'
 import { isTypingInField } from '@/lib/utils'
 import type { Karte } from '@/lib/types'
 
@@ -91,6 +92,19 @@ export default function DrillPage({ params }: { params: { kurs: string; thema: s
 
   const answered = totalCards - deck.length
   const progressPct = totalCards > 0 ? (answered / totalCards) * 100 : 0
+
+  const { setContext, clearContext } = useCramoContext()
+  useEffect(() => {
+    if (!current) return
+    setContext({
+      kursName,
+      themaName,
+      karteFrage: current.typ === 'cloze' ? (current.cloze_text ?? current.frage) : current.frage,
+      karteAntwort: current.typ === 'cloze' ? undefined : current.antwort,
+      karteKontext: current.kontext ?? undefined,
+    })
+  }, [current, kursName, themaName, setContext])
+  useEffect(() => () => clearContext(), [clearContext])
 
   async function advance(isReturning: boolean) {
     const wasSwipe = swipeExitRef.current

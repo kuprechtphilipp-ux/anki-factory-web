@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, BookOpen, RotateCcw, Coins } from 'lucide-react'
 import type { QuizFrage } from '@/lib/types'
 import { estimateQuizCredits, type QuizModus } from '@/lib/quiz-cost'
+import { useCramoContext } from '@/components/cramo-context'
 
 type QuizState = 'idle' | 'generating' | 'playing' | 'done'
 
@@ -50,6 +51,21 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
     }
     loadMeta()
   }, [kursName, themaName])
+
+  const { setContext, clearContext } = useCramoContext()
+  useEffect(() => {
+    if (quizState !== 'playing') return
+    const frage = fragen[currentIdx]
+    if (!frage) return
+    setContext({
+      kursName,
+      themaName,
+      karteFrage: frage.frage,
+      karteAntwort: frage.optionen[frage.richtig],
+      karteKontext: frage.erklaerung,
+    })
+  }, [quizState, fragen, currentIdx, kursName, themaName, setContext])
+  useEffect(() => () => clearContext(), [clearContext])
 
   async function handleGenerate() {
     if (!themaId) return
