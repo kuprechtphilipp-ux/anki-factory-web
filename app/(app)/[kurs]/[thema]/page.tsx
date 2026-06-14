@@ -47,6 +47,42 @@ function RingMetric({ label, value, fillColor }: { label: string; value: number;
   )
 }
 
+function WeekActivity({ days, variant = 'light' }: { days: AktivitaetTag[]; variant?: 'light' | 'dark' }) {
+  if (days.length === 0) return null
+  const isDark = variant === 'dark'
+  return (
+    <div className="mt-4">
+      <p className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${isDark ? 'text-violet-200' : 'text-muted-foreground/70'}`}>
+        Lernaktivität · letzte 7 Tage
+      </p>
+      <div className="flex items-center gap-2.5">
+        {days.map((day, i) => {
+          const date = new Date(day.date)
+          const isToday = i === days.length - 1
+          return (
+            <div
+              key={day.date}
+              className="flex flex-col items-center gap-1"
+              title={`${date.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}: ${day.studied ? 'gelernt' : 'nicht gelernt'}`}
+            >
+              <div
+                className={`h-2.5 w-2.5 rounded-full ${
+                  day.studied
+                    ? isDark ? 'bg-white' : 'bg-primary'
+                    : isDark ? 'bg-white/25' : 'bg-muted'
+                } ${isToday ? `ring-2 ring-offset-1 ${isDark ? 'ring-white/40 ring-offset-violet-600' : 'ring-primary/30 ring-offset-card'}` : ''}`}
+              />
+              <span className={`text-[9px] font-medium ${isDark ? 'text-violet-300' : 'text-muted-foreground/50'}`}>
+                {date.toLocaleDateString('de-DE', { weekday: 'short' }).slice(0, 2)}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 interface Props {
   params: { kurs: string; thema: string }
 }
@@ -59,6 +95,7 @@ export default function ThemaPage({ params }: Props) {
   const [kursId, setKursId] = useState<number | null>(null)
   const [themenCount, setThemenCount] = useState<number | null>(null)
   const [kontextHintOpen, setKontextHintOpen] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const [loadingThema, setLoadingThema] = useState(true)
   const [activeTab, setActiveTab] = useState('uebersicht')
 
@@ -687,7 +724,7 @@ export default function ThemaPage({ params }: Props) {
   }
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-3xl lg:max-w-4xl xl:max-w-5xl">
       <FeedbackModal
         open={feedbackOpen}
         onClose={() => setFeedbackOpen(false)}
@@ -698,8 +735,8 @@ export default function ThemaPage({ params }: Props) {
 
       {/* Breadcrumb + Title */}
       <div className="mb-7">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1">{kursName}</p>
-        <h1 className="text-[1.75rem] font-semibold tracking-tight">{themaName}</h1>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-1 lg:text-xs">{kursName}</p>
+        <h1 className="text-[1.75rem] lg:text-3xl xl:text-4xl font-semibold tracking-tight">{themaName}</h1>
       </div>
 
       {/* Tabs */}
@@ -745,19 +782,42 @@ export default function ThemaPage({ params }: Props) {
           </TabsList>
         </div>
 
+        {/* ── Cross-Tab "Jetzt lernen"-CTA — überall sichtbar außer in Übersicht ── */}
+        {activeTab !== 'uebersicht' && bannerState !== 'D' && (
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-card px-4 py-2.5 shadow-sm">
+            <div className="flex items-center gap-2 text-sm min-w-0">
+              <Brain className="h-4 w-4 text-primary shrink-0" />
+              {(dueCount ?? 0) > 0 ? (
+                <span className="truncate">
+                  <span className="font-semibold text-primary tabular-nums">{dueCount}</span> Karte{dueCount === 1 ? '' : 'n'} fällig
+                </span>
+              ) : (
+                <span className="text-muted-foreground truncate">Aktuell keine Karten fällig</span>
+              )}
+            </div>
+            <Link
+              href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 text-xs font-semibold transition-colors"
+            >
+              Jetzt lernen
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        )}
+
         {/* ── Tab: Übersicht ── */}
-        <TabsContent value="uebersicht" className="mt-6 max-w-2xl space-y-5">
+        <TabsContent value="uebersicht" className="mt-6 max-w-2xl lg:max-w-3xl xl:max-w-4xl space-y-5 lg:space-y-6">
 
           {/* ── Hero Status Banner ── */}
           {bannerState === 'A' && (
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 p-5 text-white shadow-lg">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 p-5 lg:p-6 text-white shadow-lg">
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.12),transparent_60%)]" />
               <div className="relative flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-violet-200">Bereit zum Lernen</p>
-                  <p className="text-3xl font-bold tabular-nums">{dueCount} Karten</p>
+                  <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-widest text-violet-200">Bereit zum Lernen</p>
+                  <p className="text-3xl lg:text-4xl font-bold tabular-nums">{dueCount} Karten</p>
                   {daysSinceLastSession != null && (
-                    <p className="text-sm text-violet-200">
+                    <p className="text-sm lg:text-base text-violet-200">
                       {daysSinceLastSession === 0
                         ? 'Heute schon gelernt — weiter so'
                         : daysSinceLastSession === 1
@@ -768,35 +828,26 @@ export default function ThemaPage({ params }: Props) {
                 </div>
                 <Link
                   href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}
-                  className="shrink-0 rounded-xl bg-white/20 hover:bg-white/30 px-4 py-2.5 text-sm font-semibold transition-colors backdrop-blur-sm"
+                  className="shrink-0 rounded-xl bg-white/20 hover:bg-white/30 px-4 py-2.5 text-sm lg:text-base font-semibold transition-colors backdrop-blur-sm"
                 >
                   Jetzt lernen
                 </Link>
               </div>
-              {aktivitaetDays.length > 0 && (
-                <div className="relative mt-4 flex items-end gap-1.5">
-                  {aktivitaetDays.map((day, i) => (
-                    <div key={i} className="flex flex-col items-center gap-1">
-                      <div className={`w-3 h-3 rounded-full transition-colors ${day.studied ? 'bg-white' : 'bg-white/25'}`} title={day.date} />
-                    </div>
-                  ))}
-                  <span className="ml-1 text-[10px] text-violet-300">7-Tage-Aktivität</span>
-                </div>
-              )}
+              <WeekActivity days={aktivitaetDays} variant="dark" />
             </div>
           )}
 
           {bannerState === 'B' && (
-            <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-card">
+            <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 lg:p-6 shadow-card">
               <div className="flex items-start gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
                   <CheckCheck className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Alles im Plan</p>
-                  <p className="text-xl font-semibold">Alle Karten erledigt</p>
+                  <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Alles im Plan</p>
+                  <p className="text-xl lg:text-2xl font-semibold">Alle Karten erledigt</p>
                   {nextDueDate && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm lg:text-base text-muted-foreground">
                       Nächste Session{' '}
                       <span className="font-semibold text-foreground">
                         {new Date(nextDueDate).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -805,28 +856,21 @@ export default function ThemaPage({ params }: Props) {
                   )}
                 </div>
               </div>
-              {aktivitaetDays.length > 0 && (
-                <div className="relative mt-4 flex items-end gap-1.5">
-                  {aktivitaetDays.map((day, i) => (
-                    <div key={i} className={`w-3 h-3 rounded-full ${day.studied ? 'bg-primary' : 'bg-muted'}`} title={day.date} />
-                  ))}
-                  <span className="ml-1 text-[10px] text-muted-foreground/60">7-Tage-Aktivität</span>
-                </div>
-              )}
+              <WeekActivity days={aktivitaetDays} variant="light" />
             </div>
           )}
 
           {bannerState === 'C' && (
-            <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-card">
+            <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 lg:p-6 shadow-card">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Neue Karten</p>
-                  <p className="text-3xl font-bold tabular-nums text-primary">{neuCount} Karten</p>
-                  <p className="text-sm text-muted-foreground">warten auf deinen Review</p>
+                  <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Neue Karten</p>
+                  <p className="text-3xl lg:text-4xl font-bold tabular-nums text-primary">{neuCount} Karten</p>
+                  <p className="text-sm lg:text-base text-muted-foreground">warten auf deinen Review</p>
                 </div>
                 <button
                   onClick={() => setActiveTab('review')}
-                  className="shrink-0 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2.5 text-sm font-semibold transition-colors"
+                  className="shrink-0 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2.5 text-sm lg:text-base font-semibold transition-colors"
                 >
                   Zum Review
                 </button>
@@ -835,163 +879,71 @@ export default function ThemaPage({ params }: Props) {
           )}
 
           {bannerState === 'D' && (
-            <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-card">
+            <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 lg:p-6 shadow-card">
               <div className="space-y-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Deck leer</p>
-                <p className="text-xl font-semibold">Noch keine Karten</p>
-                <p className="text-sm text-muted-foreground">Lade ein PDF hoch und generiere deine ersten Flashcards.</p>
-              </div>
-            </div>
-          )}
-
-          {/* ── Secondary stats chips ── */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${(dueCount ?? 0) > 0 ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground/60'}`}>
-              {dueCount ?? '–'} fällig
-            </div>
-            <div className="rounded-full border border-border/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground/60">
-              {neuCount ?? '–'} im Review
-            </div>
-            <div className="rounded-full border border-border/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground/60">
-              {reviewedCount ?? '–'} im Deck
-            </div>
-            {retentionEst != null && (
-              <div className="rounded-full border border-border/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground/60">
-                ~{retentionEst}% Retention
-              </div>
-            )}
-          </div>
-
-          {/* ── Deck Maturity Bar ── */}
-          {maturity.total > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Deck-Reifegrad</p>
-                <p className="text-[10px] text-muted-foreground/60 tabular-nums">{maturity.total} Karten</p>
-              </div>
-              <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted/50 gap-px">
-                {maturity.neu > 0 && (
-                  <div
-                    title={`Neu: ${maturity.neu}`}
-                    className="bg-violet-200 dark:bg-violet-900/40 rounded-l-full transition-all"
-                    style={{ width: `${(maturity.neu / maturity.total) * 100}%` }}
-                  />
-                )}
-                {maturity.inLearning > 0 && (
-                  <div
-                    title={`Im Lernen: ${maturity.inLearning}`}
-                    className="bg-violet-400 dark:bg-violet-700 transition-all"
-                    style={{ width: `${(maturity.inLearning / maturity.total) * 100}%` }}
-                  />
-                )}
-                {maturity.gut > 0 && (
-                  <div
-                    title={`Gut: ${maturity.gut}`}
-                    className="bg-violet-600 dark:bg-violet-500 transition-all"
-                    style={{ width: `${(maturity.gut / maturity.total) * 100}%` }}
-                  />
-                )}
-                {maturity.solid > 0 && (
-                  <div
-                    title={`Gefestigt: ${maturity.solid}`}
-                    className="bg-violet-800 dark:bg-violet-300 rounded-r-full transition-all"
-                    style={{ width: `${(maturity.solid / maturity.total) * 100}%` }}
-                  />
-                )}
-              </div>
-              <div className="flex items-center gap-3 text-[10px] text-muted-foreground/60 flex-wrap">
-                {maturity.neu > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-200 dark:bg-violet-900/40 inline-block" />Neu ({maturity.neu})</span>}
-                {maturity.inLearning > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-400 dark:bg-violet-700 inline-block" />Lernen ({maturity.inLearning})</span>}
-                {maturity.gut > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-600 dark:bg-violet-500 inline-block" />Gut ({maturity.gut})</span>}
-                {maturity.solid > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-800 dark:bg-violet-300 inline-block" />Gefestigt ({maturity.solid})</span>}
-              </div>
-            </div>
-          )}
-
-          {/* ── Performance Metriken ── */}
-          {reviewedCards.length > 0 && (
-            <div className="rounded-2xl border border-border/50 bg-card/50 px-5 py-4 shadow-card">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-4">Performance</p>
-              <div className="flex items-center justify-around">
-                <RingMetric label="Gelernt" value={gelerntRingPct} fillColor="hsl(var(--primary))" />
-                <div className="w-px h-10 bg-border/50" />
-                <RingMetric label="Drill" value={lastResults.drill ?? 0} fillColor="hsl(38 92% 50%)" />
-                <div className="w-px h-10 bg-border/50" />
-                <RingMetric label="Quiz" value={lastResults.quiz ?? 0} fillColor="hsl(238 84% 67%)" />
+                <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Deck leer</p>
+                <p className="text-xl lg:text-2xl font-semibold">Noch keine Karten</p>
+                <p className="text-sm lg:text-base text-muted-foreground">Lade ein PDF hoch und generiere deine ersten Flashcards.</p>
               </div>
             </div>
           )}
 
           {/* ── Lernmodi — nur wenn Deck nicht leer ── */}
           {bannerState !== 'D' && (
-            <div className="space-y-3">
-              {/* Hero: Lernen */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <Link
                 href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}
-                className="group relative flex overflow-hidden rounded-2xl border border-border/50 bg-card hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5 p-5"
+                className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
               >
-                <div className="flex items-start gap-4 flex-1 min-w-0">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 group-hover:bg-primary/25 transition-colors">
-                    <Brain className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-foreground">Lernen</p>
-                      {dueCount != null && dueCount > 0 && (
-                        <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[11px] font-medium">
-                          {dueCount} fällig heute
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">Spaced Repetition · FSRS-Algorithmus</p>
-                    {retentionEst != null && (
-                      <p className="text-xs text-muted-foreground/70 mt-1">~{retentionEst}% geschätzte Retention</p>
-                    )}
-                  </div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
+                  <Brain className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm lg:text-base font-semibold">Lernen</p>
+                  <p className="text-xs lg:text-sm text-muted-foreground mt-0.5 leading-snug">
+                    {dueCount != null && dueCount > 0 ? `${dueCount} fällig` : 'Spaced Repetition'}
+                  </p>
                 </div>
               </Link>
 
-              {/* Secondary modes */}
-              <div className="grid grid-cols-3 gap-2">
-                <Link
-                  href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/drill`}
-                  className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                    <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Drill</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">Ohne Zeitdruck</p>
-                  </div>
-                </Link>
+              <Link
+                href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/drill`}
+                className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                  <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-sm lg:text-base font-semibold">Drill</p>
+                  <p className="text-xs lg:text-sm text-muted-foreground mt-0.5 leading-snug">Ohne Zeitdruck</p>
+                </div>
+              </Link>
 
-                <Link
-                  href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/quiz`}
-                  className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
-                    <BookOpen className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Quiz</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">Multiple Choice</p>
-                  </div>
-                </Link>
+              <Link
+                href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/quiz`}
+                className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+                  <BookOpen className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                  <p className="text-sm lg:text-base font-semibold">Quiz</p>
+                  <p className="text-xs lg:text-sm text-muted-foreground mt-0.5 leading-snug">Multiple Choice</p>
+                </div>
+              </Link>
 
-                <Link
-                  href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/schriftlich`}
-                  className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
-                    <PenLine className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Schriftlich</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">KI-Feedback</p>
-                  </div>
-                </Link>
-              </div>
+              <Link
+                href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/schriftlich`}
+                className="group flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-3 sm:p-4 hover:border-primary/30 transition-all shadow-card hover:-translate-y-0.5"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                  <PenLine className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-sm lg:text-base font-semibold">Schriftlich</p>
+                  <p className="text-xs lg:text-sm text-muted-foreground mt-0.5 leading-snug">KI-Feedback</p>
+                </div>
+              </Link>
             </div>
           )}
 
@@ -1012,13 +964,109 @@ export default function ThemaPage({ params }: Props) {
                   <Sparkles className="h-4 w-4 text-primary group-hover:animate-spin" style={{ animationDuration: '2s' }} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">Neues Material generieren</p>
-                  <p className="text-xs text-muted-foreground">PDF → Flashcards in Sekunden</p>
+                  <p className="text-sm lg:text-base font-semibold">Neues Material generieren</p>
+                  <p className="text-xs lg:text-sm text-muted-foreground">PDF → Flashcards in Sekunden</p>
                 </div>
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
             </div>
           </button>
+
+          {/* ── Details & Statistiken (eingeklappt) ── */}
+          {bannerState !== 'D' && (
+            <div className="rounded-2xl border border-border/50 bg-card/50 shadow-card overflow-hidden">
+              <button
+                onClick={() => setDetailsOpen((v) => !v)}
+                className="flex w-full items-center justify-between gap-2 px-5 py-3 text-left"
+                aria-expanded={detailsOpen}
+              >
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Details &amp; Statistiken</span>
+                {detailsOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+              </button>
+
+              {detailsOpen && (
+                <div className="px-5 pb-5 space-y-5 border-t border-border/50 pt-4 animate-fade-in">
+                  {/* Stats chips */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${(dueCount ?? 0) > 0 ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground/60'}`}>
+                      {dueCount ?? '–'} fällig
+                    </div>
+                    <div className="rounded-full border border-border/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground/60">
+                      {neuCount ?? '–'} im Review
+                    </div>
+                    <div className="rounded-full border border-border/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground/60">
+                      {reviewedCount ?? '–'} im Deck
+                    </div>
+                    {retentionEst != null && (
+                      <div className="rounded-full border border-border/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground/60">
+                        ~{retentionEst}% Retention
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Deck Maturity Bar */}
+                  {maturity.total > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Deck-Reifegrad</p>
+                        <p className="text-[10px] text-muted-foreground/60 tabular-nums">{maturity.total} Karten</p>
+                      </div>
+                      <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted/50 gap-px">
+                        {maturity.neu > 0 && (
+                          <div
+                            title={`Neu: ${maturity.neu}`}
+                            className="bg-violet-200 dark:bg-violet-900/40 rounded-l-full transition-all"
+                            style={{ width: `${(maturity.neu / maturity.total) * 100}%` }}
+                          />
+                        )}
+                        {maturity.inLearning > 0 && (
+                          <div
+                            title={`Im Lernen: ${maturity.inLearning}`}
+                            className="bg-violet-400 dark:bg-violet-700 transition-all"
+                            style={{ width: `${(maturity.inLearning / maturity.total) * 100}%` }}
+                          />
+                        )}
+                        {maturity.gut > 0 && (
+                          <div
+                            title={`Gut: ${maturity.gut}`}
+                            className="bg-violet-600 dark:bg-violet-500 transition-all"
+                            style={{ width: `${(maturity.gut / maturity.total) * 100}%` }}
+                          />
+                        )}
+                        {maturity.solid > 0 && (
+                          <div
+                            title={`Gefestigt: ${maturity.solid}`}
+                            className="bg-violet-800 dark:bg-violet-300 rounded-r-full transition-all"
+                            style={{ width: `${(maturity.solid / maturity.total) * 100}%` }}
+                          />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground/60 flex-wrap">
+                        {maturity.neu > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-200 dark:bg-violet-900/40 inline-block" />Neu ({maturity.neu})</span>}
+                        {maturity.inLearning > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-400 dark:bg-violet-700 inline-block" />Lernen ({maturity.inLearning})</span>}
+                        {maturity.gut > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-600 dark:bg-violet-500 inline-block" />Gut ({maturity.gut})</span>}
+                        {maturity.solid > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-800 dark:bg-violet-300 inline-block" />Gefestigt ({maturity.solid})</span>}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Performance Metriken */}
+                  {reviewedCards.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-4">Performance</p>
+                      <div className="flex items-center justify-around">
+                        <RingMetric label="Gelernt" value={gelerntRingPct} fillColor="hsl(var(--primary))" />
+                        <div className="w-px h-10 bg-border/50" />
+                        <RingMetric label="Drill" value={lastResults.drill ?? 0} fillColor="hsl(38 92% 50%)" />
+                        <div className="w-px h-10 bg-border/50" />
+                        <RingMetric label="Quiz" value={lastResults.quiz ?? 0} fillColor="hsl(238 84% 67%)" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── Deck verwalten ── */}
           <div className="flex items-center gap-2 flex-wrap">
