@@ -16,7 +16,7 @@ import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, 
 import Link from 'next/link'
 import { FeedbackModal } from '@/components/feedback-modal'
 import { FactoryLoader } from '@/components/factory-loader'
-import { FOCUS_NEW_THEMA_EVENT, type Karte, type KartTyp, type PrescanResult, type PrescanBatch, type AktivitaetTag } from '@/lib/types'
+import { FOCUS_NEW_THEMA_EVENT, type Karte, type KartTyp, type PrescanResult, type PrescanBatch, type AktivitaetTag, type KursAltklausur } from '@/lib/types'
 import { loadPdfDocument, renderPageToBase64 } from '@/lib/pdf-render'
 
 const PAGE_SIZE = 20
@@ -102,6 +102,7 @@ export default function ThemaPage({ params }: Props) {
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [altklausurFile, setAltklausurFile] = useState<File | null>(null)
   const altklausurInputRef = useRef<HTMLInputElement>(null)
+  const [kursAltklausuren, setKursAltklausuren] = useState<KursAltklausur[]>([])
   const [dragOver, setDragOver] = useState(false)
   const [batchSize, setBatchSize] = useState(20)
   const [clozeMix, setClozeMix] = useState(50)
@@ -253,6 +254,11 @@ export default function ThemaPage({ params }: Props) {
       fetch(`/api/themen?kurs_id=${kursRow.id}`)
         .then(r => r.json())
         .then((data: { id: number }[]) => setThemenCount(Array.isArray(data) ? data.length : null))
+        .catch(() => {})
+
+      fetch(`/api/kurs-altklausuren?kurs_id=${kursRow.id}`)
+        .then(r => r.json())
+        .then((data: KursAltklausur[]) => setKursAltklausuren(Array.isArray(data) ? data : []))
         .catch(() => {})
 
       const { data: themaRow } = await supabase
@@ -453,6 +459,12 @@ export default function ThemaPage({ params }: Props) {
     setSelectedConcepts({})
   }
 
+  async function handleKursAltklausurDelete(id: number) {
+    setKursAltklausuren((prev) => prev.filter((a) => a.id !== id))
+    const res = await fetch(`/api/kurs-altklausuren/${id}`, { method: 'DELETE' })
+    if (!res.ok) toast.error('Altklausur konnte nicht gelöscht werden')
+  }
+
   function toggleConcept(bIdx: number, cIdx: number) {
     const key = `${bIdx}_${cIdx}`
     setSelectedConcepts(prev => ({
@@ -572,6 +584,13 @@ export default function ThemaPage({ params }: Props) {
       setGenProgress(100)
       setLastGenCount(count)
       setLastGenLod(`${clozeMix}% Cloze`)
+
+      if (altklausurFile && kursId != null) {
+        fetch(`/api/kurs-altklausuren?kurs_id=${kursId}`)
+          .then(r => r.json())
+          .then((data: KursAltklausur[]) => setKursAltklausuren(Array.isArray(data) ? data : []))
+          .catch(() => {})
+      }
 
       if (isPrescanBatch) {
         // Keep PDF + scan result alive for remaining batches
@@ -1278,7 +1297,10 @@ export default function ThemaPage({ params }: Props) {
                     {expandedGenStep !== 2 && (
                       <p className="text-xs text-muted-foreground truncate">
                         {themenCount} Thema{themenCount === 1 ? '' : 'en'} im Kurs
-                        {altklausurFile ? ' · Altklausur hinzugefügt' : ''}
+                        {(() => {
+                          const n = kursAltklausuren.length + (altklausurFile ? 1 : 0)
+                          return n > 0 ? ` · ${n} Altklausur${n > 1 ? 'en' : ''}` : ''
+                        })()}
                       </p>
                     )}
                   </div>
@@ -1347,12 +1369,33 @@ export default function ThemaPage({ params }: Props) {
                         <FileText className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold">Hast du eine Altklausur?</p>
+                        <p className="text-sm font-semibold">Altklausuren</p>
                         <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                          Lade sie hoch (optional) für noch passendere Karten. Funktioniert aber auch sehr gut ohne.
+                          {kursAltklausuren.length > 0
+                            ? 'Werden in allen Themen dieses Kurses als Stil-/Format-Referenz genutzt.'
+                            : 'Lade optional eine Altklausur hoch für noch passendere Karten. Funktioniert aber auch sehr gut ohne.'}
                         </p>
                       </div>
                     </div>
+                    {kursAltklausuren.length > 0 && (
+                      <div className="space-y-1.5 ml-12">
+                        {kursAltklausuren.map((a) => (
+                          <div key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                              <span className="text-xs font-medium truncate">{a.dateiname}</span>
+                            </div>
+                            <button
+                              onClick={() => handleKursAltklausurDelete(a.id)}
+                              className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                              title="Entfernen"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {altklausurFile ? (
                       <div className="flex items-center justify-between gap-2 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2 ml-12">
                         <div className="flex items-center gap-2 min-w-0">
@@ -1373,7 +1416,7 @@ export default function ThemaPage({ params }: Props) {
                         className="ml-12 inline-flex items-center gap-1.5 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card hover:bg-violet-50 dark:hover:bg-violet-950/20 px-3 py-1.5 text-xs font-medium text-violet-700 dark:text-violet-300 transition-colors"
                       >
                         <Upload className="h-3.5 w-3.5" />
-                        Altklausur hochladen (PDF)
+                        {kursAltklausuren.length > 0 ? 'Weitere Altklausur hochladen (PDF)' : 'Altklausur hochladen (PDF)'}
                       </button>
                     )}
                     <input

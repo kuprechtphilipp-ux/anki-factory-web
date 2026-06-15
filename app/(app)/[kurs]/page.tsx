@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine, X, Lightbulb, FileText, Upload, Trash2, Layers, ChevronDown, ChevronUp, CalendarClock } from 'lucide-react'
+import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine, X, Lightbulb, FileText, Upload, Trash2, Layers, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
@@ -444,7 +444,7 @@ export default function KursDashboard({ params }: Props) {
                 <p className="text-xs text-muted-foreground">Noch keine Themen angelegt.</p>
               )}
               <p className="text-xs text-muted-foreground/70 leading-relaxed">
-                Cramo nutzt diese Liste beim Generieren, um besser einzuschätzen, was bereits abgedeckt ist.
+                Hilft Cramo beim Generieren, die Themenabdeckung einzuschätzen.
               </p>
             </div>
 
@@ -485,8 +485,7 @@ export default function KursDashboard({ params }: Props) {
                 </div>
               ) : null}
               <p className="text-xs text-muted-foreground/70 leading-relaxed">
-                Werden in allen Themen dieses Kurses (Generieren, Quiz, Schriftlich) als Stil-/Format-Referenz
-                genutzt, nicht als vollständige Themenabdeckung. Eine einzelne Klausur deckt oft nicht alle Themen ab.
+                Dient als Stil-/Format-Referenz für Generieren, Quiz &amp; Schriftlich – ersetzt aber nicht die Themenabdeckung.
               </p>
               <input
                 ref={altklausurInputRef}
@@ -505,29 +504,22 @@ export default function KursDashboard({ params }: Props) {
 
       {/* Upcoming Reviews Chart */}
       {stats.total_karten > 0 && (
-        <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="rounded-2xl border border-border/50 bg-card/50 shadow-card overflow-hidden">
           <button
             onClick={() => setFaelligkeitenOpen((v) => !v)}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30"
+            className="flex w-full items-center justify-between gap-2 px-5 py-3 text-left"
+            aria-expanded={faelligkeitenOpen}
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                <CalendarClock className="h-4 w-4 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold">Fälligkeiten der nächsten 7 Tage</p>
-                <p className="text-xs text-muted-foreground truncate">Lernlast-Vorschau für die kommende Woche</p>
-              </div>
-            </div>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Fälligkeiten der nächsten 7 Tage</span>
             {faelligkeitenOpen ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
             )}
           </button>
           {faelligkeitenOpen && (
-            <div className="px-4 pb-4 pt-1 animate-fade-in">
-              <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+            <div className="px-5 pb-5 space-y-3 border-t border-border/50 pt-4 animate-fade-in">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 So viele Karten werden an den nächsten Tagen zur Wiederholung fällig — hilft dir abzuschätzen, wann mehr Lernzeit sinnvoll ist.
               </p>
               <div className="flex items-end gap-2 h-24">
@@ -547,7 +539,7 @@ export default function KursDashboard({ params }: Props) {
                   </div>
                 ))}
               </div>
-              <div className="mt-2 flex items-center gap-3 text-[10px] text-muted-foreground/50">
+              <div className="flex items-center gap-3 text-[10px] text-muted-foreground/50">
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-primary inline-block" />Heute</span>
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-primary/40 inline-block" />Folgetage</span>
               </div>
