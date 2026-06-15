@@ -12,7 +12,7 @@ import { ReviewCard } from '@/components/review-card'
 import { KarteListItem } from '@/components/karte-list-item'
 import { toast } from 'sonner'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, X, Plus, PenLine, ChevronLeft, ChevronRight, ArrowLeft, List, ScanSearch, Wand2, ChevronDown, ChevronUp, Layers, AlertTriangle, Eye, Trash2 } from 'lucide-react'
+import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, Check, X, Plus, PenLine, ChevronLeft, ChevronRight, ArrowLeft, List, ScanSearch, Wand2, ChevronDown, ChevronUp, Layers, AlertTriangle, Eye, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { FeedbackModal } from '@/components/feedback-modal'
 import { FactoryLoader } from '@/components/factory-loader'
@@ -151,6 +151,24 @@ export default function ThemaPage({ params }: Props) {
   const [visionMode, setVisionMode] = useState(false)
   const [visualDeckMode, setVisualDeckMode] = useState(false)
   const [completedBatches, setCompletedBatches] = useState<Set<number>>(() => new Set<number>())
+
+  // Generieren-Tab: Schritte-Accordion (1=Dokumente, 2=Kontext, 3=Modus, null=alle eingeklappt)
+  const [expandedGenStep, setExpandedGenStep] = useState<1 | 2 | 3 | null>(1)
+
+  // Schritt 1 → 2: sobald ein PDF gewählt wurde, Kontext-Schritt aufklappen
+  useEffect(() => {
+    if (pdfFile && expandedGenStep === 1) setExpandedGenStep(2)
+  }, [pdfFile, expandedGenStep])
+
+  // Während Analyse/Generierung: alle Schritte einklappen, Fokus auf Ergebnis/Fortschritt
+  useEffect(() => {
+    if (scanStep !== 'idle' || generating) setExpandedGenStep(null)
+  }, [scanStep, generating])
+
+  // Nach erfolgreicher Generierung: wieder bei Schritt 1 starten
+  useEffect(() => {
+    if (!generating && scanStep === 'idle' && lastGenCount != null) setExpandedGenStep(1)
+  }, [generating, scanStep, lastGenCount])
 
   // Feedback modal state
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -1132,238 +1150,316 @@ export default function ThemaPage({ params }: Props) {
           </button>
 
           {/* ── Schritt 1: Dokumente hochladen ── */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-bold">1</span>
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dokumente hochladen</Label>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-              {/* PDF Upload */}
-              <div
-                className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-                  dragOver
-                    ? 'border-primary bg-gradient-to-b from-primary/10 to-transparent'
-                    : pdfFile
-                    ? 'border-primary/50 bg-primary/5'
-                    : 'border-border hover:border-primary/40 hover:bg-gradient-to-b hover:from-primary/5 hover:to-transparent'
-                }`}
-                onClick={() => !pdfFile && fileInputRef.current?.click()}
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  setDragOver(false)
-                  const file = e.dataTransfer.files[0]
-                  if (file?.type === 'application/pdf') {
-                    if (file.size > 20 * 1024 * 1024) {
-                      toast.error('PDF zu groß (max. 20 MB). Bitte in kleinere Abschnitte aufteilen.')
-                      return
-                    }
-                    setPdfFile(file)
-                    resetPrescan()
-                  }
-                }}
-              >
-                {pdfFile ? (
-                  <div className="flex items-center justify-between gap-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-800/40 shrink-0 flex-col gap-0.5">
-                        <FileText className="h-4 w-4 text-rose-500" />
-                        <span className="text-[8px] font-bold text-rose-500 leading-none">PDF</span>
-                      </div>
-                      <div className="text-left">
-                        <p className="font-medium text-sm truncate max-w-[200px]">{pdfFile.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {(pdfFile.size / 1024 / 1024).toFixed(1)} MB
-                          {' · '}
-                          <span className="text-primary/80">~{Math.max(1, Math.round(pdfFile.size / 50000))} Seiten</span>
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; resetPrescan() }}
-                      className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0 border border-border/50 hover:border-destructive/30"
-                      title="PDF entfernen"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex h-10 w-10 mx-auto items-center justify-center rounded-xl bg-muted">
-                      <Upload className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium hidden sm:block">PDF hier ablegen</p>
-                      <p className="text-sm font-medium sm:hidden">PDF auswählen</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">oder klicken zum Auswählen · max. 20 MB</p>
-                    </div>
-                  </div>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/pdf"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] ?? null
-                    if (file && file.size > 20 * 1024 * 1024) {
-                      toast.error('PDF zu groß (max. 20 MB). Bitte in kleinere Abschnitte aufteilen.')
-                      e.target.value = ''
-                      return
-                    }
-                    setPdfFile(file)
-                    resetPrescan()
-                  }}
-                />
-              </div>
-
-              {/* ── Altklausur-Upload (optional) ── */}
-              <div className="rounded-2xl border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/60 to-transparent dark:from-violet-950/15 p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
-                    <FileText className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold">Hast du eine Altklausur?</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                      Lade sie hoch (optional) für noch passendere Karten. Funktioniert aber auch sehr gut ohne.
+          <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+            <button
+              onClick={() => setExpandedGenStep((v) => (v === 1 ? null : 1))}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${pdfFile ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' : 'bg-primary/10 text-primary'}`}>
+                  {pdfFile ? <Check className="h-3.5 w-3.5" /> : '1'}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">Dokument hochladen</p>
+                  {expandedGenStep !== 1 && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {pdfFile ? pdfFile.name : 'Noch kein PDF ausgewählt'}
                     </p>
-                  </div>
+                  )}
                 </div>
-                {altklausurFile ? (
-                  <div className="flex items-center justify-between gap-2 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2 ml-12">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                      <span className="text-xs font-medium truncate">{altklausurFile.name}</span>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${expandedGenStep === 1 ? 'rotate-180' : ''}`} />
+            </button>
+            {expandedGenStep === 1 && (
+              <div className="px-4 pb-4 pt-1 animate-fade-in">
+                {/* PDF Upload */}
+                <div
+                  className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                    dragOver
+                      ? 'border-primary bg-gradient-to-b from-primary/10 to-transparent'
+                      : pdfFile
+                      ? 'border-primary/50 bg-primary/5'
+                      : 'border-border hover:border-primary/40 hover:bg-gradient-to-b hover:from-primary/5 hover:to-transparent'
+                  }`}
+                  onClick={() => !pdfFile && fileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    setDragOver(false)
+                    const file = e.dataTransfer.files[0]
+                    if (file?.type === 'application/pdf') {
+                      if (file.size > 20 * 1024 * 1024) {
+                        toast.error('PDF zu groß (max. 20 MB). Bitte in kleinere Abschnitte aufteilen.')
+                        return
+                      }
+                      setPdfFile(file)
+                      resetPrescan()
+                    }
+                  }}
+                >
+                  {pdfFile ? (
+                    <div className="flex items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-800/40 shrink-0 flex-col gap-0.5">
+                          <FileText className="h-4 w-4 text-rose-500" />
+                          <span className="text-[8px] font-bold text-rose-500 leading-none">PDF</span>
+                        </div>
+                        <div className="text-left">
+                          <p className="font-medium text-sm truncate max-w-[200px]">{pdfFile.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(pdfFile.size / 1024 / 1024).toFixed(1)} MB
+                            {' · '}
+                            <span className="text-primary/80">~{Math.max(1, Math.round(pdfFile.size / 50000))} Seiten</span>
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; resetPrescan() }}
+                        className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0 border border-border/50 hover:border-destructive/30"
+                        title="PDF entfernen"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => { setAltklausurFile(null); if (altklausurInputRef.current) altklausurInputRef.current.value = '' }}
-                      className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                      title="Altklausur entfernen"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ) : (
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex h-10 w-10 mx-auto items-center justify-center rounded-xl bg-muted">
+                        <Upload className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium hidden sm:block">PDF hier ablegen</p>
+                        <p className="text-sm font-medium sm:hidden">PDF auswählen</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">oder klicken zum Auswählen · max. 20 MB</p>
+                      </div>
+                    </div>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null
+                      if (file && file.size > 20 * 1024 * 1024) {
+                        toast.error('PDF zu groß (max. 20 MB). Bitte in kleinere Abschnitte aufteilen.')
+                        e.target.value = ''
+                        return
+                      }
+                      setPdfFile(file)
+                      resetPrescan()
+                    }}
+                  />
+                </div>
+                {pdfFile && (
                   <button
-                    onClick={() => altklausurInputRef.current?.click()}
-                    className="ml-12 inline-flex items-center gap-1.5 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card hover:bg-violet-50 dark:hover:bg-violet-950/20 px-3 py-1.5 text-xs font-medium text-violet-700 dark:text-violet-300 transition-colors"
+                    onClick={() => setExpandedGenStep(2)}
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
                   >
-                    <Upload className="h-3.5 w-3.5" />
-                    Altklausur hochladen (PDF)
+                    Weiter zu Kontext
+                    <ArrowRight className="h-3 w-3" />
                   </button>
                 )}
-                <input
-                  ref={altklausurInputRef}
-                  type="file"
-                  accept="application/pdf"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] ?? null
-                    if (file && file.size > 10 * 1024 * 1024) {
-                      toast.error('Altklausur zu groß (max. 10 MB).')
-                      e.target.value = ''
-                      return
-                    }
-                    setAltklausurFile(file)
-                  }}
-                />
               </div>
-            </div>
+            )}
           </div>
 
           {/* ── Schritt 2: Kontext ── */}
           {themenCount !== null && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-bold">2</span>
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kontext</Label>
-              </div>
-              {themenCount >= 2 ? (
-                <div className="flex items-start gap-2 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/60 dark:bg-emerald-950/15 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
-                  <BookOpen className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span>Cramo kennt {themenCount} Themen dieses Kurses – das hilft der KI bei der Einordnung.</span>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-br from-amber-50/70 to-transparent dark:from-amber-950/15 p-4">
-                  <button
-                    onClick={() => setKontextHintOpen((v) => !v)}
-                    className="flex w-full items-center gap-3 text-left"
-                    aria-expanded={kontextHintOpen}
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
-                      <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <p className="flex-1 text-sm font-semibold text-amber-900 dark:text-amber-300">Kurskontext noch begrenzt</p>
-                    {kontextHintOpen ? (
-                      <ChevronUp className="h-4 w-4 text-amber-600/70 dark:text-amber-400/70 shrink-0" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 text-amber-600/70 dark:text-amber-400/70 shrink-0" />
-                    )}
-                  </button>
-                  {kontextHintOpen && (
-                    <div className="mt-2 ml-12 space-y-2">
-                      <p className="text-xs text-amber-700/90 dark:text-amber-400/80">
-                        Cramo kennt bisher nur 1 Thema in diesem Kurs. Lege in der <span className="font-semibold">Sidebar</span> unter
-                        deinem Kurs weitere Themen/Kapitel an — auch ohne Inhalte hilft das Cramo dabei, deine
-                        Kursstruktur zu verstehen und Karten besser einzuordnen.
+            <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+              <button
+                onClick={() => setExpandedGenStep((v) => (v === 2 ? null : 2))}
+                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-bold">2</span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">Kontext</p>
+                    {expandedGenStep !== 2 && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {themenCount} Thema{themenCount === 1 ? '' : 'en'} im Kurs
+                        {altklausurFile ? ' · Altklausur hinzugefügt' : ''}
                       </p>
+                    )}
+                  </div>
+                </div>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${expandedGenStep === 2 ? 'rotate-180' : ''}`} />
+              </button>
+              {expandedGenStep === 2 && (
+                <div className="px-4 pb-4 pt-1 space-y-3 animate-fade-in">
+                  {/* Kurskontext-Hinweis */}
+                  {themenCount >= 2 ? (
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/60 dark:bg-emerald-950/15 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                        <BookOpen className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        <span>Cramo kennt {themenCount} Themen dieses Kurses – das hilft der KI bei der Einordnung.</span>
+                      </div>
                       <button
                         onClick={() => kursId != null && window.dispatchEvent(new CustomEvent(FOCUS_NEW_THEMA_EVENT, { detail: { kursId } }))}
                         disabled={kursId == null}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300/60 dark:border-amber-700/40 bg-amber-100/70 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300 transition-colors disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                       >
                         <Plus className="h-3 w-3" />
-                        Thema anlegen
+                        Weiteres Thema anlegen
                       </button>
                     </div>
+                  ) : (
+                    <div className="rounded-2xl border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-br from-amber-50/70 to-transparent dark:from-amber-950/15 p-4">
+                      <button
+                        onClick={() => setKontextHintOpen((v) => !v)}
+                        className="flex w-full items-center gap-3 text-left"
+                        aria-expanded={kontextHintOpen}
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <p className="flex-1 text-sm font-semibold text-amber-900 dark:text-amber-300">Kurskontext noch begrenzt</p>
+                        {kontextHintOpen ? (
+                          <ChevronUp className="h-4 w-4 text-amber-600/70 dark:text-amber-400/70 shrink-0" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-amber-600/70 dark:text-amber-400/70 shrink-0" />
+                        )}
+                      </button>
+                      {kontextHintOpen && (
+                        <div className="mt-2 ml-12 space-y-2">
+                          <p className="text-xs text-amber-700/90 dark:text-amber-400/80">
+                            Cramo kennt bisher nur 1 Thema in diesem Kurs. Lege in der <span className="font-semibold">Sidebar</span> unter
+                            deinem Kurs weitere Themen/Kapitel an — auch ohne Inhalte hilft das Cramo dabei, deine
+                            Kursstruktur zu verstehen und Karten besser einzuordnen.
+                          </p>
+                          <button
+                            onClick={() => kursId != null && window.dispatchEvent(new CustomEvent(FOCUS_NEW_THEMA_EVENT, { detail: { kursId } }))}
+                            disabled={kursId == null}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300/60 dark:border-amber-700/40 bg-amber-100/70 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300 transition-colors disabled:opacity-50"
+                          >
+                            <Plus className="h-3 w-3" />
+                            Thema anlegen
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
+
+                  {/* ── Altklausur-Upload (optional) ── */}
+                  <div className="rounded-2xl border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/60 to-transparent dark:from-violet-950/15 p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
+                        <FileText className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold">Hast du eine Altklausur?</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                          Lade sie hoch (optional) für noch passendere Karten. Funktioniert aber auch sehr gut ohne.
+                        </p>
+                      </div>
+                    </div>
+                    {altklausurFile ? (
+                      <div className="flex items-center justify-between gap-2 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2 ml-12">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                          <span className="text-xs font-medium truncate">{altklausurFile.name}</span>
+                        </div>
+                        <button
+                          onClick={() => { setAltklausurFile(null); if (altklausurInputRef.current) altklausurInputRef.current.value = '' }}
+                          className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                          title="Altklausur entfernen"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => altklausurInputRef.current?.click()}
+                        className="ml-12 inline-flex items-center gap-1.5 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card hover:bg-violet-50 dark:hover:bg-violet-950/20 px-3 py-1.5 text-xs font-medium text-violet-700 dark:text-violet-300 transition-colors"
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        Altklausur hochladen (PDF)
+                      </button>
+                    )}
+                    <input
+                      ref={altklausurInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null
+                        if (file && file.size > 10 * 1024 * 1024) {
+                          toast.error('Altklausur zu groß (max. 10 MB).')
+                          e.target.value = ''
+                          return
+                        }
+                        setAltklausurFile(file)
+                      }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => setExpandedGenStep(3)}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                  >
+                    Weiter zu Generierungsmodus
+                    <ArrowRight className="h-3 w-3" />
+                  </button>
                 </div>
               )}
             </div>
           )}
 
           {/* ── Schritt 3: Generierungsmodus ── */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-bold">3</span>
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Generierungsmodus</Label>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button
-                onClick={() => setVisualDeckMode(false)}
-                disabled={generating || scanStep !== 'idle'}
-                className={`flex flex-col gap-1 rounded-xl border px-4 py-2.5 text-left transition-colors disabled:opacity-50 ${
-                  !visualDeckMode
-                    ? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20'
-                    : 'border-border/50 hover:border-primary/30'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Zap className={`h-3.5 w-3.5 ${!visualDeckMode ? 'text-primary' : 'text-muted-foreground'}`} />
-                  <span className="text-xs font-semibold">Cramo Standard</span>
-                  <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5">Empfohlen</span>
+          <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+            <button
+              onClick={() => setExpandedGenStep((v) => (v === 3 ? null : 3))}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-bold">3</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">Generierungsmodus</p>
+                  {expandedGenStep !== 3 && (
+                    <p className="text-xs text-muted-foreground truncate">{visualDeckMode ? 'Cramo Visual' : 'Cramo Standard'}</p>
+                  )}
                 </div>
-                <p className="text-[10px] text-muted-foreground leading-snug">Günstig & schnell · ideal für textbasierte Folien</p>
-              </button>
-              <button
-                onClick={() => setVisualDeckMode(true)}
-                disabled={generating || scanStep !== 'idle'}
-                className={`flex flex-col gap-1 rounded-xl border px-4 py-2.5 text-left transition-colors disabled:opacity-50 ${
-                  visualDeckMode
-                    ? 'border-violet-300 dark:border-violet-700 bg-violet-50/60 dark:bg-violet-950/20 ring-1 ring-violet-300/40'
-                    : 'border-border/50 hover:border-violet-200 dark:hover:border-violet-800/50'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Eye className={`h-3.5 w-3.5 ${visualDeckMode ? 'text-violet-600 dark:text-violet-400' : 'text-muted-foreground'}`} />
-                  <span className="text-xs font-semibold">Cramo Visual</span>
-                  <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5">~5-7x Credits</span>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${expandedGenStep === 3 ? 'rotate-180' : ''}`} />
+            </button>
+            {expandedGenStep === 3 && (
+              <div className="px-4 pb-4 pt-1 animate-fade-in">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setVisualDeckMode(false)}
+                    disabled={generating || scanStep !== 'idle'}
+                    className={`flex flex-col gap-1 rounded-xl border px-4 py-2.5 text-left transition-colors disabled:opacity-50 ${
+                      !visualDeckMode
+                        ? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20'
+                        : 'border-border/50 hover:border-primary/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Zap className={`h-3.5 w-3.5 ${!visualDeckMode ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <span className="text-xs font-semibold">Cramo Standard</span>
+                      <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5">Empfohlen</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-snug">Günstig & schnell · ideal für textbasierte Folien</p>
+                  </button>
+                  <button
+                    onClick={() => setVisualDeckMode(true)}
+                    disabled={generating || scanStep !== 'idle'}
+                    className={`flex flex-col gap-1 rounded-xl border px-4 py-2.5 text-left transition-colors disabled:opacity-50 ${
+                      visualDeckMode
+                        ? 'border-violet-300 dark:border-violet-700 bg-violet-50/60 dark:bg-violet-950/20 ring-1 ring-violet-300/40'
+                        : 'border-border/50 hover:border-violet-200 dark:hover:border-violet-800/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Eye className={`h-3.5 w-3.5 ${visualDeckMode ? 'text-violet-600 dark:text-violet-400' : 'text-muted-foreground'}`} />
+                      <span className="text-xs font-semibold">Cramo Visual</span>
+                      <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5">~5-7x Credits</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-snug">Mit Folienbildern · für Diagramme, Strukturformeln, Chemie/Bio</p>
+                  </button>
                 </div>
-                <p className="text-[10px] text-muted-foreground leading-snug">Mit Folienbildern · für Diagramme, Strukturformeln, Chemie/Bio</p>
-              </button>
-            </div>
+              </div>
+            )}
           </div>
 
           {/* ── Pre-Scan: Scanning state ── */}
