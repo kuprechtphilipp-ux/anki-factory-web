@@ -171,6 +171,14 @@ export default function ThemaPage({ params }: Props) {
     if (!generating && scanStep === 'idle' && lastGenCount != null) setExpandedGenStep(1)
   }, [generating, scanStep, lastGenCount])
 
+  // Nach erfolgreicher Generierung: Erfolgsmeldung ins Sichtfeld scrollen
+  const genSuccessRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!generating && scanStep === 'idle' && lastGenCount != null) {
+      genSuccessRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [generating, scanStep, lastGenCount])
+
   // Feedback modal state
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [lastGenLod, setLastGenLod] = useState('Mittel')
@@ -1934,7 +1942,7 @@ export default function ThemaPage({ params }: Props) {
 
           {/* ── Success ── */}
           {lastGenCount != null && !generating && scanStep === 'idle' && (
-            <div className="flex items-center justify-between rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-4 py-3 text-sm animate-fade-in">
+            <div ref={genSuccessRef} className="flex items-center justify-between rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-4 py-3 text-sm animate-fade-in">
               <span className="text-emerald-800 dark:text-emerald-200">
                 <span className="font-semibold">{lastGenCount}</span> Karten gespeichert
               </span>
