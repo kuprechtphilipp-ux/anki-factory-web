@@ -36,7 +36,8 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
   const backHref = `/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}`
 
   const [themaId, setThemaId] = useState<number | null>(null)
-  const [altklausurKontext, setAltklausurKontext] = useState<string | null>(null)
+  const [kursId, setKursId] = useState<number | null>(null)
+  const [hasAltklausur, setHasAltklausur] = useState(false)
   const [altklausurHintOpen, setAltklausurHintOpen] = useState(false)
   const [allKarten, setAllKarten] = useState<Karte[]>([])
   const [sessionKarten, setSessionKarten] = useState<Karte[]>([])
@@ -57,10 +58,12 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
     async function load() {
       const { data: kursRow } = await supabase.from('kurs').select('id').eq('name', kursName).single()
       if (!kursRow) { setPageState('idle'); return }
-      const { data: themaRow } = await supabase.from('thema').select('id, altklausur_kontext').eq('kurs_id', kursRow.id).eq('name', themaName).single()
+      const { data: themaRow } = await supabase.from('thema').select('id').eq('kurs_id', kursRow.id).eq('name', themaName).single()
       if (!themaRow) { setPageState('idle'); return }
       setThemaId(themaRow.id)
-      setAltklausurKontext(themaRow.altklausur_kontext ?? null)
+      setKursId(kursRow.id)
+      const { data: altklausurRows } = await supabase.from('kurs_altklausur').select('id').eq('kurs_id', kursRow.id).limit(1)
+      setHasAltklausur((altklausurRows?.length ?? 0) > 0)
       const res = await fetch(`/api/karten?thema_id=${themaRow.id}&status=reviewed`)
       const data = await res.json()
       setAllKarten(Array.isArray(data) ? data : [])
@@ -109,7 +112,7 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
     fetch('/api/antwort-pruefen', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ frage, musterantwort, nutzerantwort: userAnswer, kontext: karte.kontext, altklausur_kontext: altklausurKontext ?? undefined }),
+      body: JSON.stringify({ frage, musterantwort, nutzerantwort: userAnswer, kontext: karte.kontext, kurs_id: kursId ?? undefined }),
     })
       .then(async r => {
         const data = await r.json()
@@ -394,7 +397,7 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
         </div>
       </div>
 
-      {!altklausurKontext && (
+      {!hasAltklausur && (
         <div className="rounded-2xl border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/60 to-transparent dark:from-violet-950/15 p-4">
           <button
             onClick={() => setAltklausurHintOpen((v) => !v)}
@@ -414,7 +417,7 @@ export default function SchriftlichPage({ params }: { params: { kurs: string; th
           {altklausurHintOpen && (
             <div className="mt-2 ml-12 space-y-2">
               <p className="text-xs text-violet-700/90 dark:text-violet-400/80 leading-relaxed">
-                Lade im Tab <span className="font-semibold">Generieren</span> einmalig eine Altklausur hoch.
+                Lade im Tab <span className="font-semibold">Generieren</span> oder im <span className="font-semibold">Kursdashboard</span> eine Altklausur hoch.
                 Cramo bewertet deine Antworten dann passender zum tatsächlichen Prüfungsniveau.
               </p>
               <Link

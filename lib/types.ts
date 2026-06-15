@@ -78,7 +78,13 @@ export interface Thema {
   kurs_id: number
   name: string
   created_at: string
-  altklausur_kontext?: string | null
+}
+
+export interface KursAltklausur {
+  id: number
+  kurs_id: number
+  dateiname: string
+  created_at: string
 }
 
 export interface Karte {

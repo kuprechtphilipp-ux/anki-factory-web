@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import { logApiUsage, getCreditStatus, CREDITS_EXHAUSTED_MESSAGE, usdToCredits } from '@/lib/api-cost'
+import { getKursAltklausurDocs } from '@/lib/altklausur-kontext'
 
 export const maxDuration = 30
 
@@ -17,12 +18,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'credits_exhausted', message: CREDITS_EXHAUSTED_MESSAGE }, { status: 402 })
   }
 
-  const { frage, musterantwort, nutzerantwort, kontext, altklausur_kontext } = await req.json() as {
+  const { frage, musterantwort, nutzerantwort, kontext, kurs_id } = await req.json() as {
     frage: string
     musterantwort: string
     nutzerantwort: string
     kontext?: string
-    altklausur_kontext?: string
+    kurs_id?: number
   }
 
   if (!frage || !musterantwort || !nutzerantwort) {
@@ -30,8 +31,9 @@ export async function POST(req: Request) {
   }
 
   const contextBlock = kontext ? `\nContext: ${kontext}` : ''
-  const altklausurBlock = altklausur_kontext
-    ? `\n\nPAST EXAM REFERENCE for this topic (use it to judge how detailed/complete an answer needs to be to satisfy this exam's expectations):\n${altklausur_kontext.slice(0, 6000)}`
+  const altklausurDocs = kurs_id != null ? await getKursAltklausurDocs(supabase, kurs_id) : []
+  const altklausurBlock = altklausurDocs.length > 0
+    ? `\n\nPAST EXAM REFERENCE (${altklausurDocs.length} document${altklausurDocs.length > 1 ? 's' : ''}): Use the following excerpts from past exams of this course to judge how detailed/complete an answer needs to be to satisfy this course's exam expectations. These documents may not cover this specific topic directly, use them only as a general calibration of expected depth and rigor.\n\n${altklausurDocs.map((doc, i) => `--- Exam ${i + 1} ---\n${doc}`).join('\n\n')}`
     : ''
 
   const prompt = `You are evaluating a student's answer against a model answer for a flashcard.

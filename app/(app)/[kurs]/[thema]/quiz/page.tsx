@@ -26,7 +26,7 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
   const [themaId, setThemaId] = useState<number | null>(null)
   const [reviewedCount, setReviewedCount] = useState<number | null>(null)
   const [loadingMeta, setLoadingMeta] = useState(true)
-  const [altklausurKontext, setAltklausurKontext] = useState<string | null>(null)
+  const [hasAltklausur, setHasAltklausur] = useState(false)
   const [altklausurHintOpen, setAltklausurHintOpen] = useState(false)
 
   const [quizState, setQuizState] = useState<QuizState>('idle')
@@ -43,10 +43,11 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
     async function loadMeta() {
       const { data: kursRow } = await supabase.from('kurs').select('id').eq('name', kursName).single()
       if (!kursRow) { setLoadingMeta(false); return }
-      const { data: themaRow } = await supabase.from('thema').select('id, altklausur_kontext').eq('kurs_id', kursRow.id).eq('name', themaName).single()
+      const { data: themaRow } = await supabase.from('thema').select('id').eq('kurs_id', kursRow.id).eq('name', themaName).single()
       if (!themaRow) { setLoadingMeta(false); return }
       setThemaId(themaRow.id)
-      setAltklausurKontext(themaRow.altklausur_kontext ?? null)
+      const { data: altklausurRows } = await supabase.from('kurs_altklausur').select('id').eq('kurs_id', kursRow.id).limit(1)
+      setHasAltklausur((altklausurRows?.length ?? 0) > 0)
       const res = await fetch(`/api/karten?thema_id=${themaRow.id}&status=reviewed`)
       const data = await res.json()
       setReviewedCount(Array.isArray(data) ? data.length : 0)
@@ -349,7 +350,7 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
         </div>
       )}
 
-      {!altklausurKontext && (
+      {!hasAltklausur && (
         <div className="rounded-2xl border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/60 to-transparent dark:from-violet-950/15 p-4">
           <button
             onClick={() => setAltklausurHintOpen((v) => !v)}
@@ -369,7 +370,7 @@ export default function QuizPage({ params }: { params: { kurs: string; thema: st
           {altklausurHintOpen && (
             <div className="mt-2 ml-12 space-y-2">
               <p className="text-xs text-violet-700/90 dark:text-violet-400/80 leading-relaxed">
-                Lade im Tab <span className="font-semibold">Generieren</span> einmalig eine Altklausur hoch.
+                Lade im Tab <span className="font-semibold">Generieren</span> oder im <span className="font-semibold">Kursdashboard</span> eine Altklausur hoch.
                 Cramo orientiert Quizfragen dann stärker am tatsächlichen Prüfungsstil.
               </p>
               <Link

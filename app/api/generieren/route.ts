@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import pdf from 'pdf-parse'
 import { PDFDocument } from 'pdf-lib'
 import { logApiUsage, getCreditStatus, CREDITS_EXHAUSTED_MESSAGE } from '@/lib/api-cost'
+import { getKursAltklausurDocs } from '@/lib/altklausur-kontext'
 
 export const maxDuration = 300
 
@@ -223,6 +224,7 @@ export async function POST(req: Request) {
     // ── Kurs context ──────────────────────────────────────────────────────────
     let kursKontext = ''
     let duplicateHint = ''
+    let kursId: number | null = null
 
     const { data: themaRow } = await supabase
       .from('thema')
@@ -231,6 +233,7 @@ export async function POST(req: Request) {
       .single()
 
     if (themaRow) {
+      kursId = themaRow.kurs_id
       const { data: kursRow } = await supabase
         .from('kurs')
         .select('name')
@@ -277,29 +280,36 @@ ${existingList}`
     }
 
     // ── Altklausur context (optional) ────────────────────────────────────────
-    let altklausurKontext = ''
-    if (altklausurFile) {
+    // Neu hochgeladene Altklausur wird kurs-weit persistiert (kurs_altklausur),
+    // damit sie in ALLEN Themen dieses Kurses (Generierung, Quiz, Schriftlich)
+    // als Kontext zur Verfügung steht, nicht nur im aktuellen Thema.
+    if (altklausurFile && kursId != null) {
       try {
         const altklausurBuffer = Buffer.from(await altklausurFile.arrayBuffer())
         const altklausurData = await pdf(altklausurBuffer)
         const altklausurText = altklausurData.text.trim().slice(0, 6000)
         if (altklausurText) {
-          altklausurKontext = `\n\nALTKLAUSUR-KONTEXT:
-Diese Altklausur zeigt, wie Prüfungsfragen zu diesem Thema typischerweise aussehen:
-${altklausurText}
-
-Nutze diesen Kontext, um Art, Schwierigkeitsgrad und Schwerpunkte der Flashcards am
-tatsächlichen Prüfungsstil auszurichten. Übernimm keine Fragen wörtlich aus der Altklausur.`
-
-          // Persistieren, damit Quiz-Generierung & Schriftlich-Bewertung diesen
-          // Kontext spaeter ebenfalls nutzen koennen (auch ohne erneuten Upload).
           await supabase
-            .from('thema')
-            .update({ altklausur_kontext: altklausurText })
-            .eq('id', Number(themaId))
+            .from('kurs_altklausur')
+            .insert({ kurs_id: kursId, dateiname: altklausurFile.name, inhalt_text: altklausurText })
         }
       } catch (err) {
         console.error('[generieren] Altklausur-Text konnte nicht extrahiert werden:', err)
+      }
+    }
+
+    let altklausurKontext = ''
+    if (kursId != null) {
+      const altklausurDocs = await getKursAltklausurDocs(supabase, kursId)
+      if (altklausurDocs.length > 0) {
+        altklausurKontext = `\n\nALTKLAUSUR-KONTEXT (${altklausurDocs.length} Dokument${altklausurDocs.length > 1 ? 'e' : ''}):
+Die folgenden Auszüge stammen aus früheren Klausuren/Prüfungen dieses Kurses. Nutze sie NUR als
+Stil-/Format-Referenz für Art, Schwierigkeitsgrad und Schwerpunkte der Flashcards.
+WICHTIG: Eine einzelne Altklausur deckt oft nicht alle Themen des Kurses ab, die Themenabdeckung
+variiert zwischen Prüfungsterminen. Behandle diesen Kontext NICHT als vollständige Themenliste und
+übernimm keine Aufgaben wörtlich.
+
+${altklausurDocs.map((doc, i) => `--- Altklausur ${i + 1} ---\n${doc}`).join('\n\n')}`
       }
     }
 

@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine, X, Lightbulb } from 'lucide-react'
+import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine, X, Lightbulb, FileText, Upload, Trash2, Layers, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { FOCUS_NEW_THEMA_EVENT, type KursStatistik, type KursThemaStats, type Thema } from '@/lib/types'
+import { FOCUS_NEW_THEMA_EVENT, type KursStatistik, type KursThemaStats, type KursAltklausur, type Thema } from '@/lib/types'
 
 interface Props {
   params: { kurs: string }
@@ -155,6 +155,55 @@ export default function KursDashboard({ params }: Props) {
   const [newThemaName, setNewThemaName] = useState('')
   const [savingThema, setSavingThema] = useState(false)
 
+  const [kontextOpen, setKontextOpen] = useState(false)
+  const [altklausuren, setAltklausuren] = useState<KursAltklausur[]>([])
+  const [altklausurenLoading, setAltklausurenLoading] = useState(false)
+  const [uploadingAltklausur, setUploadingAltklausur] = useState(false)
+  const altklausurInputRef = useRef<HTMLInputElement>(null)
+
+  async function loadAltklausuren(kursId: number) {
+    setAltklausurenLoading(true)
+    try {
+      const res = await fetch(`/api/kurs-altklausuren?kurs_id=${kursId}`)
+      if (!res.ok) return
+      setAltklausuren(await res.json())
+    } finally {
+      setAltklausurenLoading(false)
+    }
+  }
+
+  async function handleAltklausurUpload(file: File) {
+    if (!stats) return
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Altklausur zu groß (max. 10 MB).')
+      return
+    }
+    setUploadingAltklausur(true)
+    try {
+      const formData = new FormData()
+      formData.append('pdf', file)
+      formData.append('kurs_id', String(stats.kurs_id))
+      const res = await fetch('/api/kurs-altklausuren', { method: 'POST', body: formData })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        toast.error(data?.error ?? 'Altklausur konnte nicht hochgeladen werden')
+        return
+      }
+      const neu = await res.json() as KursAltklausur
+      setAltklausuren((prev) => [...prev, neu])
+      toast.success('Altklausur hinzugefügt')
+    } finally {
+      setUploadingAltklausur(false)
+      if (altklausurInputRef.current) altklausurInputRef.current.value = ''
+    }
+  }
+
+  async function handleAltklausurDelete(id: number) {
+    setAltklausuren((prev) => prev.filter((a) => a.id !== id))
+    const res = await fetch(`/api/kurs-altklausuren/${id}`, { method: 'DELETE' })
+    if (!res.ok) toast.error('Altklausur konnte nicht gelöscht werden')
+  }
+
   async function handleAddThema() {
     const name = newThemaName.trim()
     if (!name || !stats) return
@@ -191,6 +240,7 @@ export default function KursDashboard({ params }: Props) {
       .then((data: KursStatistik) => {
         setStats(data)
         setLoading(false)
+        loadAltklausuren(data.kurs_id)
       })
       .catch(() => {
         setError(true)
@@ -234,6 +284,107 @@ export default function KursDashboard({ params }: Props) {
             </Link>
           )}
         </div>
+      </div>
+
+      {/* Kontext für KI-Generierung: Themen-Struktur + Altklausuren, kursweit */}
+      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <button
+          onClick={() => setKontextOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
+              <Layers className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Kontext für KI-Generierung</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {stats.themen.length} Thema{stats.themen.length === 1 ? '' : 'en'}
+                {altklausuren.length > 0 ? ` · ${altklausuren.length} Altklausur${altklausuren.length > 1 ? 'en' : ''}` : ''}
+              </p>
+            </div>
+          </div>
+          {kontextOpen ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
+        </button>
+        {kontextOpen && (
+          <div className="px-4 pb-4 pt-1 space-y-4 animate-fade-in">
+            {/* Themen-Struktur */}
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Themen-Struktur</p>
+              {stats.themen.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {stats.themen.map((t) => (
+                    <span key={t.id} className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-medium">{t.name}</span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Noch keine Themen angelegt.</p>
+              )}
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Cramo nutzt diese Liste beim Generieren, um besser einzuschätzen, was bereits abgedeckt ist.
+              </p>
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent(FOCUS_NEW_THEMA_EVENT, { detail: { kursId: stats.kurs_id } }))}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Plus className="h-3 w-3" />
+                Thema anlegen
+              </button>
+            </div>
+
+            {/* Altklausuren / Prüfungen */}
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Altklausuren / Prüfungen</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Werden in allen Themen dieses Kurses (Generieren, Quiz, Schriftlich) als Stil-/Format-Referenz
+                genutzt, nicht als vollständige Themenabdeckung. Eine einzelne Klausur deckt oft nicht alle Themen ab.
+              </p>
+              {altklausurenLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              ) : altklausuren.length > 0 ? (
+                <div className="space-y-1.5">
+                  {altklausuren.map((a) => (
+                    <div key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                        <span className="text-xs font-medium truncate">{a.dateiname}</span>
+                      </div>
+                      <button
+                        onClick={() => handleAltklausurDelete(a.id)}
+                        className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                        title="Entfernen"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <button
+                onClick={() => altklausurInputRef.current?.click()}
+                disabled={uploadingAltklausur}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card hover:bg-violet-50 dark:hover:bg-violet-950/20 px-3 py-1.5 text-xs font-medium text-violet-700 dark:text-violet-300 transition-colors disabled:opacity-50"
+              >
+                {uploadingAltklausur ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                Altklausur hochladen (PDF)
+              </button>
+              <input
+                ref={altklausurInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) handleAltklausurUpload(f)
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Combined CTA Hero */}

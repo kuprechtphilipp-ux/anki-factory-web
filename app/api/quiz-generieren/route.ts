@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import type { Karte, QuizFrage } from '@/lib/types'
 import { logApiUsage, getCreditStatus, CREDITS_EXHAUSTED_MESSAGE, usdToCredits } from '@/lib/api-cost'
+import { getKursAltklausurDocs } from '@/lib/altklausur-kontext'
 
 export const maxDuration = 60
 
@@ -83,7 +84,7 @@ export async function POST(req: Request) {
   // Resolve thema/kurs names for context
   let themaName = ''
   let kursNameResolved = kurs_name ?? ''
-  let altklausurKontext = ''
+  let kursId: number | null = null
 
   let query = supabase.from('karte').select('*').eq('status', 'reviewed')
 
@@ -91,12 +92,12 @@ export async function POST(req: Request) {
     query = query.eq('thema_id', Number(thema_id))
     const { data: themaRow } = await supabase
       .from('thema')
-      .select('name, kurs_id, altklausur_kontext')
+      .select('name, kurs_id')
       .eq('id', Number(thema_id))
       .single()
     if (themaRow) {
       themaName = themaRow.name
-      altklausurKontext = themaRow.altklausur_kontext ?? ''
+      kursId = themaRow.kurs_id
       if (!kursNameResolved) {
         const { data: kursRow } = await supabase.from('kurs').select('name').eq('id', themaRow.kurs_id).single()
         kursNameResolved = kursRow?.name ?? ''
@@ -105,6 +106,7 @@ export async function POST(req: Request) {
   } else if (kurs_name) {
     const { data: kursRow } = await supabase.from('kurs').select('id').eq('name', kurs_name).single()
     if (!kursRow) return NextResponse.json({ error: 'Kurs nicht gefunden' }, { status: 404 })
+    kursId = kursRow.id
     const { data: themen } = await supabase.from('thema').select('id').eq('kurs_id', kursRow.id)
     const themaIds = (themen ?? []).map((t: { id: number }) => t.id)
     if (themaIds.length === 0) return NextResponse.json({ error: 'Keine Themen gefunden' }, { status: 422 })
@@ -112,6 +114,8 @@ export async function POST(req: Request) {
   } else {
     return NextResponse.json({ error: 'thema_id oder kurs_name erforderlich' }, { status: 400 })
   }
+
+  const altklausurDocs = kursId != null ? await getKursAltklausurDocs(supabase, kursId) : []
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -147,8 +151,8 @@ export async function POST(req: Request) {
     ? 'Max. 15 Wörter: why the correct answer is right. Same language as the cards.'
     : 'One sentence: why the correct answer is right and why it matters. Same language as the cards.'
 
-  const altklausurBlock = altklausurKontext
-    ? `\n\nPAST EXAM REFERENCE: The following text is from a past exam for this topic. Use it to align question style, phrasing, topic emphasis and difficulty with how this course is actually examined — but do not reuse its questions verbatim.\n${altklausurKontext.slice(0, 6000)}`
+  const altklausurBlock = altklausurDocs.length > 0
+    ? `\n\nPAST EXAM REFERENCE (${altklausurDocs.length} document${altklausurDocs.length > 1 ? 's' : ''}): The following excerpts are from past exams of this course. Use them to align question style, phrasing, topic emphasis and difficulty with how this course is actually examined. IMPORTANT: A single past exam often does not cover all course topics, topic coverage varies between exam sittings, so do not treat this as a complete topic list. Do not reuse questions verbatim.\n\n${altklausurDocs.map((doc, i) => `--- Exam ${i + 1} ---\n${doc}`).join('\n\n')}`
     : ''
 
   const systemPrompt = `You are an expert exam question designer. Your goal is to create questions that test genuine conceptual understanding — the kind that appears in university exams — not simple recall of flashcard text.
