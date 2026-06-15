@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine, X, Lightbulb, FileText, Upload, Trash2, Layers, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine, X, Lightbulb, FileText, Upload, Trash2, Layers, ChevronDown, ChevronUp, CalendarClock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
@@ -156,6 +156,7 @@ export default function KursDashboard({ params }: Props) {
   const [savingThema, setSavingThema] = useState(false)
 
   const [kontextOpen, setKontextOpen] = useState(false)
+  const [faelligkeitenOpen, setFaelligkeitenOpen] = useState(false)
   const [altklausuren, setAltklausuren] = useState<KursAltklausur[]>([])
   const [altklausurenLoading, setAltklausurenLoading] = useState(false)
   const [uploadingAltklausur, setUploadingAltklausur] = useState(false)
@@ -286,107 +287,6 @@ export default function KursDashboard({ params }: Props) {
         </div>
       </div>
 
-      {/* Kontext für KI-Generierung: Themen-Struktur + Altklausuren, kursweit */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <button
-          onClick={() => setKontextOpen((v) => !v)}
-          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
-              <Layers className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold">Kontext für KI-Generierung</p>
-              <p className="text-xs text-muted-foreground truncate">
-                {stats.themen.length} Thema{stats.themen.length === 1 ? '' : 'en'}
-                {altklausuren.length > 0 ? ` · ${altklausuren.length} Altklausur${altklausuren.length > 1 ? 'en' : ''}` : ''}
-              </p>
-            </div>
-          </div>
-          {kontextOpen ? (
-            <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-          )}
-        </button>
-        {kontextOpen && (
-          <div className="px-4 pb-4 pt-1 space-y-4 animate-fade-in">
-            {/* Themen-Struktur */}
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Themen-Struktur</p>
-              {stats.themen.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {stats.themen.map((t) => (
-                    <span key={t.id} className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-medium">{t.name}</span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">Noch keine Themen angelegt.</p>
-              )}
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Cramo nutzt diese Liste beim Generieren, um besser einzuschätzen, was bereits abgedeckt ist.
-              </p>
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent(FOCUS_NEW_THEMA_EVENT, { detail: { kursId: stats.kurs_id } }))}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Plus className="h-3 w-3" />
-                Thema anlegen
-              </button>
-            </div>
-
-            {/* Altklausuren / Prüfungen */}
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Altklausuren / Prüfungen</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Werden in allen Themen dieses Kurses (Generieren, Quiz, Schriftlich) als Stil-/Format-Referenz
-                genutzt, nicht als vollständige Themenabdeckung. Eine einzelne Klausur deckt oft nicht alle Themen ab.
-              </p>
-              {altklausurenLoading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-              ) : altklausuren.length > 0 ? (
-                <div className="space-y-1.5">
-                  {altklausuren.map((a) => (
-                    <div key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                        <span className="text-xs font-medium truncate">{a.dateiname}</span>
-                      </div>
-                      <button
-                        onClick={() => handleAltklausurDelete(a.id)}
-                        className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                        title="Entfernen"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-              <button
-                onClick={() => altklausurInputRef.current?.click()}
-                disabled={uploadingAltklausur}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card hover:bg-violet-50 dark:hover:bg-violet-950/20 px-3 py-1.5 text-xs font-medium text-violet-700 dark:text-violet-300 transition-colors disabled:opacity-50"
-              >
-                {uploadingAltklausur ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                Altklausur hochladen (PDF)
-              </button>
-              <input
-                ref={altklausurInputRef}
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0]
-                  if (f) handleAltklausurUpload(f)
-                }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Combined CTA Hero */}
       {stats.due_heute > 0 ? (
         <div className="relative overflow-hidden rounded-2xl bg-primary/5 border border-primary/20 p-5 lg:p-6 shadow-card">
@@ -496,33 +396,163 @@ export default function KursDashboard({ params }: Props) {
         </div>
       )}
 
-      {/* Upcoming Reviews Chart */}
-      {stats.total_karten > 0 && (
-        <div className="space-y-3">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Fälligkeiten der nächsten 7 Tage</p>
-          <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-card">
-            <div className="flex items-end gap-2 h-24">
-              {stats.due_7_tage.map((count, i) => (
-                <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
-                  <div
-                    className="w-full rounded-t-md transition-all"
-                    style={{
-                      height: `${Math.max(4, (count / maxBar) * 72)}px`,
-                      background: count > 0
-                        ? (i === 0 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.4)')
-                        : 'hsl(var(--muted))',
-                    }}
-                    title={`${count} Karten`}
-                  />
-                  <span className="text-[9px] font-medium text-muted-foreground/60 leading-none">{DayLabel(i)}</span>
-                </div>
-              ))}
+      {/* Kontext für KI-Generierung: Themen-Struktur + Altklausuren, kursweit */}
+      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <button
+          onClick={() => setKontextOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
+              <Layers className="h-4 w-4 text-violet-600 dark:text-violet-400" />
             </div>
-            <div className="mt-2 flex items-center gap-3 text-[10px] text-muted-foreground/50">
-              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-primary inline-block" />Heute</span>
-              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-primary/40 inline-block" />Folgetage</span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Kontext für KI-Generierung</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {stats.themen.length} {stats.themen.length === 1 ? 'Thema' : 'Themen'}
+                {altklausuren.length > 0 ? ` · ${altklausuren.length} Altklausur${altklausuren.length > 1 ? 'en' : ''}` : ''}
+              </p>
             </div>
           </div>
+          {kontextOpen ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
+        </button>
+        {kontextOpen && (
+          <div className="px-4 pb-4 pt-1 space-y-4 animate-fade-in">
+            {/* Themen-Struktur */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Themen-Struktur</p>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent(FOCUS_NEW_THEMA_EVENT, { detail: { kursId: stats.kurs_id } }))}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card hover:bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                >
+                  <Plus className="h-3 w-3" />
+                  Thema anlegen
+                </button>
+              </div>
+              {stats.themen.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {stats.themen.map((t) => (
+                    <span key={t.id} className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-medium">{t.name}</span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Noch keine Themen angelegt.</p>
+              )}
+              <p className="text-xs text-muted-foreground/70 leading-relaxed">
+                Cramo nutzt diese Liste beim Generieren, um besser einzuschätzen, was bereits abgedeckt ist.
+              </p>
+            </div>
+
+            <div className="h-px bg-border/50" />
+
+            {/* Altklausuren / Prüfungen */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Altklausuren / Prüfungen</p>
+                <button
+                  onClick={() => altklausurInputRef.current?.click()}
+                  disabled={uploadingAltklausur}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card hover:bg-violet-50 dark:hover:bg-violet-950/20 px-2.5 py-1 text-xs font-medium text-violet-700 dark:text-violet-300 transition-colors disabled:opacity-50 shrink-0"
+                >
+                  {uploadingAltklausur ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                  Hochladen (PDF)
+                </button>
+              </div>
+              {altklausurenLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              ) : altklausuren.length > 0 ? (
+                <div className="space-y-1.5">
+                  {altklausuren.map((a) => (
+                    <div key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                        <span className="text-xs font-medium truncate">{a.dateiname}</span>
+                      </div>
+                      <button
+                        onClick={() => handleAltklausurDelete(a.id)}
+                        className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                        title="Entfernen"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <p className="text-xs text-muted-foreground/70 leading-relaxed">
+                Werden in allen Themen dieses Kurses (Generieren, Quiz, Schriftlich) als Stil-/Format-Referenz
+                genutzt, nicht als vollständige Themenabdeckung. Eine einzelne Klausur deckt oft nicht alle Themen ab.
+              </p>
+              <input
+                ref={altklausurInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) handleAltklausurUpload(f)
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Upcoming Reviews Chart */}
+      {stats.total_karten > 0 && (
+        <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+          <button
+            onClick={() => setFaelligkeitenOpen((v) => !v)}
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                <CalendarClock className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Fälligkeiten der nächsten 7 Tage</p>
+                <p className="text-xs text-muted-foreground truncate">Lernlast-Vorschau für die kommende Woche</p>
+              </div>
+            </div>
+            {faelligkeitenOpen ? (
+              <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+            )}
+          </button>
+          {faelligkeitenOpen && (
+            <div className="px-4 pb-4 pt-1 animate-fade-in">
+              <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                So viele Karten werden an den nächsten Tagen zur Wiederholung fällig — hilft dir abzuschätzen, wann mehr Lernzeit sinnvoll ist.
+              </p>
+              <div className="flex items-end gap-2 h-24">
+                {stats.due_7_tage.map((count, i) => (
+                  <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
+                    <div
+                      className="w-full rounded-t-md transition-all"
+                      style={{
+                        height: `${Math.max(4, (count / maxBar) * 72)}px`,
+                        background: count > 0
+                          ? (i === 0 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.4)')
+                          : 'hsl(var(--muted))',
+                      }}
+                      title={`${count} Karten`}
+                    />
+                    <span className="text-[9px] font-medium text-muted-foreground/60 leading-none">{DayLabel(i)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 flex items-center gap-3 text-[10px] text-muted-foreground/50">
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-primary inline-block" />Heute</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-primary/40 inline-block" />Folgetage</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
