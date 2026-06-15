@@ -72,8 +72,13 @@ TAGS:
 - Max. 10–15% der Karten bekommen zusätzlich "fokus" (fast sicher in der Prüfung — sehr restriktiv!)
 - 1–2 weitere Tags: "definition", "formel", "prozess", "vergleich", "beispiel"
 
-SPRACHE: Erkenne die Sprache der Folien und erstelle ALLE Karten konsequent in genau dieser Sprache.
-Wechsle die Sprache nicht, auch wenn du auf Deutsch angesprochen wirst.
+SPRACHE: Erkenne die Sprache des Dokuments (Folien/Text) und erstelle AUSNAHMSLOS ALLE Karten
+(Fragen, Antworten, Cloze-Lücken, Tags und Kontext-Erklärungen) in genau dieser Sprache.
+Diese Systemanweisung selbst ist auf Deutsch verfasst, das hat KEINEN Einfluss auf die Zielsprache.
+Ist das Dokument z.B. auf Englisch, dann MUSS die komplette Ausgabe auf Englisch sein, auch wenn
+einzelne Folien wenig Text enthalten (Diagramme, Formeln) - orientiere dich am Rest des Dokuments.
+Wechsle die Sprache niemals innerhalb des Decks und niemals zurück zu Deutsch, wenn das Dokument
+nicht deutsch ist.
 
 KARTENTYPEN:
 - 'basic': Klassische Frage/Antwort-Karte
@@ -171,6 +176,44 @@ async function cropPdfToPages(buffer: Buffer, fromPage: number, toPage: number):
   copiedPages.forEach((page) => newDoc.addPage(page))
   const bytes = await newDoc.save()
   return Buffer.from(bytes)
+}
+
+// Leichtgewichtige DE/EN-Spracherkennung via Stoppwort-Häufigkeit. Dient nur als
+// expliziter Zusatz-Hinweis für Claude (verhindert, dass bei englischsprachigen
+// Folien trotzdem deutsche Karten generiert werden, z.B. weil der System-Prompt
+// selbst auf Deutsch verfasst ist). Bei unklarem Ergebnis: kein Hinweis (null),
+// dann greift nur die generelle SPRACHE-Anweisung im System-Prompt.
+const LANGUAGE_STOPWORDS: Record<'de' | 'en', string[]> = {
+  de: ['der', 'die', 'das', 'und', 'ist', 'nicht', 'mit', 'für', 'von', 'auf', 'eine', 'sich', 'dass', 'werden', 'wird', 'sind', 'oder', 'auch', 'kann', 'wenn', 'aber', 'durch', 'bei', 'nach', 'über', 'zwischen', 'diese', 'dieser', 'dieses', 'wurde', 'wurden', 'können', 'müssen', 'sein', 'einer', 'einem'],
+  en: ['the', 'and', 'is', 'of', 'to', 'in', 'that', 'for', 'with', 'are', 'this', 'as', 'by', 'an', 'or', 'can', 'be', 'on', 'from', 'which', 'these', 'those', 'was', 'were', 'will', 'have', 'has', 'not', 'but', 'when', 'between', 'through', 'their', 'they'],
+}
+
+function detectDocumentLanguage(text: string): 'de' | 'en' | null {
+  const sample = text.slice(0, 8000).toLowerCase()
+  if (sample.trim().length < 50) return null
+
+  const counts: Record<'de' | 'en', number> = { de: 0, en: 0 }
+  for (const lang of ['de', 'en'] as const) {
+    for (const word of LANGUAGE_STOPWORDS[lang]) {
+      const matches = sample.match(new RegExp(`\\b${word}\\b`, 'g'))
+      if (matches) counts[lang] += matches.length
+    }
+  }
+
+  if (counts.de === 0 && counts.en === 0) return null
+  if (counts.en > counts.de * 1.5) return 'en'
+  if (counts.de > counts.en * 1.5) return 'de'
+  return null
+}
+
+function languageHint(lang: 'de' | 'en' | null): string {
+  if (lang === 'en') {
+    return '\n\nERKANNTE DOKUMENTSPRACHE: Englisch. Erstelle ALLE Karten (Fragen, Antworten, Cloze-Lücken, Kontext-Erklärungen) ausschliesslich auf Englisch, unabhängig von der Sprache dieser Anweisung.'
+  }
+  if (lang === 'de') {
+    return '\n\nERKANNTE DOKUMENTSPRACHE: Deutsch. Erstelle ALLE Karten auf Deutsch.'
+  }
+  return ''
 }
 
 async function extractPageTexts(buffer: Buffer): Promise<string[]> {
@@ -343,6 +386,15 @@ ${altklausurDocs.map((doc, i) => `--- Altklausur ${i + 1} ---\n${doc}`).join('\n
       if (conceptsList && conceptsList.length > 0) {
         userText += `\n\nFokus auf diese Schlüsselkonzepte:\n${conceptsList.map(c => `- ${c}`).join('\n')}`
       }
+      // Spracherkennung für Vision-Modus: extrahiere Text nur zur Erkennung,
+      // unabhängig davon, ob das gecroppte PDF an Claude geschickt wird.
+      try {
+        const textData = await pdf(pdfBuffer)
+        userText += languageHint(detectDocumentLanguage(textData.text))
+      } catch {
+        // Kein Text extrahierbar (z.B. reine Bild-PDF) → kein Sprach-Hinweis,
+        // generelle SPRACHE-Anweisung im System-Prompt greift weiterhin.
+      }
       if (wasCropped) {
         // Das gesendete PDF enthält NUR den Seitenbereich pageFrom–pageTo, neu durchnummeriert ab 1.
         // Claude muss für "slide_nummer" trotzdem die ORIGINALEN Seitenzahlen verwenden, da das
@@ -372,7 +424,8 @@ ${altklausurDocs.map((doc, i) => `--- Altklausur ${i + 1} ---\n${doc}`).join('\n
         .map((text, i) => `--- Seite ${fromIdx + i + 1} ---\n${text.trim()}`)
         .join('\n\n')
 
-      const basePrompt = `Analysiere diesen Folientext strategisch und erstelle Flashcards. Richtwert: ~${batchSize} Karten (Seiten ${fromIdx + 1}–${toIdx + 1}) — aber entscheide selbst was sinnvoll ist.`
+      let basePrompt = `Analysiere diesen Folientext strategisch und erstelle Flashcards. Richtwert: ~${batchSize} Karten (Seiten ${fromIdx + 1}–${toIdx + 1}) — aber entscheide selbst was sinnvoll ist.`
+      basePrompt += languageHint(detectDocumentLanguage(pageText))
 
       if (conceptsList && conceptsList.length > 0) {
         userContent = `${basePrompt}\n\nFokus auf diese Schlüsselkonzepte:\n${conceptsList.map(c => `- ${c}`).join('\n')}\n\nFolientext:\n${pageText}`
