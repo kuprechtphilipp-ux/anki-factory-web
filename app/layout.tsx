@@ -44,10 +44,10 @@ export const metadata: Metadata = {
       'PDF hochladen, KI macht Karteikarten. Cramo plant deine Wiederholungen mit Spaced Repetition (FSRS).',
     images: [
       {
-        url: '/images/cramo-marketing-hero.png',
-        width: 1024,
-        height: 576,
-        alt: 'Cramo Learning – KI-gestützte Lernkarten',
+        url: '/images/Cramo_Studying_Banner_Picture.jpeg',
+        width: 2048,
+        height: 2048,
+        alt: 'Cramo – KI-gestützte Lernkarten',
       },
     ],
   },
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     title: 'Cramo – KI-Lernkarten aus deinen PDFs',
     description:
       'PDF hochladen, KI macht Karteikarten. Cramo plant deine Wiederholungen mit Spaced Repetition (FSRS).',
-    images: ['/images/cramo-marketing-hero.png'],
+    images: ['/images/Cramo_Studying_Banner_Picture.jpeg'],
   },
   robots: {
     index: true,
