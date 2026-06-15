@@ -748,50 +748,73 @@ export default function ThemaPage({ params }: Props) {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
-          <TabsList className="h-9 rounded-lg bg-muted p-1 gap-0.5 mb-0 inline-flex w-auto min-w-full sm:w-full flex-nowrap justify-start">
-            <TabsTrigger
-              value="uebersicht"
-              className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm shrink-0"
-            >
-              Übersicht
-            </TabsTrigger>
-            <TabsTrigger
-              value="generieren"
-              className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm shrink-0"
-            >
-              Generieren
-            </TabsTrigger>
-            <TabsTrigger
-              value="review"
-              className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm gap-1.5 shrink-0"
-            >
-              Review
-              {neuCount != null && neuCount > 0 && (
-                <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-bold">
-                  {neuCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger
-              value="alle"
-              className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm shrink-0"
-            >
-              Karten
-            </TabsTrigger>
-            <TabsTrigger
-              value="erstellen"
-              className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm gap-1.5 shrink-0"
-            >
-              <PenLine className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Erstellen</span>
-            </TabsTrigger>
-          </TabsList>
+        <div className="flex items-center gap-2.5">
+          <div className="overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 flex-1 min-w-0">
+            <TabsList className="h-9 rounded-lg bg-muted p-1 gap-0.5 mb-0 inline-flex w-auto min-w-full sm:w-full flex-nowrap justify-start">
+              <TabsTrigger
+                value="uebersicht"
+                className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm shrink-0"
+              >
+                Übersicht
+              </TabsTrigger>
+              <TabsTrigger
+                value="generieren"
+                className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm shrink-0"
+              >
+                Generieren
+              </TabsTrigger>
+              <TabsTrigger
+                value="review"
+                className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm gap-1.5 shrink-0"
+              >
+                Review
+                {neuCount != null && neuCount > 0 && (
+                  <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-bold">
+                    {neuCount}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger
+                value="alle"
+                className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm shrink-0"
+              >
+                Karten
+              </TabsTrigger>
+              <TabsTrigger
+                value="erstellen"
+                className="rounded-md px-3 sm:px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm gap-1.5 shrink-0"
+              >
+                <PenLine className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Erstellen</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          {/* ── Cross-Tab "Jetzt lernen"-CTA — überall sichtbar außer in Übersicht ── */}
+          {activeTab !== 'uebersicht' && bannerState !== 'D' && (
+            <div className="hidden sm:flex items-center gap-2.5 shrink-0 rounded-lg bg-card border border-border/50 shadow-sm h-9 pl-3 pr-1.5">
+              <div className="flex items-center gap-1.5 text-xs whitespace-nowrap">
+                <Brain className="h-3.5 w-3.5 text-primary shrink-0" />
+                {(dueCount ?? 0) > 0 ? (
+                  <span><span className="font-semibold text-primary tabular-nums">{dueCount}</span> fällig</span>
+                ) : (
+                  <span className="text-muted-foreground">Keine fällig</span>
+                )}
+              </div>
+              <Link
+                href={`/${encodeURIComponent(kursName)}/${encodeURIComponent(themaName)}/lernen`}
+                className="inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 px-2.5 py-1 text-xs font-semibold transition-colors"
+              >
+                Jetzt lernen
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          )}
         </div>
 
-        {/* ── Cross-Tab "Jetzt lernen"-CTA — überall sichtbar außer in Übersicht ── */}
+        {/* ── Mobile: "Jetzt lernen"-CTA als eigene Zeile ── */}
         {activeTab !== 'uebersicht' && bannerState !== 'D' && (
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-card px-4 py-2.5 shadow-sm">
+          <div className="mt-3 sm:hidden flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-card px-4 py-2.5 shadow-sm">
             <div className="flex items-center gap-2 text-sm min-w-0">
               <Brain className="h-4 w-4 text-primary shrink-0" />
               {(dueCount ?? 0) > 0 ? (
@@ -1103,195 +1126,210 @@ export default function ThemaPage({ params }: Props) {
         </TabsContent>
 
         {/* ── Tab: Generieren ── */}
-        <TabsContent value="generieren" className="mt-6 max-w-lg space-y-5">
+        <TabsContent value="generieren" className="mt-6 max-w-2xl lg:max-w-3xl xl:max-w-4xl space-y-6">
           <button onClick={() => setActiveTab('uebersicht')} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-1">
             <ArrowLeft className="h-3 w-3" />Übersicht
           </button>
 
-          {/* Kurskontext-Hinweis */}
-          {themenCount !== null && (
-            themenCount >= 2 ? (
-              <div className="flex items-start gap-2 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/60 dark:bg-emerald-950/15 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
-                <BookOpen className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                <span>Cramo kennt {themenCount} Themen dieses Kurses – das hilft der KI bei der Einordnung.</span>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-br from-amber-50/70 to-transparent dark:from-amber-950/15 p-4">
-                <button
-                  onClick={() => setKontextHintOpen((v) => !v)}
-                  className="flex w-full items-center gap-3 text-left"
-                  aria-expanded={kontextHintOpen}
-                >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
-                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                  </div>
-                  <p className="flex-1 text-sm font-semibold text-amber-900 dark:text-amber-300">Kurskontext noch begrenzt</p>
-                  {kontextHintOpen ? (
-                    <ChevronUp className="h-4 w-4 text-amber-600/70 dark:text-amber-400/70 shrink-0" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-amber-600/70 dark:text-amber-400/70 shrink-0" />
-                  )}
-                </button>
-                {kontextHintOpen && (
-                  <div className="mt-2 ml-12 space-y-2">
-                    <p className="text-xs text-amber-700/90 dark:text-amber-400/80">
-                      Cramo kennt bisher nur 1 Thema in diesem Kurs. Lege in der <span className="font-semibold">Sidebar</span> unter
-                      deinem Kurs weitere Themen/Kapitel an — auch ohne Inhalte hilft das Cramo dabei, deine
-                      Kursstruktur zu verstehen und Karten besser einzuordnen.
-                    </p>
+          {/* ── Schritt 1: Dokumente hochladen ── */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-bold">1</span>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dokumente hochladen</Label>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+              {/* PDF Upload */}
+              <div
+                className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                  dragOver
+                    ? 'border-primary bg-gradient-to-b from-primary/10 to-transparent'
+                    : pdfFile
+                    ? 'border-primary/50 bg-primary/5'
+                    : 'border-border hover:border-primary/40 hover:bg-gradient-to-b hover:from-primary/5 hover:to-transparent'
+                }`}
+                onClick={() => !pdfFile && fileInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setDragOver(false)
+                  const file = e.dataTransfer.files[0]
+                  if (file?.type === 'application/pdf') {
+                    if (file.size > 20 * 1024 * 1024) {
+                      toast.error('PDF zu groß (max. 20 MB). Bitte in kleinere Abschnitte aufteilen.')
+                      return
+                    }
+                    setPdfFile(file)
+                    resetPrescan()
+                  }
+                }}
+              >
+                {pdfFile ? (
+                  <div className="flex items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-800/40 shrink-0 flex-col gap-0.5">
+                        <FileText className="h-4 w-4 text-rose-500" />
+                        <span className="text-[8px] font-bold text-rose-500 leading-none">PDF</span>
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-sm truncate max-w-[200px]">{pdfFile.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(pdfFile.size / 1024 / 1024).toFixed(1)} MB
+                          {' · '}
+                          <span className="text-primary/80">~{Math.max(1, Math.round(pdfFile.size / 50000))} Seiten</span>
+                        </p>
+                      </div>
+                    </div>
                     <button
-                      onClick={() => kursId != null && window.dispatchEvent(new CustomEvent(FOCUS_NEW_THEMA_EVENT, { detail: { kursId } }))}
-                      disabled={kursId == null}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300/60 dark:border-amber-700/40 bg-amber-100/70 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300 transition-colors disabled:opacity-50"
+                      onClick={(e) => { e.stopPropagation(); setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; resetPrescan() }}
+                      className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0 border border-border/50 hover:border-destructive/30"
+                      title="PDF entfernen"
                     >
-                      <Plus className="h-3 w-3" />
-                      Thema anlegen
+                      <X className="h-4 w-4" />
                     </button>
                   </div>
-                )}
-              </div>
-            )
-          )}
-
-          {/* PDF Upload */}
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">PDF hochladen</Label>
-            <div
-              className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-                dragOver
-                  ? 'border-primary bg-gradient-to-b from-primary/10 to-transparent'
-                  : pdfFile
-                  ? 'border-primary/50 bg-primary/5'
-                  : 'border-border hover:border-primary/40 hover:bg-gradient-to-b hover:from-primary/5 hover:to-transparent'
-              }`}
-              onClick={() => !pdfFile && fileInputRef.current?.click()}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault()
-                setDragOver(false)
-                const file = e.dataTransfer.files[0]
-                if (file?.type === 'application/pdf') {
-                  if (file.size > 20 * 1024 * 1024) {
-                    toast.error('PDF zu groß (max. 20 MB). Bitte in kleinere Abschnitte aufteilen.')
-                    return
-                  }
-                  setPdfFile(file)
-                  resetPrescan()
-                }
-              }}
-            >
-              {pdfFile ? (
-                <div className="flex items-center justify-between gap-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-800/40 shrink-0 flex-col gap-0.5">
-                      <FileText className="h-4 w-4 text-rose-500" />
-                      <span className="text-[8px] font-bold text-rose-500 leading-none">PDF</span>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex h-10 w-10 mx-auto items-center justify-center rounded-xl bg-muted">
+                      <Upload className="h-5 w-5 text-muted-foreground" />
                     </div>
-                    <div className="text-left">
-                      <p className="font-medium text-sm truncate max-w-[200px]">{pdfFile.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {(pdfFile.size / 1024 / 1024).toFixed(1)} MB
-                        {' · '}
-                        <span className="text-primary/80">~{Math.max(1, Math.round(pdfFile.size / 50000))} Seiten</span>
-                      </p>
+                    <div>
+                      <p className="text-sm font-medium hidden sm:block">PDF hier ablegen</p>
+                      <p className="text-sm font-medium sm:hidden">PDF auswählen</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">oder klicken zum Auswählen · max. 20 MB</p>
                     </div>
                   </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null
+                    if (file && file.size > 20 * 1024 * 1024) {
+                      toast.error('PDF zu groß (max. 20 MB). Bitte in kleinere Abschnitte aufteilen.')
+                      e.target.value = ''
+                      return
+                    }
+                    setPdfFile(file)
+                    resetPrescan()
+                  }}
+                />
+              </div>
+
+              {/* ── Altklausur-Upload (optional) ── */}
+              <div className="rounded-2xl border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/60 to-transparent dark:from-violet-950/15 p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
+                    <FileText className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold">Hast du eine Altklausur?</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                      Lade sie hoch (optional) für noch passendere Karten. Funktioniert aber auch sehr gut ohne.
+                    </p>
+                  </div>
+                </div>
+                {altklausurFile ? (
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2 ml-12">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                      <span className="text-xs font-medium truncate">{altklausurFile.name}</span>
+                    </div>
+                    <button
+                      onClick={() => { setAltklausurFile(null); if (altklausurInputRef.current) altklausurInputRef.current.value = '' }}
+                      className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                      title="Altklausur entfernen"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
                   <button
-                    onClick={(e) => { e.stopPropagation(); setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; resetPrescan() }}
-                    className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0 border border-border/50 hover:border-destructive/30"
-                    title="PDF entfernen"
+                    onClick={() => altklausurInputRef.current?.click()}
+                    className="ml-12 inline-flex items-center gap-1.5 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card hover:bg-violet-50 dark:hover:bg-violet-950/20 px-3 py-1.5 text-xs font-medium text-violet-700 dark:text-violet-300 transition-colors"
                   >
-                    <X className="h-4 w-4" />
+                    <Upload className="h-3.5 w-3.5" />
+                    Altklausur hochladen (PDF)
                   </button>
+                )}
+                <input
+                  ref={altklausurInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null
+                    if (file && file.size > 10 * 1024 * 1024) {
+                      toast.error('Altklausur zu groß (max. 10 MB).')
+                      e.target.value = ''
+                      return
+                    }
+                    setAltklausurFile(file)
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Schritt 2: Kontext ── */}
+          {themenCount !== null && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-bold">2</span>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kontext</Label>
+              </div>
+              {themenCount >= 2 ? (
+                <div className="flex items-start gap-2 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/60 dark:bg-emerald-950/15 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                  <BookOpen className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <span>Cramo kennt {themenCount} Themen dieses Kurses – das hilft der KI bei der Einordnung.</span>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <div className="flex h-10 w-10 mx-auto items-center justify-center rounded-xl bg-muted">
-                    <Upload className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium hidden sm:block">PDF hier ablegen</p>
-                    <p className="text-sm font-medium sm:hidden">PDF auswählen</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">oder klicken zum Auswählen · max. 20 MB</p>
-                  </div>
+                <div className="rounded-2xl border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-br from-amber-50/70 to-transparent dark:from-amber-950/15 p-4">
+                  <button
+                    onClick={() => setKontextHintOpen((v) => !v)}
+                    className="flex w-full items-center gap-3 text-left"
+                    aria-expanded={kontextHintOpen}
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <p className="flex-1 text-sm font-semibold text-amber-900 dark:text-amber-300">Kurskontext noch begrenzt</p>
+                    {kontextHintOpen ? (
+                      <ChevronUp className="h-4 w-4 text-amber-600/70 dark:text-amber-400/70 shrink-0" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-amber-600/70 dark:text-amber-400/70 shrink-0" />
+                    )}
+                  </button>
+                  {kontextHintOpen && (
+                    <div className="mt-2 ml-12 space-y-2">
+                      <p className="text-xs text-amber-700/90 dark:text-amber-400/80">
+                        Cramo kennt bisher nur 1 Thema in diesem Kurs. Lege in der <span className="font-semibold">Sidebar</span> unter
+                        deinem Kurs weitere Themen/Kapitel an — auch ohne Inhalte hilft das Cramo dabei, deine
+                        Kursstruktur zu verstehen und Karten besser einzuordnen.
+                      </p>
+                      <button
+                        onClick={() => kursId != null && window.dispatchEvent(new CustomEvent(FOCUS_NEW_THEMA_EVENT, { detail: { kursId } }))}
+                        disabled={kursId == null}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300/60 dark:border-amber-700/40 bg-amber-100/70 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300 transition-colors disabled:opacity-50"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Thema anlegen
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null
-                  if (file && file.size > 20 * 1024 * 1024) {
-                    toast.error('PDF zu groß (max. 20 MB). Bitte in kleinere Abschnitte aufteilen.')
-                    e.target.value = ''
-                    return
-                  }
-                  setPdfFile(file)
-                  resetPrescan()
-                }}
-              />
             </div>
-          </div>
+          )}
 
-          {/* ── Altklausur-Upload (optional) ── */}
-          <div className="rounded-2xl border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/60 to-transparent dark:from-violet-950/15 p-4 space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
-                <FileText className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">Hast du eine Altklausur?</p>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                  Lade sie hoch (optional) für noch passendere Karten. Funktioniert aber auch sehr gut ohne.
-                </p>
-              </div>
-            </div>
-            {altklausurFile ? (
-              <div className="flex items-center justify-between gap-2 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2 ml-12">
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                  <span className="text-xs font-medium truncate">{altklausurFile.name}</span>
-                </div>
-                <button
-                  onClick={() => { setAltklausurFile(null); if (altklausurInputRef.current) altklausurInputRef.current.value = '' }}
-                  className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                  title="Altklausur entfernen"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => altklausurInputRef.current?.click()}
-                className="ml-12 inline-flex items-center gap-1.5 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card hover:bg-violet-50 dark:hover:bg-violet-950/20 px-3 py-1.5 text-xs font-medium text-violet-700 dark:text-violet-300 transition-colors"
-              >
-                <Upload className="h-3.5 w-3.5" />
-                Altklausur hochladen (PDF)
-              </button>
-            )}
-            <input
-              ref={altklausurInputRef}
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0] ?? null
-                if (file && file.size > 10 * 1024 * 1024) {
-                  toast.error('Altklausur zu groß (max. 10 MB).')
-                  e.target.value = ''
-                  return
-                }
-                setAltklausurFile(file)
-              }}
-            />
-          </div>
-
-          {/* ── Generierungsmodus: Standard vs. Visual ── */}
+          {/* ── Schritt 3: Generierungsmodus ── */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Generierungsmodus</Label>
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-bold">3</span>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Generierungsmodus</Label>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 onClick={() => setVisualDeckMode(false)}
