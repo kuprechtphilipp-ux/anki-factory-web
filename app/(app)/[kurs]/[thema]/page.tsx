@@ -166,16 +166,19 @@ export default function ThemaPage({ params }: Props) {
     if (scanStep !== 'idle' || generating) setExpandedGenStep(null)
   }, [scanStep, generating])
 
-  // Nach erfolgreicher Generierung: wieder bei Schritt 1 starten
-  useEffect(() => {
-    if (!generating && scanStep === 'idle' && lastGenCount != null) setExpandedGenStep(1)
-  }, [generating, scanStep, lastGenCount])
-
-  // Nach erfolgreicher Generierung: Erfolgsmeldung ins Sichtfeld scrollen
+  // Nach erfolgreicher Generierung: alle drei Schritte einklappen und die
+  // Erfolgsmeldung ins Sichtfeld scrollen. Reihenfolge wichtig: erst einklappen
+  // (sonst verschiebt das nachträgliche Aufklappen von Schritt 1 die Meldung
+  // wieder aus dem Sichtfeld), Scroll erst nach dem Re-Render via rAF.
   const genSuccessRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!generating && scanStep === 'idle' && lastGenCount != null) {
-      genSuccessRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setExpandedGenStep(null)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          genSuccessRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        })
+      })
     }
   }, [generating, scanStep, lastGenCount])
 
