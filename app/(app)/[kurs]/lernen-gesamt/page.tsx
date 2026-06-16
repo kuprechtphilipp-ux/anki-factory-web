@@ -45,7 +45,14 @@ function maskCloze(text: string): string {
 }
 
 function unmaskCloze(text: string): string {
-  return text.replace(/\{\{c\d+::([^}]+)\}\}/g, (_, answer) => `**${answer}**`)
+  const parts = text.split(/((?:\$\$[\s\S]*?\$\$|\$[^$\n]+?\$))/g)
+  return parts.map((part, i) => {
+    const isMath = i % 2 === 1
+    return part.replace(
+      /\{\{c\d+::([^}]+)\}\}/g,
+      (_, answer: string) => isMath ? answer : `**${answer}**`
+    )
+  }).join('')
 }
 
 function formatRelative(isoDate: string): string {

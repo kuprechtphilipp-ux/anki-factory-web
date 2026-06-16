@@ -20,7 +20,16 @@ function maskCloze(text: string): string {
 }
 
 function unmaskCloze(text: string): string {
-  return text.replace(/\{\{c\d+::([^}]+)\}\}/g, (_, answer) => `**${answer}**`)
+  // **answer** inside $...$ is passed verbatim to KaTeX and renders as asterisks.
+  // Apply bold only outside math zones; inside math just reveal the plain answer.
+  const parts = text.split(/((?:\$\$[\s\S]*?\$\$|\$[^$\n]+?\$))/g)
+  return parts.map((part, i) => {
+    const isMath = i % 2 === 1
+    return part.replace(
+      /\{\{c\d+::([^}]+)\}\}/g,
+      (_, answer: string) => isMath ? answer : `**${answer}**`
+    )
+  }).join('')
 }
 
 export function LernCard({ karte, current, total, onRate, loading }: Props) {
