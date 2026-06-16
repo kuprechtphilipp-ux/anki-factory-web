@@ -208,7 +208,7 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
   const currentItem = filteredQueue[0]
   const currentKarte = currentItem?.karte
 
-  const { setContext, clearContext } = useCramoContext()
+  const { setContext, clearContext, triggerChatOpen, setIsNewCard, setCardRevealedAt } = useCramoContext()
   useEffect(() => {
     if (!currentKarte) return
     setContext({
@@ -218,8 +218,17 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
       karteAntwort: currentKarte.typ === 'cloze' ? undefined : currentKarte.antwort,
       karteKontext: currentKarte.kontext ?? undefined,
     })
-  }, [currentKarte, kursName, themaName, setContext])
-  useEffect(() => () => clearContext(), [clearContext])
+    setIsNewCard(currentKarte.fsrs_state === 0)
+  }, [currentKarte, kursName, themaName, setContext, setIsNewCard])
+  useEffect(() => () => { clearContext(); setIsNewCard(false); setCardRevealedAt(null) }, [clearContext, setIsNewCard, setCardRevealedAt])
+
+  // Track revealed state for the 30s nudge
+  useEffect(() => {
+    setCardRevealedAt(revealed ? Date.now() : null)
+  }, [revealed, setCardRevealedAt])
+
+  // Track consecutive "Nochmal" for Feature 4
+  const consecutiveNochmalRef = useRef(0)
 
   const intervals = currentKarte ? computeIntervals(currentKarte) : null
   const isCloze = currentKarte?.typ === 'cloze'
@@ -238,6 +247,18 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
   async function handleRate(rating: 1 | 2 | 3 | 4) {
     // Allow swipe-triggered calls even when exiting=true (swipeExitRef guards the re-entry case)
     if (!currentKarte || !currentItem || ratingLoading || (exiting && !swipeExitRef.current)) return
+
+    // Feature 4: open Cramo after 2 consecutive "Nochmal" ratings
+    if (rating === 1) {
+      consecutiveNochmalRef.current += 1
+      if (consecutiveNochmalRef.current >= 2) {
+        triggerChatOpen()
+        consecutiveNochmalRef.current = 0
+      }
+    } else {
+      consecutiveNochmalRef.current = 0
+    }
+
     setRatingLoading(true)
     try {
       const res = await fetch(`/api/karte/${currentKarte.id}/review`, {
@@ -620,6 +641,13 @@ export default function LernenPage({ params }: { params: { kurs: string; thema: 
                       className="mt-4 w-full max-h-48 object-contain rounded-lg border border-border/50"
                     />
                   )}
+                  {/* Feature 3: inline Cramo trigger after reveal */}
+                  <button
+                    onClick={triggerChatOpen}
+                    className="mt-4 text-[11px] text-muted-foreground/40 hover:text-primary transition-colors"
+                  >
+                    Noch unklar? <span className="font-medium">Cramo fragen →</span>
+                  </button>
                 </div>
               )}
             </div>

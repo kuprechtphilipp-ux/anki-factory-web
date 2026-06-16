@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { CramoChat } from '@/components/cramo-chat'
 import { CramoIcon } from '@/components/cramo-icon'
+import { useCramoContext } from '@/components/cramo-context'
 import { cn } from '@/lib/utils'
 
 const BUTTON_SIZE = 48
 const MARGIN = 16
 const CORNER_STORAGE_KEY = 'cramo-chat-corner'
 const SIZE_STORAGE_KEY = 'cramo-chat-size'
+const ONBOARDING_KEY = 'cramo-nudge-seen'
 const DRAG_THRESHOLD = 6
 const DESKTOP_BREAKPOINT = 640
 const DEFAULT_WIDTH = 384 // 24rem (entspricht sm:w-96)
@@ -48,6 +50,54 @@ export function CramoChatWidget() {
   const wasDraggedRef = useRef(false)
   const resizeState = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number } | null>(null)
 
+  // ── Context signals ──
+  const { chatOpenSignal, isNewCard, cardRevealedAt } = useCramoContext()
+
+  // Feature: open when triggered externally (2x Nochmal, inline link)
+  useEffect(() => {
+    if (chatOpenSignal > 0) setOpen(true)
+  }, [chatOpenSignal])
+
+  // Feature 2: pulse ring for 10s when a brand-new card appears
+  const [showPulse, setShowPulse] = useState(false)
+  useEffect(() => {
+    if (!isNewCard || open) { setShowPulse(false); return }
+    setShowPulse(true)
+    const t = setTimeout(() => setShowPulse(false), 10_000)
+    return () => { clearTimeout(t); setShowPulse(false) }
+  }, [isNewCard, open])
+
+  // Feature 1: nudge tooltip 30s after the card was revealed
+  const [showNudge, setShowNudge] = useState(false)
+  useEffect(() => {
+    setShowNudge(false)
+    if (!cardRevealedAt || open) return
+    const delay = Math.max(0, 30_000 - (Date.now() - cardRevealedAt))
+    const t1 = setTimeout(() => setShowNudge(true), delay)
+    const t2 = setTimeout(() => setShowNudge(false), delay + 4_000)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [cardRevealedAt, open])
+
+  // Feature 5: one-time onboarding bubble — triggers the first time a card is revealed
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  useEffect(() => {
+    if (!cardRevealedAt) return
+    if (open) return
+    if (localStorage.getItem(ONBOARDING_KEY)) return
+    const t1 = setTimeout(() => setShowOnboarding(true), 1_000)
+    const t2 = setTimeout(() => {
+      setShowOnboarding(false)
+      localStorage.setItem(ONBOARDING_KEY, '1')
+    }, 7_000)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [cardRevealedAt, open])
+
+  function dismissOnboarding() {
+    setShowOnboarding(false)
+    localStorage.setItem(ONBOARDING_KEY, '1')
+  }
+
+  // ── Positioning / sizing setup ──
   useEffect(() => {
     const stored = localStorage.getItem(CORNER_STORAGE_KEY)
     const initialCorner: Corner = stored === 'left' ? 'left' : 'right'
@@ -152,11 +202,24 @@ export function CramoChatWidget() {
       wasDraggedRef.current = false
       return
     }
+    if (showOnboarding) dismissOnboarding()
     setOpen((v) => !v)
   }
 
   const left = dragLeft ?? restLeft
   const positioned = left !== null
+
+  // Tooltip/pulse positioning helpers
+  const tooltipBottom = `calc(max(1rem, env(safe-area-inset-bottom)) + ${BUTTON_SIZE + 12}px)`
+  const tooltipPositionStyle = positioned && corner === 'left'
+    ? { left: left ?? 0 }
+    : { right: MARGIN }
+  const tailPositionStyle = corner === 'left' ? { left: 12 } : { right: 20 }
+
+  const pulseLeft = positioned ? (left ?? 0) - 8 : undefined
+  const pulseRight = !positioned ? 8 : undefined
+
+  const showTooltip = (showOnboarding || showNudge) && !open
 
   return (
     <>
@@ -214,6 +277,42 @@ export function CramoChatWidget() {
           />
         </div>
       </div>
+
+      {/* Feature 2: Pulse ring for new cards */}
+      {showPulse && (
+        <div
+          aria-hidden
+          className="fixed z-[49] pointer-events-none rounded-full border-2 border-primary/40 animate-ping"
+          style={{
+            width: BUTTON_SIZE + 16,
+            height: BUTTON_SIZE + 16,
+            bottom: 'calc(max(1rem, env(safe-area-inset-bottom)) - 8px)',
+            ...(pulseLeft !== undefined ? { left: pulseLeft, right: 'auto' } : { right: pulseRight }),
+          }}
+        />
+      )}
+
+      {/* Features 1 + 5: Nudge / Onboarding tooltip */}
+      {showTooltip && (
+        <div
+          role="tooltip"
+          className="fixed z-[51] max-w-[190px] rounded-xl bg-card border border-border/50 shadow-lg px-3 py-2.5 text-xs text-foreground cursor-pointer animate-fade-in"
+          style={{ bottom: tooltipBottom, ...tooltipPositionStyle }}
+          onClick={() => {
+            if (showOnboarding) dismissOnboarding()
+            else { setShowNudge(false); setOpen(true) }
+          }}
+        >
+          {showOnboarding
+            ? 'Hey! Ich bin Cramo — frag mich zu jeder Karte 🦝'
+            : 'Brauchst du eine Erklärung? →'}
+          {/* Tail pointing down */}
+          <div
+            className="absolute -bottom-[5px] w-2.5 h-2.5 rotate-45 bg-card border-b border-r border-border/50"
+            style={tailPositionStyle}
+          />
+        </div>
+      )}
 
       {/* Floating button */}
       <button
