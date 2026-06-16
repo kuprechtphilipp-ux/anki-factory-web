@@ -41,8 +41,14 @@ function computeIntervals(karte: Karte): Record<1 | 2 | 3 | 4, string> {
   }
 }
 
+const CLOZE_RE = /\{\{c\d+::((?:[^{}]|\{[^{}]*\})+)\}\}/g
+
 function maskCloze(text: string): string {
-  return text.replace(/\{\{c\d+::([^}]+)\}\}/g, '[...]')
+  return text.replace(CLOZE_RE, '[...]')
+}
+
+function looksLikeMath(s: string): boolean {
+  return /[_^\\]/.test(s)
 }
 
 function unmaskCloze(text: string): string {
@@ -50,8 +56,11 @@ function unmaskCloze(text: string): string {
   return parts.map((part, i) => {
     const isMath = i % 2 === 1
     return part.replace(
-      /\{\{c\d+::([^}]+)\}\}/g,
-      (_, answer: string) => isMath ? answer : `**${answer}**`
+      CLOZE_RE,
+      (_, answer: string) => {
+        if (isMath) return answer
+        return looksLikeMath(answer) ? `$${answer}$` : `**${answer}**`
+      }
     )
   }).join('')
 }

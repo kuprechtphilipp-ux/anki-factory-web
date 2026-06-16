@@ -15,19 +15,32 @@ interface Props {
   loading?: boolean
 }
 
+// Matches {{cN::answer}} where answer may contain single-depth LaTeX {braces}
+// like r_{m} or \frac{a}{b}. Uses (?:[^{}]|\{[^{}]*\})+ to allow {…} pairs
+// inside the answer without breaking on the closing }}.
+const CLOZE_RE = /\{\{c\d+::((?:[^{}]|\{[^{}]*\})+)\}\}/g
+
 function maskCloze(text: string): string {
-  return text.replace(/\{\{c\d+::([^}]+)\}\}/g, '[...]')
+  return text.replace(CLOZE_RE, '[...]')
+}
+
+function looksLikeMath(s: string): boolean {
+  return /[_^\\]/.test(s)
 }
 
 function unmaskCloze(text: string): string {
   // **answer** inside $...$ is passed verbatim to KaTeX and renders as asterisks.
-  // Apply bold only outside math zones; inside math just reveal the plain answer.
+  // Outside math, formula-like answers (contain _ ^ \) are wrapped in $…$ so
+  // they render as LaTeX; plain-text answers get **bold** highlighting.
   const parts = text.split(/((?:\$\$[\s\S]*?\$\$|\$[^$\n]+?\$))/g)
   return parts.map((part, i) => {
     const isMath = i % 2 === 1
     return part.replace(
-      /\{\{c\d+::([^}]+)\}\}/g,
-      (_, answer: string) => isMath ? answer : `**${answer}**`
+      CLOZE_RE,
+      (_, answer: string) => {
+        if (isMath) return answer
+        return looksLikeMath(answer) ? `$${answer}$` : `**${answer}**`
+      }
     )
   }).join('')
 }
