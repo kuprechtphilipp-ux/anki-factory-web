@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { ChevronRight, X } from 'lucide-react'
 import { CramoChat } from '@/components/cramo-chat'
 import { CramoIcon } from '@/components/cramo-icon'
 import { useCramoContext } from '@/components/cramo-context'
+import { isTypingInField } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
 const BUTTON_SIZE = 48
@@ -20,6 +21,8 @@ const MIN_WIDTH = 320
 const MIN_HEIGHT = 360
 const PANEL_RIGHT = 20 // sm:right-5
 const PANEL_BOTTOM = 96 // sm:bottom-24
+// Pixels of panel left-edge remaining visible in peek mode
+const PEEK_STRIP = 72
 
 type Corner = 'left' | 'right'
 type ChatSize = { width: number; height: number }
@@ -38,6 +41,13 @@ function clampSize(size: ChatSize): ChatSize {
   }
 }
 
+function peekOffset(panelWidth: number): number {
+  // translateX so that only PEEK_STRIP px of the left edge remain on-screen
+  // Panel is anchored right-5 (20px). Visible left strip = viewport - (panelWidth + 20 - PEEK_STRIP - translateX)
+  // Solve for translateX: panelWidth + 20 - PEEK_STRIP
+  return panelWidth + PANEL_RIGHT - PEEK_STRIP
+}
+
 export function CramoChatWidget() {
   const [open, setOpen] = useState(false)
   const [corner, setCorner] = useState<Corner>('right')
@@ -50,13 +60,87 @@ export function CramoChatWidget() {
   const wasDraggedRef = useRef(false)
   const resizeState = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number } | null>(null)
 
+  // ── Peek mode (slide panel right to reveal card beneath) ──
+  const [panelOffsetX, setPanelOffsetX] = useState(0)
+  const [isPeeking, setIsPeeking] = useState(false)
+  const [isHeaderDragging, setIsHeaderDragging] = useState(false)
+  const headerDragState = useRef<{ startX: number; startOffset: number } | null>(null)
+
+  function getPeekOffset() {
+    return peekOffset(chatSize?.width ?? DEFAULT_WIDTH)
+  }
+
+  function restoreFromPeek() {
+    setPanelOffsetX(0)
+    setIsPeeking(false)
+  }
+
+  // Reset peek when panel is closed
+  useEffect(() => {
+    if (!open) { setPanelOffsetX(0); setIsPeeking(false) }
+  }, [open])
+
+  // Recalculate peek offset when panel is resized while peeking
+  useEffect(() => {
+    if (isPeeking) setPanelOffsetX(getPeekOffset())
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatSize, isPeeking])
+
+  function handleHeaderPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (!isDesktop) return
+    e.preventDefault()
+    setIsHeaderDragging(true)
+    headerDragState.current = { startX: e.clientX, startOffset: panelOffsetX }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  function handleHeaderPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const ds = headerDragState.current
+    if (!ds) return
+    const dx = e.clientX - ds.startX
+    // Only allow sliding right (positive offset); can pull back from peek too
+    const newOffset = Math.max(0, ds.startOffset + dx)
+    setPanelOffsetX(newOffset)
+  }
+
+  function handleHeaderPointerUp() {
+    if (!headerDragState.current) return
+    headerDragState.current = null
+    setIsHeaderDragging(false)
+    const snapThreshold = 60
+    if (panelOffsetX > snapThreshold) {
+      setPanelOffsetX(getPeekOffset())
+      setIsPeeking(true)
+    } else {
+      setPanelOffsetX(0)
+      setIsPeeking(false)
+    }
+  }
+
   // ── Context signals ──
   const { chatOpenSignal, isNewCard, cardRevealedAt } = useCramoContext()
 
-  // Feature: open when triggered externally (2x Nochmal, inline link)
+  // Open when triggered externally (2x Nochmal, inline link)
   useEffect(() => {
-    if (chatOpenSignal > 0) setOpen(true)
+    if (chatOpenSignal > 0) { setOpen(true); restoreFromPeek() }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatOpenSignal])
+
+  // Keyboard shortcut: C to toggle chat / restore from peek
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'c' && e.key !== 'C') return
+      if (isTypingInField(e.target)) return
+      if (isPeeking) {
+        restoreFromPeek()
+      } else {
+        setOpen(v => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPeeking])
 
   // Feature 2: pulse ring for 10s when a brand-new card appears
   const [showPulse, setShowPulse] = useState(false)
@@ -221,6 +305,9 @@ export function CramoChatWidget() {
 
   const showTooltip = (showOnboarding || showNudge) && !open
 
+  // Panel transform: slides right for peek mode (desktop only)
+  const panelTransform = isDesktop && panelOffsetX > 0 ? `translateX(${panelOffsetX}px)` : undefined
+
   return (
     <>
       {/* Backdrop on mobile */}
@@ -234,17 +321,18 @@ export function CramoChatWidget() {
       {/* Chat panel */}
       <div
         className={cn(
-          'fixed z-50 flex flex-col rounded-2xl border border-border/50 bg-card shadow-xl ease-out',
-          isResizing ? 'transition-none' : 'transition-all duration-200',
+          'fixed z-50 flex flex-col rounded-2xl border border-border/50 bg-card shadow-xl',
+          isResizing || isHeaderDragging ? 'transition-none' : 'transition-all duration-200',
           'inset-x-3 bottom-20 top-20 sm:inset-x-auto sm:top-auto sm:right-5 sm:bottom-24 sm:h-[30rem] sm:w-96',
           open ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
         )}
         style={{
           paddingBottom: 'env(safe-area-inset-bottom)',
           ...(isDesktop && chatSize ? { width: chatSize.width, height: chatSize.height } : {}),
+          ...(panelTransform ? { transform: panelTransform } : {}),
         }}
       >
-        {/* Resize-Griff (nur Desktop): an der oberen linken Ecke ziehen, um die Box zu vergrößern/verkleinern */}
+        {/* Resize-Griff (nur Desktop): an der oberen linken Ecke ziehen */}
         <div
           onPointerDown={handleResizePointerDown}
           onPointerMove={handleResizePointerMove}
@@ -256,19 +344,42 @@ export function CramoChatWidget() {
         >
           <div className="h-2.5 w-2.5 rounded-full border-2 border-border bg-card transition-colors group-hover:border-primary group-active:border-primary" />
         </div>
+
+        {/* Header: left portion is draggable for peek mode */}
         <div className="flex items-center justify-between border-b border-border/50 px-4 py-3 shrink-0">
-          <div className="flex items-center gap-2">
-            <CramoIcon alt="Cramo" className="h-9 w-9 rounded-full object-cover" />
-            <span className="text-sm font-semibold">Cramo fragen</span>
+          <div
+            className={cn(
+              'flex items-center gap-2 select-none min-w-0',
+              isDesktop && 'cursor-grab active:cursor-grabbing'
+            )}
+            title={isDesktop ? 'Nach rechts ziehen zum Verkleinern · C-Taste zum Öffnen/Schließen' : undefined}
+            onPointerDown={handleHeaderPointerDown}
+            onPointerMove={handleHeaderPointerMove}
+            onPointerUp={handleHeaderPointerUp}
+            onPointerCancel={handleHeaderPointerUp}
+          >
+            <CramoIcon alt="Cramo" className="h-9 w-9 rounded-full object-cover shrink-0" />
+            {!isPeeking && <span className="text-sm font-semibold truncate">Cramo fragen</span>}
+            {isPeeking && (
+              <button
+                onPointerDown={e => e.stopPropagation()}
+                onClick={restoreFromPeek}
+                className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+                aria-label="Chat wiederherstellen"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
           <button
             onClick={() => setOpen(false)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0 ml-2"
             aria-label="Chat schließen"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
+
         <div className="flex-1 min-h-0 px-3 pb-3">
           <CramoChat
             mode="help"
