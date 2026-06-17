@@ -21,9 +21,7 @@ const MIN_WIDTH = 320
 const MIN_HEIGHT = 360
 const PANEL_RIGHT = 20
 const PANEL_BOTTOM = 96
-// Pixels of panel left edge kept visible in peek mode
 const PEEK_STRIP = 72
-// Minimum drag distance to snap into peek
 const PEEK_SNAP_THRESHOLD = 60
 
 type Corner = 'left' | 'right'
@@ -57,86 +55,94 @@ export function CramoChatWidget() {
 
   // ── Peek mode ──
   const panelRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
   const [isPeeking, setIsPeeking] = useState(false)
-  // Tracks whether a header drag is in progress (to suppress click in header)
-  const headerDragMovedRef = useRef(false)
 
-  function getPeekOffset() {
-    const w = chatSize?.width ?? DEFAULT_WIDTH
-    // translateX so that only PEEK_STRIP px of the panel's left edge remain on-screen
-    return w + PANEL_RIGHT - PEEK_STRIP
+  // Keep refs in sync for use inside stable event handlers (avoids stale closures)
+  const isDesktopRef = useRef(false)
+  const isPeekingRef = useRef(false)
+  const chatSizeRef = useRef<ChatSize | null>(null)
+  useEffect(() => { isDesktopRef.current = isDesktop }, [isDesktop])
+  useEffect(() => { isPeekingRef.current = isPeeking }, [isPeeking])
+  useEffect(() => { chatSizeRef.current = chatSize }, [chatSize])
+
+  function calcPeekOffset(w?: number) {
+    return (w ?? chatSizeRef.current?.width ?? DEFAULT_WIDTH) + PANEL_RIGHT - PEEK_STRIP
   }
 
   function restoreFromPeek() {
     setIsPeeking(false)
-    if (panelRef.current) {
-      panelRef.current.style.transform = ''
-    }
+    if (panelRef.current) panelRef.current.style.transform = ''
   }
 
-  // Reset peek when panel closes
   useEffect(() => {
     if (!open) restoreFromPeek()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
-  // ─── Imperative header drag for peek mode ───
-  function handleHeaderPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (!isDesktop) return
-    e.preventDefault()
+  // ── Native drag on header — bypasses React synthetic event system entirely ──
+  useEffect(() => {
+    const header = headerRef.current
+    if (!header) return
 
-    if (!panelRef.current) return
+    function handleDown(e: PointerEvent) {
+      // Only on desktop, only primary button
+      if (!isDesktopRef.current) return
+      if (e.button !== 0) return
+      e.preventDefault()
 
-    headerDragMovedRef.current = false
-    const startX = e.clientX
-    const startOffset = isPeeking ? getPeekOffset() : 0
+      const panel = panelRef.current
+      if (!panel) return
 
-    // Disable CSS transition for fluid drag
-    panelRef.current.style.transition = 'none'
+      const startX = e.clientX
+      const startOffset = isPeekingRef.current ? calcPeekOffset() : 0
 
-    function onMove(ev: PointerEvent) {
-      const dx = ev.clientX - startX
-      if (Math.abs(dx) > 3) headerDragMovedRef.current = true
-      const newOffset = Math.max(0, startOffset + dx)
-      if (panelRef.current) panelRef.current.style.transform = `translateX(${newOffset}px)`
-    }
+      panel.style.transition = 'none'
+      panel.style.willChange = 'transform'
 
-    function onUp() {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-
-      const p = panelRef.current
-      if (!p) return
-
-      // Re-enable transition for snap animation
-      p.style.transition = ''
-
-      const match = p.style.transform.match(/translateX\(([^p]+)px\)/)
-      const currentOffset = match ? parseFloat(match[1]) : 0
-
-      if (currentOffset > PEEK_SNAP_THRESHOLD) {
-        const peekOff = getPeekOffset()
-        p.style.transform = `translateX(${peekOff}px)`
-        setIsPeeking(true)
-      } else {
-        p.style.transform = ''
-        setIsPeeking(false)
+      function onMove(ev: PointerEvent) {
+        const dx = ev.clientX - startX
+        const newOffset = Math.max(0, startOffset + dx)
+        if (panelRef.current) {
+          panelRef.current.style.transform = `translateX(${newOffset}px)`
+        }
       }
+
+      function onUp() {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+
+        const p = panelRef.current
+        if (!p) return
+        p.style.willChange = ''
+        p.style.transition = ''
+
+        const match = p.style.transform.match(/translateX\(([^p]+)px\)/)
+        const currentOffset = match ? parseFloat(match[1]) : 0
+
+        if (currentOffset > PEEK_SNAP_THRESHOLD) {
+          const peekOff = calcPeekOffset()
+          p.style.transform = `translateX(${peekOff}px)`
+          setIsPeeking(true)
+        } else {
+          p.style.transform = ''
+          setIsPeeking(false)
+        }
+      }
+
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
     }
 
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-  }
+    header.addEventListener('pointerdown', handleDown)
+    return () => header.removeEventListener('pointerdown', handleDown)
+  }, []) // stable — all dynamic values read via refs
 
   // ── Context signals ──
   const { chatOpenSignal, isNewCard, cardRevealedAt } = useCramoContext()
 
-  // Open when triggered externally (2x Nochmal, inline link)
   useEffect(() => {
-    if (chatOpenSignal > 0) {
-      restoreFromPeek()
-      setOpen(true)
-    }
+    if (chatOpenSignal > 0) { restoreFromPeek(); setOpen(true) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatOpenSignal])
 
@@ -145,7 +151,7 @@ export function CramoChatWidget() {
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'c' && e.key !== 'C') return
       if (isTypingInField(e.target)) return
-      if (isPeeking) {
+      if (isPeekingRef.current) {
         restoreFromPeek()
       } else {
         setOpen(v => !v)
@@ -154,7 +160,7 @@ export function CramoChatWidget() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPeeking])
+  }, [])
 
   // Feature 2: pulse ring for 10s when a brand-new card appears
   const [showPulse, setShowPulse] = useState(false)
@@ -195,7 +201,7 @@ export function CramoChatWidget() {
     localStorage.setItem(ONBOARDING_KEY, '1')
   }
 
-  // ── Positioning / sizing setup ──
+  // ── Positioning / sizing ──
   useEffect(() => {
     const stored = localStorage.getItem(CORNER_STORAGE_KEY)
     const initialCorner: Corner = stored === 'left' ? 'left' : 'right'
@@ -210,9 +216,7 @@ export function CramoChatWidget() {
         if (typeof parsed.width === 'number' && typeof parsed.height === 'number') {
           setChatSize(clampSize(parsed))
         }
-      } catch {
-        // ignore invalid stored size
-      }
+      } catch { /* ignore */ }
     }
   }, [])
 
@@ -281,10 +285,7 @@ export function CramoChatWidget() {
     const ds = dragState.current
     if (!ds) return
     dragState.current = null
-    if (!ds.moved) {
-      setDragLeft(null)
-      return
-    }
+    if (!ds.moved) { setDragLeft(null); return }
     const center = (dragLeft ?? ds.startLeft) + BUTTON_SIZE / 2
     const newCorner: Corner = center < window.innerWidth / 2 ? 'left' : 'right'
     setCorner(newCorner)
@@ -294,10 +295,7 @@ export function CramoChatWidget() {
   }
 
   function handleClick() {
-    if (wasDraggedRef.current) {
-      wasDraggedRef.current = false
-      return
-    }
+    if (wasDraggedRef.current) { wasDraggedRef.current = false; return }
     if (showOnboarding) dismissOnboarding()
     setOpen((v) => !v)
   }
@@ -305,26 +303,17 @@ export function CramoChatWidget() {
   const left = dragLeft ?? restLeft
   const positioned = left !== null
 
-  // Tooltip/pulse positioning helpers
   const tooltipBottom = `calc(max(1rem, env(safe-area-inset-bottom)) + ${BUTTON_SIZE + 12}px)`
-  const tooltipPositionStyle = positioned && corner === 'left'
-    ? { left: left ?? 0 }
-    : { right: MARGIN }
+  const tooltipPositionStyle = positioned && corner === 'left' ? { left: left ?? 0 } : { right: MARGIN }
   const tailPositionStyle = corner === 'left' ? { left: 12 } : { right: 20 }
-
   const pulseLeft = positioned ? (left ?? 0) - 8 : undefined
   const pulseRight = !positioned ? 8 : undefined
-
   const showTooltip = (showOnboarding || showNudge) && !open
 
   return (
     <>
-      {/* Backdrop on mobile */}
       {open && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 sm:hidden"
-          onClick={() => setOpen(false)}
-        />
+        <div className="fixed inset-0 z-40 bg-black/40 sm:hidden" onClick={() => setOpen(false)} />
       )}
 
       {/* Chat panel */}
@@ -341,7 +330,7 @@ export function CramoChatWidget() {
           ...(isDesktop && chatSize ? { width: chatSize.width, height: chatSize.height } : {}),
         }}
       >
-        {/* Resize handle (desktop only) */}
+        {/* Resize handle */}
         <div
           onPointerDown={handleResizePointerDown}
           onPointerMove={handleResizePointerMove}
@@ -354,23 +343,22 @@ export function CramoChatWidget() {
           <div className="h-2.5 w-2.5 rounded-full border-2 border-border bg-card transition-colors group-hover:border-primary group-active:border-primary" />
         </div>
 
-        {/* Header — left portion draggable for peek mode on desktop */}
+        {/* Header — left portion is the native-event drag handle */}
         <div className="flex items-center justify-between border-b border-border/50 px-4 py-3 shrink-0">
           <div
+            ref={headerRef}
             className={cn(
-              'flex items-center gap-2 select-none min-w-0',
+              'flex items-center gap-2 select-none min-w-0 flex-1',
               isDesktop && 'cursor-grab active:cursor-grabbing'
             )}
             title={isDesktop ? 'Nach rechts ziehen → Karte freigeben  ·  C = Chat öffnen/schließen' : undefined}
-            onPointerDown={handleHeaderPointerDown}
           >
             <CramoIcon alt="Cramo" className="h-9 w-9 rounded-full object-cover shrink-0" />
             {!isPeeking && <span className="text-sm font-semibold truncate">Cramo fragen</span>}
             {isPeeking && (
               <button
-                onPointerDown={e => e.stopPropagation()}
-                onClick={restoreFromPeek}
-                className="flex items-center gap-0.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                onClick={(e) => { e.stopPropagation(); restoreFromPeek() }}
+                className="flex items-center text-xs font-medium text-primary hover:text-primary/80 transition-colors"
                 aria-label="Chat wiederherstellen"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -395,7 +383,7 @@ export function CramoChatWidget() {
         </div>
       </div>
 
-      {/* Feature 2: Pulse ring for new cards */}
+      {/* Feature 2: Pulse ring */}
       {showPulse && (
         <div
           aria-hidden
