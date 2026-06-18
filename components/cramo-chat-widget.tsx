@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ChevronRight, X } from 'lucide-react'
+import { ChevronsRight, X } from 'lucide-react'
 import { CramoChat } from '@/components/cramo-chat'
 import { CramoIcon } from '@/components/cramo-icon'
 import { useCramoContext } from '@/components/cramo-context'
@@ -73,6 +73,12 @@ export function CramoChatWidget() {
   function restoreFromPeek() {
     setIsPeeking(false)
     if (panelRef.current) panelRef.current.style.transform = ''
+  }
+
+  function enterPeek() {
+    const peekOff = calcPeekOffset()
+    if (panelRef.current) panelRef.current.style.transform = `translateX(${peekOff}px)`
+    setIsPeeking(true)
   }
 
   useEffect(() => {
@@ -343,35 +349,45 @@ export function CramoChatWidget() {
           <div className="h-2.5 w-2.5 rounded-full border-2 border-border bg-card transition-colors group-hover:border-primary group-active:border-primary" />
         </div>
 
-        {/* Header — left portion is the native-event drag handle */}
+        {/* Header */}
         <div className="flex items-center justify-between border-b border-border/50 px-4 py-3 shrink-0">
+          {/* Left: drag handle + title */}
           <div
             ref={headerRef}
             className={cn(
               'flex items-center gap-2 select-none min-w-0 flex-1',
               isDesktop && 'cursor-grab active:cursor-grabbing'
             )}
-            title={isDesktop ? 'Nach rechts ziehen → Karte freigeben  ·  C = Chat öffnen/schließen' : undefined}
           >
             <CramoIcon alt="Cramo" className="h-9 w-9 rounded-full object-cover shrink-0" />
-            {!isPeeking && <span className="text-sm font-semibold truncate">Cramo fragen</span>}
-            {isPeeking && (
+            <span className="text-sm font-semibold truncate">Cramo fragen</span>
+          </div>
+
+          {/* Right: collapse button (desktop) + close button */}
+          <div className="flex items-center gap-1 shrink-0 ml-2">
+            {isDesktop && (
               <button
-                onClick={(e) => { e.stopPropagation(); restoreFromPeek() }}
-                className="flex items-center text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-                aria-label="Chat wiederherstellen"
+                onClick={isPeeking ? restoreFromPeek : enterPeek}
+                className={cn(
+                  'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
+                  isPeeking
+                    ? 'text-primary hover:bg-primary/10'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                )}
+                title={isPeeking ? 'Chat einblenden' : 'Karte freigeben (Chat zur Seite)'}
+                aria-label={isPeeking ? 'Chat einblenden' : 'Chat zur Seite schieben'}
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronsRight className={cn('h-4 w-4 transition-transform', isPeeking && 'rotate-180')} />
               </button>
             )}
+            <button
+              onClick={() => setOpen(false)}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              aria-label="Chat schließen"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button
-            onClick={() => setOpen(false)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0 ml-2"
-            aria-label="Chat schließen"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
 
         <div className="flex-1 min-h-0 px-3 pb-3">
