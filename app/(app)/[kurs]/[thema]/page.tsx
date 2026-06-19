@@ -1444,118 +1444,112 @@ export default function ThemaPage({ params }: Props) {
                     </div>
                   )}
 
-                  {/* ── Altklausur-Upload (optional) ── */}
+                  {/* ── Zusätzlicher Kontext (optional): Altklausuren + Hinweise für die KI ── */}
                   <div className="rounded-2xl border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/60 to-transparent dark:from-violet-950/15 p-4 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
                         <FileText className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold">Altklausuren</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                          {kursAltklausuren.length > 0
-                            ? 'Werden in allen Themen dieses Kurses als Stil-/Format-Referenz genutzt.'
-                            : 'Lade optional eine Altklausur hoch für noch passendere Karten. Funktioniert aber auch sehr gut ohne.'}
-                        </p>
-                      </div>
+                      <p className="text-sm font-semibold">Zusätzlicher Kontext (optional)</p>
                     </div>
-                    {kursAltklausuren.length > 0 && (
-                      <div className="space-y-1.5 ml-12">
-                        {kursAltklausuren.map((a) => (
-                          <div key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                              <span className="text-xs font-medium truncate">{a.dateiname}</span>
-                            </div>
-                            <button
-                              onClick={() => handleKursAltklausurDelete(a.id)}
-                              className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                              title="Entfernen"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {altklausurFile ? (
-                      <div className="flex items-center justify-between gap-2 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2 ml-12">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                          <span className="text-xs font-medium truncate">{altklausurFile.name}</span>
-                        </div>
-                        <button
-                          onClick={() => { setAltklausurFile(null); if (altklausurInputRef.current) altklausurInputRef.current.value = '' }}
-                          className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                          title="Altklausur entfernen"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => altklausurInputRef.current?.click()}
-                        className="ml-12 inline-flex items-center gap-1.5 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card hover:bg-violet-50 dark:hover:bg-violet-950/20 px-3 py-1.5 text-xs font-medium text-violet-700 dark:text-violet-300 transition-colors"
-                      >
-                        <Upload className="h-3.5 w-3.5" />
-                        {kursAltklausuren.length > 0 ? 'Weitere Altklausur hochladen (PDF)' : 'Altklausur hochladen (PDF)'}
-                      </button>
-                    )}
-                    <input
-                      ref={altklausurInputRef}
-                      type="file"
-                      accept="application/pdf"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] ?? null
-                        if (file && file.size > 10 * 1024 * 1024) {
-                          toast.error('Altklausur zu groß (max. 10 MB).')
-                          e.target.value = ''
-                          return
-                        }
-                        setAltklausurFile(file)
-                      }}
-                    />
-                  </div>
 
-                  {/* ── Hinweise für die KI (optional, kursweit) ── */}
-                  <div className="rounded-2xl border border-sky-200/60 dark:border-sky-800/40 bg-gradient-to-br from-sky-50/60 to-transparent dark:from-sky-950/15 p-4 space-y-2">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-100 dark:bg-sky-900/30">
-                        <PenLine className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-semibold">Hinweise für die KI</p>
+                    {/* Altklausuren */}
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground leading-snug">
+                        {kursAltklausuren.length > 0
+                          ? 'Werden in allen Themen dieses Kurses als Stil-/Format-Referenz genutzt.'
+                          : 'Lade optional eine Altklausur hoch für noch passendere Karten. Funktioniert aber auch sehr gut ohne.'}
+                      </p>
+                      {kursAltklausuren.length > 0 && (
+                        <div className="space-y-1.5">
+                          {kursAltklausuren.map((a) => (
+                            <div key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                                <span className="text-xs font-medium truncate">{a.dateiname}</span>
+                              </div>
+                              <button
+                                onClick={() => handleKursAltklausurDelete(a.id)}
+                                className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                                title="Entfernen"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {altklausurFile ? (
+                        <div className="flex items-center justify-between gap-2 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                            <span className="text-xs font-medium truncate">{altklausurFile.name}</span>
+                          </div>
                           <button
-                            type="button"
-                            onClick={() => setNotizHintOpen((v) => !v)}
-                            className="flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground transition-colors"
-                            title="Wofür ist das?"
+                            onClick={() => { setAltklausurFile(null); if (altklausurInputRef.current) altklausurInputRef.current.value = '' }}
+                            className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                            title="Altklausur entfernen"
                           >
-                            <Info className="h-3.5 w-3.5" />
+                            <X className="h-3.5 w-3.5" />
                           </button>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                          Optional. Gilt für den ganzen Kurs &bdquo;{kursName}&ldquo;, nicht nur dieses Thema.
-                        </p>
-                        {notizHintOpen && (
-                          <div className="mt-2 space-y-1 rounded-lg border border-sky-200/60 dark:border-sky-800/40 bg-card px-3 py-2 text-xs text-muted-foreground leading-snug">
-                            <p>Beispiele:</p>
-                            <p>· „Formeln muss ich nicht auswendig können, nur die Schritte in Excel anwenden.“</p>
-                            <p>· „Gesetzestexte liegen in der Prüfung als Open-Book-Material vor, dafür keine Cloze-Karten.“</p>
-                          </div>
-                        )}
-                      </div>
+                      ) : (
+                        <button
+                          onClick={() => altklausurInputRef.current?.click()}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card hover:bg-violet-50 dark:hover:bg-violet-950/20 px-3 py-1.5 text-xs font-medium text-violet-700 dark:text-violet-300 transition-colors"
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                          {kursAltklausuren.length > 0 ? 'Weitere Altklausur hochladen (PDF)' : 'Altklausur hochladen (PDF)'}
+                        </button>
+                      )}
+                      <input
+                        ref={altklausurInputRef}
+                        type="file"
+                        accept="application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null
+                          if (file && file.size > 10 * 1024 * 1024) {
+                            toast.error('Altklausur zu groß (max. 10 MB).')
+                            e.target.value = ''
+                            return
+                          }
+                          setAltklausurFile(file)
+                        }}
+                      />
                     </div>
-                    <Textarea
-                      value={kursNotiz}
-                      onChange={(e) => setKursNotiz(e.target.value)}
-                      onBlur={saveKursNotiz}
-                      placeholder='z.B. "Formeln muss ich nicht auswendig können, nur die Schritte in Excel anwenden"'
-                      className="ml-12 min-h-[60px] text-sm bg-card w-[calc(100%-3rem)]"
-                    />
-                    {notizSaving && <p className="ml-12 text-[11px] text-muted-foreground">Speichert…</p>}
+
+                    <div className="h-px bg-violet-200/50 dark:bg-violet-800/30" />
+
+                    {/* Hinweise für die KI */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-medium">Hinweise für die KI</p>
+                        <button
+                          type="button"
+                          onClick={() => setNotizHintOpen((v) => !v)}
+                          className="flex h-3.5 w-3.5 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground transition-colors"
+                          title="Wofür ist das?"
+                        >
+                          <Info className="h-3 w-3" />
+                        </button>
+                      </div>
+                      {notizHintOpen && (
+                        <div className="space-y-1 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2 text-xs text-muted-foreground leading-snug">
+                          <p>Gilt für den ganzen Kurs &bdquo;{kursName}&ldquo;, nicht nur dieses Thema. Beispiele:</p>
+                          <p>· „Formeln muss ich nicht auswendig können, nur die Schritte in Excel anwenden.“</p>
+                          <p>· „Gesetzestexte liegen in der Prüfung als Open-Book-Material vor, dafür keine Cloze-Karten.“</p>
+                        </div>
+                      )}
+                      <Textarea
+                        value={kursNotiz}
+                        onChange={(e) => setKursNotiz(e.target.value)}
+                        onBlur={saveKursNotiz}
+                        placeholder='z.B. "Formeln muss ich nicht auswendig können, nur die Schritte in Excel anwenden"'
+                        className="min-h-[36px] text-sm bg-card"
+                      />
+                      {notizSaving && <p className="text-[11px] text-muted-foreground">Speichert…</p>}
+                    </div>
                   </div>
 
                   <button

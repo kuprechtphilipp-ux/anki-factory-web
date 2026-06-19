@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine, X, Lightbulb, FileText, Upload, Trash2, Layers, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader2, Brain, Zap, BookOpen, Sparkles, ArrowRight, Plus, PenLine, X, Lightbulb, FileText, Upload, Trash2, Layers, ChevronDown, ChevronUp, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { FOCUS_NEW_THEMA_EVENT, type KursStatistik, type KursThemaStats, type KursAltklausur, type Thema } from '@/lib/types'
 
@@ -161,6 +162,10 @@ export default function KursDashboard({ params }: Props) {
   const [altklausurenLoading, setAltklausurenLoading] = useState(false)
   const [uploadingAltklausur, setUploadingAltklausur] = useState(false)
   const altklausurInputRef = useRef<HTMLInputElement>(null)
+  const [kursNotiz, setKursNotiz] = useState('')
+  const kursNotizSavedRef = useRef('')
+  const [notizSaving, setNotizSaving] = useState(false)
+  const [notizHintOpen, setNotizHintOpen] = useState(false)
 
   async function loadAltklausuren(kursId: number) {
     setAltklausurenLoading(true)
@@ -205,6 +210,25 @@ export default function KursDashboard({ params }: Props) {
     if (!res.ok) toast.error('Altklausur konnte nicht gelöscht werden')
   }
 
+  async function saveKursNotiz() {
+    if (!stats || kursNotiz === kursNotizSavedRef.current) return
+    setNotizSaving(true)
+    try {
+      const res = await fetch(`/api/kurse/${stats.kurs_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notiz_kontext: kursNotiz.trim() || null }),
+      })
+      if (res.ok) {
+        kursNotizSavedRef.current = kursNotiz
+      } else {
+        toast.error('Hinweis konnte nicht gespeichert werden')
+      }
+    } finally {
+      setNotizSaving(false)
+    }
+  }
+
   async function handleAddThema() {
     const name = newThemaName.trim()
     if (!name || !stats) return
@@ -241,6 +265,8 @@ export default function KursDashboard({ params }: Props) {
       .then((data: KursStatistik) => {
         setStats(data)
         setLoading(false)
+        kursNotizSavedRef.current = data.notiz_kontext ?? ''
+        setKursNotiz(data.notiz_kontext ?? '')
         loadAltklausuren(data.kurs_id)
       })
       .catch(() => {
@@ -411,6 +437,7 @@ export default function KursDashboard({ params }: Props) {
               <p className="text-xs text-muted-foreground truncate">
                 {stats.themen.length} {stats.themen.length === 1 ? 'Thema' : 'Themen'}
                 {altklausuren.length > 0 ? ` · ${altklausuren.length} Altklausur${altklausuren.length > 1 ? 'en' : ''}` : ''}
+                {kursNotiz.trim() ? ' · Hinweis hinterlegt' : ''}
               </p>
             </div>
           </div>
@@ -497,6 +524,41 @@ export default function KursDashboard({ params }: Props) {
                   if (f) handleAltklausurUpload(f)
                 }}
               />
+            </div>
+
+            <div className="h-px bg-border/50" />
+
+            {/* Hinweise für die KI */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Hinweise für die KI</p>
+                <button
+                  type="button"
+                  onClick={() => setNotizHintOpen((v) => !v)}
+                  className="flex h-3.5 w-3.5 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground transition-colors"
+                  title="Wofür ist das?"
+                >
+                  <Info className="h-3 w-3" />
+                </button>
+              </div>
+              {notizHintOpen && (
+                <div className="space-y-1 rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-card px-3 py-2 text-xs text-muted-foreground leading-snug">
+                  <p>Beispiele:</p>
+                  <p>· „Formeln muss ich nicht auswendig können, nur die Schritte in Excel anwenden.“</p>
+                  <p>· „Gesetzestexte liegen in der Prüfung als Open-Book-Material vor, dafür keine Cloze-Karten.“</p>
+                </div>
+              )}
+              <Textarea
+                value={kursNotiz}
+                onChange={(e) => setKursNotiz(e.target.value)}
+                onBlur={saveKursNotiz}
+                placeholder='z.B. "Formeln muss ich nicht auswendig können, nur die Schritte in Excel anwenden"'
+                className="min-h-[36px] text-sm bg-card"
+              />
+              {notizSaving && <p className="text-[11px] text-muted-foreground">Speichert…</p>}
+              <p className="text-xs text-muted-foreground/70 leading-relaxed">
+                Optional. Fließt in Pre-Scan &amp; Generierung in allen Themen dieses Kurses ein.
+              </p>
             </div>
           </div>
         )}

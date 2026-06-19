@@ -12,7 +12,7 @@ export async function GET(req: Request) {
 
   if (!kursName) return NextResponse.json({ error: 'kurs_name required' }, { status: 400 })
 
-  const { data: kursRow } = await supabase.from('kurs').select('id').eq('name', kursName).single()
+  const { data: kursRow } = await supabase.from('kurs').select('id, notiz_kontext').eq('name', kursName).single()
   if (!kursRow) return NextResponse.json({ error: 'Kurs nicht gefunden' }, { status: 404 })
 
   const { data: themenData } = await supabase.from('thema').select('*').eq('kurs_id', kursRow.id).order('name')
@@ -21,6 +21,7 @@ export async function GET(req: Request) {
   if (themen.length === 0) {
     return NextResponse.json({
       kurs_id: kursRow.id,
+      notiz_kontext: kursRow.notiz_kontext ?? null,
       due_heute: 0,
       due_7_tage: [0, 0, 0, 0, 0, 0, 0],
       total_karten: 0,
@@ -117,6 +118,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     kurs_id: kursRow.id,
+    notiz_kontext: kursRow.notiz_kontext ?? null,
     due_heute: dueHeute,
     due_7_tage: due7Tage,
     total_karten: karten.length,
