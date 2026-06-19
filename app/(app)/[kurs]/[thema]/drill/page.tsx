@@ -9,6 +9,7 @@ import { ExpandableImage } from '@/components/expandable-image'
 import { KarteMarkdown } from '@/components/karte-markdown'
 import { useCramoContext } from '@/components/cramo-context'
 import { isTypingInField } from '@/lib/utils'
+import { maskCloze, unmaskCloze } from '@/lib/cloze'
 import type { Karte } from '@/lib/types'
 
 function shuffle<T>(arr: T[]): T[] {
@@ -18,30 +19,6 @@ function shuffle<T>(arr: T[]): T[] {
     ;[a[i], a[j]] = [a[j], a[i]]
   }
   return a
-}
-
-const CLOZE_RE = /\{\{c\d+::((?:[^{}]|\{[^{}]*\})+)\}\}/g
-
-function maskCloze(text: string): string {
-  return text.replace(CLOZE_RE, '[...]')
-}
-
-function looksLikeMath(s: string): boolean {
-  return /[_^\\]/.test(s)
-}
-
-function unmaskCloze(text: string): string {
-  const parts = text.split(/((?:\$\$[\s\S]*?\$\$|\$[^$\n]+?\$))/g)
-  return parts.map((part, i) => {
-    const isMath = i % 2 === 1
-    return part.replace(
-      CLOZE_RE,
-      (_, answer: string) => {
-        if (isMath) return answer
-        return looksLikeMath(answer) ? `$${answer}$` : `**${answer}**`
-      }
-    )
-  }).join('')
 }
 
 export default function DrillPage({ params }: { params: { kurs: string; thema: string } }) {

@@ -10,6 +10,7 @@ import { Loader2, ArrowLeft, BookOpen, Layers, Flame, Target } from 'lucide-reac
 import { ExpandableImage } from '@/components/expandable-image'
 import { KarteMarkdown } from '@/components/karte-markdown'
 import { isTypingInField } from '@/lib/utils'
+import { maskCloze, unmaskCloze } from '@/lib/cloze'
 import type { Karte, FsrsState, Thema } from '@/lib/types'
 
 const clientFsrs = new FSRS(generatorParameters())
@@ -40,29 +41,6 @@ function computeIntervals(karte: Karte): Record<1 | 2 | 3 | 4, string> {
   }
 }
 
-const CLOZE_RE = /\{\{c\d+::((?:[^{}]|\{[^{}]*\})+)\}\}/g
-
-function maskCloze(text: string): string {
-  return text.replace(CLOZE_RE, '[...]')
-}
-
-function looksLikeMath(s: string): boolean {
-  return /[_^\\]/.test(s)
-}
-
-function unmaskCloze(text: string): string {
-  const parts = text.split(/((?:\$\$[\s\S]*?\$\$|\$[^$\n]+?\$))/g)
-  return parts.map((part, i) => {
-    const isMath = i % 2 === 1
-    return part.replace(
-      CLOZE_RE,
-      (_, answer: string) => {
-        if (isMath) return answer
-        return looksLikeMath(answer) ? `$${answer}$` : `**${answer}**`
-      }
-    )
-  }).join('')
-}
 
 function formatRelative(isoDate: string): string {
   const diffMs = new Date(isoDate).getTime() - Date.now()

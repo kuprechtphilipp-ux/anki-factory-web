@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Eye } from 'lucide-react'
 import { KarteMarkdown } from '@/components/karte-markdown'
+import { maskCloze, unmaskCloze } from '@/lib/cloze'
 import type { Karte } from '@/lib/types'
 
 interface Props {
@@ -13,36 +14,6 @@ interface Props {
   total: number
   onRate: (rating: 1 | 2 | 3 | 4) => Promise<void>
   loading?: boolean
-}
-
-// Matches {{cN::answer}} where answer may contain single-depth LaTeX {braces}
-// like r_{m} or \frac{a}{b}. Uses (?:[^{}]|\{[^{}]*\})+ to allow {…} pairs
-// inside the answer without breaking on the closing }}.
-const CLOZE_RE = /\{\{c\d+::((?:[^{}]|\{[^{}]*\})+)\}\}/g
-
-function maskCloze(text: string): string {
-  return text.replace(CLOZE_RE, '[...]')
-}
-
-function looksLikeMath(s: string): boolean {
-  return /[_^\\]/.test(s)
-}
-
-function unmaskCloze(text: string): string {
-  // **answer** inside $...$ is passed verbatim to KaTeX and renders as asterisks.
-  // Outside math, formula-like answers (contain _ ^ \) are wrapped in $…$ so
-  // they render as LaTeX; plain-text answers get **bold** highlighting.
-  const parts = text.split(/((?:\$\$[\s\S]*?\$\$|\$[^$\n]+?\$))/g)
-  return parts.map((part, i) => {
-    const isMath = i % 2 === 1
-    return part.replace(
-      CLOZE_RE,
-      (_, answer: string) => {
-        if (isMath) return answer
-        return looksLikeMath(answer) ? `$${answer}$` : `**${answer}**`
-      }
-    )
-  }).join('')
 }
 
 export function LernCard({ karte, current, total, onRate, loading }: Props) {

@@ -1377,7 +1377,7 @@ export default function ThemaPage({ params }: Props) {
                     <p className="text-sm font-semibold">Kontext</p>
                     {expandedGenStep !== 2 && (
                       <p className="text-xs text-muted-foreground truncate">
-                        {themenCount} Thema{themenCount === 1 ? '' : 'en'} im Kurs
+                        {themenCount} {themenCount === 1 ? 'Thema' : 'Themen'} im Kurs
                         {(() => {
                           const n = kursAltklausuren.length + (altklausurFile ? 1 : 0)
                           return n > 0 ? ` · ${n} Altklausur${n > 1 ? 'en' : ''}` : ''
