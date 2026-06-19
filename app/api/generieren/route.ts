@@ -282,7 +282,7 @@ export async function POST(req: Request) {
       kursId = themaRow.kurs_id
       const { data: kursRow } = await supabase
         .from('kurs')
-        .select('name')
+        .select('name, notiz_kontext')
         .eq('id', themaRow.kurs_id)
         .single()
 
@@ -302,6 +302,11 @@ Kurs: "${kursRow.name}" (typischer Bachelor-Studiengang).
 Aktuelles Thema: "${themaRow.name}".
 ${andereThemen.length > 0 ? `Weitere Themen dieses Kurses: ${andereThemen.join(', ')}.` : ''}
 Nutze dein Wissen über "${kursRow.name}" Bachelor-Kurse um zu beurteilen welche Konzepte prüfungsrelevant sind. Gehe bei Themen, die in anderen Kursthemen behandelt werden, nicht unnötig tief.`
+
+        if (kursRow.notiz_kontext?.trim()) {
+          kursKontext += `\n\nNUTZER-HINWEIS ZU DIESEM KURS (unbedingt berücksichtigen):
+${kursRow.notiz_kontext.trim()}`
+        }
       }
 
       // ── Duplicate prevention ──────────────────────────────────────────────

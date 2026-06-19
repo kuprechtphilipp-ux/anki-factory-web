@@ -12,7 +12,7 @@ import { ReviewCard } from '@/components/review-card'
 import { KarteListItem } from '@/components/karte-list-item'
 import { toast } from 'sonner'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, Check, X, Plus, PenLine, ChevronLeft, ChevronRight, ArrowLeft, List, ScanSearch, Wand2, ChevronDown, ChevronUp, Layers, AlertTriangle, Eye, Trash2 } from 'lucide-react'
+import { Loader2, Upload, FileText, ArrowRight, Brain, Sparkles, Zap, BookOpen, Search, CheckCheck, Check, X, Plus, PenLine, ChevronLeft, ChevronRight, ArrowLeft, List, ScanSearch, Wand2, ChevronDown, ChevronUp, Layers, AlertTriangle, Eye, Trash2, Info } from 'lucide-react'
 import Link from 'next/link'
 import { FeedbackModal } from '@/components/feedback-modal'
 import { FactoryLoader } from '@/components/factory-loader'
@@ -104,6 +104,10 @@ export default function ThemaPage({ params }: Props) {
   const [altklausurFile, setAltklausurFile] = useState<File | null>(null)
   const altklausurInputRef = useRef<HTMLInputElement>(null)
   const [kursAltklausuren, setKursAltklausuren] = useState<KursAltklausur[]>([])
+  const [kursNotiz, setKursNotiz] = useState('')
+  const kursNotizSavedRef = useRef('')
+  const [notizSaving, setNotizSaving] = useState(false)
+  const [notizHintOpen, setNotizHintOpen] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [batchSize, setBatchSize] = useState(20)
   const [clozeMix, setClozeMix] = useState(50)
@@ -259,9 +263,11 @@ export default function ThemaPage({ params }: Props) {
   useEffect(() => {
     async function load() {
       const { data: kursRow } = await supabase
-        .from('kurs').select('id').eq('name', kursName).single()
+        .from('kurs').select('id, notiz_kontext').eq('name', kursName).single()
       if (!kursRow) { setLoadingThema(false); return }
       setKursId(kursRow.id)
+      kursNotizSavedRef.current = kursRow.notiz_kontext ?? ''
+      setKursNotiz(kursRow.notiz_kontext ?? '')
 
       fetch(`/api/themen?kurs_id=${kursRow.id}`)
         .then(r => r.json())
@@ -508,6 +514,25 @@ export default function ThemaPage({ params }: Props) {
     setAutoBatchTotal(0)
     setCompletedBatches(new Set<number>())
     setSelectedConcepts({})
+  }
+
+  async function saveKursNotiz() {
+    if (kursId == null || kursNotiz === kursNotizSavedRef.current) return
+    setNotizSaving(true)
+    try {
+      const res = await fetch(`/api/kurse/${kursId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notiz_kontext: kursNotiz.trim() || null }),
+      })
+      if (res.ok) {
+        kursNotizSavedRef.current = kursNotiz
+      } else {
+        toast.error('Hinweis konnte nicht gespeichert werden')
+      }
+    } finally {
+      setNotizSaving(false)
+    }
   }
 
   async function handleKursAltklausurDelete(id: number) {
@@ -1357,6 +1382,7 @@ export default function ThemaPage({ params }: Props) {
                           const n = kursAltklausuren.length + (altklausurFile ? 1 : 0)
                           return n > 0 ? ` · ${n} Altklausur${n > 1 ? 'en' : ''}` : ''
                         })()}
+                        {kursNotiz.trim() ? ' · Hinweis hinterlegt' : ''}
                       </p>
                     )}
                   </div>
@@ -1490,6 +1516,46 @@ export default function ThemaPage({ params }: Props) {
                         setAltklausurFile(file)
                       }}
                     />
+                  </div>
+
+                  {/* ── Hinweise für die KI (optional, kursweit) ── */}
+                  <div className="rounded-2xl border border-sky-200/60 dark:border-sky-800/40 bg-gradient-to-br from-sky-50/60 to-transparent dark:from-sky-950/15 p-4 space-y-2">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-100 dark:bg-sky-900/30">
+                        <PenLine className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-semibold">Hinweise für die KI</p>
+                          <button
+                            type="button"
+                            onClick={() => setNotizHintOpen((v) => !v)}
+                            className="flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground transition-colors"
+                            title="Wofür ist das?"
+                          >
+                            <Info className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                          Optional. Gilt für den ganzen Kurs &bdquo;{kursName}&ldquo;, nicht nur dieses Thema.
+                        </p>
+                        {notizHintOpen && (
+                          <div className="mt-2 space-y-1 rounded-lg border border-sky-200/60 dark:border-sky-800/40 bg-card px-3 py-2 text-xs text-muted-foreground leading-snug">
+                            <p>Beispiele:</p>
+                            <p>· „Formeln muss ich nicht auswendig können, nur die Schritte in Excel anwenden.“</p>
+                            <p>· „Gesetzestexte liegen in der Prüfung als Open-Book-Material vor, dafür keine Cloze-Karten.“</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <Textarea
+                      value={kursNotiz}
+                      onChange={(e) => setKursNotiz(e.target.value)}
+                      onBlur={saveKursNotiz}
+                      placeholder='z.B. "Formeln muss ich nicht auswendig können, nur die Schritte in Excel anwenden"'
+                      className="ml-12 min-h-[60px] text-sm bg-card w-[calc(100%-3rem)]"
+                    />
+                    {notizSaving && <p className="ml-12 text-[11px] text-muted-foreground">Speichert…</p>}
                   </div>
 
                   <button

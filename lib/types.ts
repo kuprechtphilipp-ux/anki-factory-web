@@ -21,6 +21,7 @@ export interface Kurs {
   id: number
   name: string
   user_id: string | null
+  notiz_kontext: string | null
   created_at: string
 }
 

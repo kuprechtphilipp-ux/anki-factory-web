@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       if (themaRow) {
         const { data: kursRow } = await supabase
           .from('kurs')
-          .select('name')
+          .select('name, notiz_kontext')
           .eq('id', themaRow.kurs_id)
           .single()
 
@@ -135,6 +135,11 @@ export async function POST(req: Request) {
 Dieser Kurs heisst "${kursRow.name}".
 ${andereThemen.length > 0 ? `Weitere Themen dieses Kurses: ${andereThemen.join(', ')}.` : ''}
 Nutze dein Wissen über typische "${kursRow.name}" Bachelor-Kurse um einzuschätzen welche Konzepte prüfungsrelevant sind und wie tief du gehen sollst. Gehe bei Themen, die in anderen Kursthemen behandelt werden, nicht unnötig tief.`
+
+          if (kursRow.notiz_kontext?.trim()) {
+            kursKontext += `\n\nNUTZER-HINWEIS ZU DIESEM KURS (unbedingt berücksichtigen):
+${kursRow.notiz_kontext.trim()}`
+          }
         }
       }
     }
