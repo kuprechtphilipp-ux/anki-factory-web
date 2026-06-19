@@ -100,6 +100,7 @@ export default function ThemaPage({ params }: Props) {
   const [activeTab, setActiveTab] = useState('uebersicht')
 
   const [pdfFile, setPdfFile] = useState<File | null>(null)
+  const [pdfStoragePath, setPdfStoragePath] = useState<string | null>(null)
   const [altklausurFile, setAltklausurFile] = useState<File | null>(null)
   const altklausurInputRef = useRef<HTMLInputElement>(null)
   const [kursAltklausuren, setKursAltklausuren] = useState<KursAltklausur[]>([])
@@ -361,16 +362,56 @@ export default function ThemaPage({ params }: Props) {
     return () => clearInterval(interval)
   }, [generating, autoBatchRunning])
 
+  // Loescht ein zuvor hochgeladenes temp-pdf-Objekt aus Storage. Fehler werden
+  // bewusst verschluckt (Cleanup ist best-effort, keine kritische Operation).
+  async function clearPdfStorage(path: string | null) {
+    if (!path) return
+    await supabase.storage.from('temp-pdfs').remove([path]).catch(() => {})
+  }
+
+  function resetPdfFile() {
+    clearPdfStorage(pdfStoragePath)
+    setPdfStoragePath(null)
+    setPdfFile(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // Laedt das gewaehlte PDF einmalig zu Supabase Storage hoch (umgeht Vercels
+  // 4.5MB Body-Limit fuer Serverless Functions) und liefert den Storage-Pfad,
+  // den alle nachfolgenden API-Calls (Pre-Scan, Generierung pro Batch) wiederverwenden.
+  async function ensurePdfStoragePath(): Promise<string | null> {
+    if (!pdfFile) return null
+    if (pdfStoragePath) return pdfStoragePath
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      toast.error('Nicht angemeldet')
+      return null
+    }
+    const path = `${user.id}/${crypto.randomUUID()}.pdf`
+    const { error } = await supabase.storage.from('temp-pdfs').upload(path, pdfFile, {
+      contentType: 'application/pdf',
+    })
+    if (error) {
+      toast.error(`PDF-Upload fehlgeschlagen: ${error.message}`)
+      return null
+    }
+    setPdfStoragePath(path)
+    return path
+  }
+
   async function handlePrescan() {
     if (!pdfFile) return
     setScanStep('scanning')
     setScanError(null)
     setScanResult(null)
     try {
-      const form = new FormData()
-      form.append('pdf', pdfFile)
-      if (themaId != null) form.append('thema_id', String(themaId))
-      const res = await fetch('/api/prescan-text', { method: 'POST', body: form })
+      const storagePath = await ensurePdfStoragePath()
+      if (!storagePath) { setScanStep('idle'); return }
+      const res = await fetch('/api/prescan-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdfStoragePath: storagePath, thema_id: themaId != null ? String(themaId) : null }),
+      })
       const json = await res.json()
       if (!res.ok || json.error) {
         setScanError(json.message ?? json.error ?? 'Pre-Scan fehlgeschlagen')
@@ -443,8 +484,7 @@ export default function ThemaPage({ params }: Props) {
       }
       setLastGenCount(totalCount)
       setLastGenLod(`${clozeMix}% Cloze`)
-      setPdfFile(null)
-      if (fileInputRef.current) fileInputRef.current.value = ''
+      resetPdfFile()
       setAltklausurFile(null)
       if (altklausurInputRef.current) altklausurInputRef.current.value = ''
       resetPrescan()
@@ -494,8 +534,10 @@ export default function ThemaPage({ params }: Props) {
     if (!pdfFile || themaId == null) return null
     const from = overrideFrom ?? pageFrom
     const to = overrideTo ?? pageTo
+    const storagePath = await ensurePdfStoragePath()
+    if (!storagePath) return null
     const form = new FormData()
-    form.append('pdf', pdfFile)
+    form.append('pdf_storage_path', storagePath)
     form.append('thema_id', String(themaId))
     form.append('cloze_anteil', String(clozeMix))
     form.append('batch_size', String(overrideBatchSize ?? batchSize))
@@ -611,8 +653,7 @@ export default function ThemaPage({ params }: Props) {
         setActiveBatchIdx(null)
         toast.success(`${count} Karten gespeichert`)
       } else {
-        setPdfFile(null)
-        if (fileInputRef.current) fileInputRef.current.value = ''
+        resetPdfFile()
         setAltklausurFile(null)
         if (altklausurInputRef.current) altklausurInputRef.current.value = ''
         resetPrescan()
@@ -1223,6 +1264,8 @@ export default function ThemaPage({ params }: Props) {
                         toast.error('PDF zu groß (max. 20 MB). Bitte in kleinere Abschnitte aufteilen.')
                         return
                       }
+                      clearPdfStorage(pdfStoragePath)
+                      setPdfStoragePath(null)
                       setPdfFile(file)
                       resetPrescan()
                     }
@@ -1245,7 +1288,7 @@ export default function ThemaPage({ params }: Props) {
                         </div>
                       </div>
                       <button
-                        onClick={(e) => { e.stopPropagation(); setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; resetPrescan() }}
+                        onClick={(e) => { e.stopPropagation(); resetPdfFile(); resetPrescan() }}
                         className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0 border border-border/50 hover:border-destructive/30"
                         title="PDF entfernen"
                       >
@@ -1276,6 +1319,8 @@ export default function ThemaPage({ params }: Props) {
                         e.target.value = ''
                         return
                       }
+                      clearPdfStorage(pdfStoragePath)
+                      setPdfStoragePath(null)
                       setPdfFile(file)
                       resetPrescan()
                     }}

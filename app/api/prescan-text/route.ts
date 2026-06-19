@@ -95,11 +95,14 @@ export async function POST(req: Request) {
   }
 
   try {
-    const formData = await req.formData()
-    const file = formData.get('pdf') as File | null
-    if (!file) return NextResponse.json({ error: 'Kein PDF' }, { status: 400 })
+    const body = await req.json()
+    const pdfStoragePath = body.pdfStoragePath as string | null
+    if (!pdfStoragePath) return NextResponse.json({ error: 'Kein PDF' }, { status: 400 })
+    if (!pdfStoragePath.startsWith(`${user.id}/`)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
 
-    const themaId = formData.get('thema_id') as string | null
+    const themaId = body.thema_id as string | null
 
     // Load kurs context if thema_id is provided
     let kursKontext = ''
@@ -143,7 +146,13 @@ Nutze dein Wissen über typische "${kursRow.name}" Bachelor-Kurse um einzuschät
       .eq('user_id', user.id)
       .maybeSingle()
 
-    const pdfBuffer = Buffer.from(await file.arrayBuffer())
+    const { data: pdfBlob, error: downloadError } = await supabase.storage
+      .from('temp-pdfs')
+      .download(pdfStoragePath)
+    if (downloadError || !pdfBlob) {
+      return NextResponse.json({ error: 'PDF konnte nicht aus Storage geladen werden' }, { status: 404 })
+    }
+    const pdfBuffer = Buffer.from(await pdfBlob.arrayBuffer())
 
     let pageTexts: string[] = []
     try {

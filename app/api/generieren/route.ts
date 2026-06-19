@@ -245,11 +245,14 @@ export async function POST(req: Request) {
 
   try {
     const formData = await req.formData()
-    const file = formData.get('pdf') as File | null
+    const pdfStoragePath = formData.get('pdf_storage_path') as string | null
     const clozeProzent = Math.min(80, Math.max(20, parseInt((formData.get('cloze_anteil') as string) ?? '50') || 50))
     const themaId = formData.get('thema_id')
 
-    if (!file) return NextResponse.json({ error: 'Kein PDF hochgeladen (field: pdf)' }, { status: 400 })
+    if (!pdfStoragePath) return NextResponse.json({ error: 'Kein PDF hochgeladen (field: pdf_storage_path)' }, { status: 400 })
+    if (!pdfStoragePath.startsWith(`${user.id}/`)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
     if (!themaId) return NextResponse.json({ error: 'thema_id fehlt' }, { status: 400 })
 
     const altklausurFile = formData.get('altklausur') as File | null
@@ -356,7 +359,13 @@ ${altklausurDocs.map((doc, i) => `--- Altklausur ${i + 1} ---\n${doc}`).join('\n
       }
     }
 
-    const pdfBuffer = Buffer.from(await file.arrayBuffer())
+    const { data: pdfBlob, error: downloadError } = await supabase.storage
+      .from('temp-pdfs')
+      .download(pdfStoragePath)
+    if (downloadError || !pdfBlob) {
+      return NextResponse.json({ error: 'PDF konnte nicht aus Storage geladen werden' }, { status: 404 })
+    }
+    const pdfBuffer = Buffer.from(await pdfBlob.arrayBuffer())
 
     const dynamicSystemPrompt =
       SYSTEM_PROMPT_BASE +
