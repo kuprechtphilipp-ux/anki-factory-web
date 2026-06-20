@@ -18,6 +18,7 @@ import { FeedbackModal } from '@/components/feedback-modal'
 import { FactoryLoader } from '@/components/factory-loader'
 import { FOCUS_NEW_THEMA_EVENT, type Karte, type KartTyp, type PrescanResult, type PrescanBatch, type AktivitaetTag, type KursAltklausur } from '@/lib/types'
 import { loadPdfDocument, renderPageToBase64 } from '@/lib/pdf-render'
+import { mergePdfFiles, type PdfMergeInfo } from '@/lib/pdf-merge'
 
 const PAGE_SIZE = 20
 
@@ -100,6 +101,9 @@ export default function ThemaPage({ params }: Props) {
   const [activeTab, setActiveTab] = useState('uebersicht')
 
   const [pdfFile, setPdfFile] = useState<File | null>(null)
+  const [pdfSourceFiles, setPdfSourceFiles] = useState<File[]>([])
+  const [pdfMergeInfo, setPdfMergeInfo] = useState<PdfMergeInfo[]>([])
+  const [mergingPdf, setMergingPdf] = useState(false)
   const [pdfStoragePath, setPdfStoragePath] = useState<string | null>(null)
   const [altklausurFile, setAltklausurFile] = useState<File | null>(null)
   const altklausurInputRef = useRef<HTMLInputElement>(null)
@@ -379,7 +383,58 @@ export default function ThemaPage({ params }: Props) {
     clearPdfStorage(pdfStoragePath)
     setPdfStoragePath(null)
     setPdfFile(null)
+    setPdfSourceFiles([])
+    setPdfMergeInfo([])
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // Fuehrt mehrere ausgewaehlte PDFs zu einem durchgehenden Dokument zusammen,
+  // sobald sich die Quelldateien aendern — alles danach (Pre-Scan, Batching,
+  // Bild-Rendering) arbeitet weiterhin mit nur einem `pdfFile`.
+  useEffect(() => {
+    if (pdfSourceFiles.length === 0) {
+      setPdfFile(null)
+      setPdfMergeInfo([])
+      return
+    }
+    let cancelled = false
+    setMergingPdf(true)
+    mergePdfFiles(pdfSourceFiles)
+      .then(({ file, info }) => {
+        if (cancelled) return
+        setPdfFile(file)
+        setPdfMergeInfo(info)
+      })
+      .catch(() => {
+        if (cancelled) return
+        toast.error('PDFs konnten nicht zusammengeführt werden')
+      })
+      .finally(() => {
+        if (!cancelled) setMergingPdf(false)
+      })
+    return () => { cancelled = true }
+  }, [pdfSourceFiles])
+
+  function addPdfSourceFiles(newFiles: File[]) {
+    const valid = newFiles.filter((f) => f.type === 'application/pdf')
+    if (valid.length === 0) return
+    const combined = [...pdfSourceFiles, ...valid]
+    const totalSize = combined.reduce((sum, f) => sum + f.size, 0)
+    if (totalSize > 20 * 1024 * 1024) {
+      toast.error('PDFs zusammen zu groß (max. 20 MB gesamt). Bitte weniger/kleinere Dateien wählen.')
+      return
+    }
+    clearPdfStorage(pdfStoragePath)
+    setPdfStoragePath(null)
+    setPdfSourceFiles(combined)
+    resetPrescan()
+  }
+
+  function removePdfSourceFile(index: number) {
+    clearPdfStorage(pdfStoragePath)
+    setPdfStoragePath(null)
+    setPdfSourceFiles((prev) => prev.filter((_, i) => i !== index))
+    resetPrescan()
   }
 
   // Laedt das gewaehlte PDF einmalig zu Supabase Storage hoch (umgeht Vercels
@@ -1256,10 +1311,14 @@ export default function ThemaPage({ params }: Props) {
                   {pdfFile ? <Check className="h-3.5 w-3.5" /> : '1'}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold">Dokument hochladen</p>
+                  <p className="text-sm font-semibold">Dokumente hochladen</p>
                   {expandedGenStep !== 1 && (
                     <p className="text-xs text-muted-foreground truncate">
-                      {pdfFile ? pdfFile.name : 'Noch kein PDF ausgewählt'}
+                      {pdfSourceFiles.length === 0
+                        ? 'Noch kein PDF ausgewählt'
+                        : pdfSourceFiles.length === 1
+                        ? pdfSourceFiles[0].name
+                        : `${pdfSourceFiles.length} Dateien · ${pdfMergeInfo.reduce((s, i) => s + i.pageCount, 0)} Seiten`}
                     </p>
                   )}
                 </div>
@@ -1268,89 +1327,95 @@ export default function ThemaPage({ params }: Props) {
             </button>
             {expandedGenStep === 1 && (
               <div className="px-4 pb-4 pt-1 animate-fade-in">
-                {/* PDF Upload */}
-                <div
-                  className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-                    dragOver
-                      ? 'border-primary bg-gradient-to-b from-primary/10 to-transparent'
-                      : pdfFile
-                      ? 'border-primary/50 bg-primary/5'
-                      : 'border-border hover:border-primary/40 hover:bg-gradient-to-b hover:from-primary/5 hover:to-transparent'
-                  }`}
-                  onClick={() => !pdfFile && fileInputRef.current?.click()}
-                  onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={(e) => {
-                    e.preventDefault()
-                    setDragOver(false)
-                    const file = e.dataTransfer.files[0]
-                    if (file?.type === 'application/pdf') {
-                      if (file.size > 20 * 1024 * 1024) {
-                        toast.error('PDF zu groß (max. 20 MB). Bitte in kleinere Abschnitte aufteilen.')
-                        return
-                      }
-                      clearPdfStorage(pdfStoragePath)
-                      setPdfStoragePath(null)
-                      setPdfFile(file)
-                      resetPrescan()
-                    }
-                  }}
-                >
-                  {pdfFile ? (
-                    <div className="flex items-center justify-between gap-2.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-800/40 shrink-0 flex-col gap-0.5">
-                          <FileText className="h-4 w-4 text-rose-500" />
-                          <span className="text-[8px] font-bold text-rose-500 leading-none">PDF</span>
-                        </div>
-                        <div className="text-left">
-                          <p className="font-medium text-sm truncate max-w-[200px]">{pdfFile.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {(pdfFile.size / 1024 / 1024).toFixed(1)} MB
-                            {' · '}
-                            <span className="text-primary/80">~{Math.max(1, Math.round(pdfFile.size / 50000))} Seiten</span>
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); resetPdfFile(); resetPrescan() }}
-                        className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0 border border-border/50 hover:border-destructive/30"
-                        title="PDF entfernen"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ) : (
+                {pdfSourceFiles.length === 0 ? (
+                  /* PDF Upload (leer) */
+                  <div
+                    className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                      dragOver
+                        ? 'border-primary bg-gradient-to-b from-primary/10 to-transparent'
+                        : 'border-border hover:border-primary/40 hover:bg-gradient-to-b hover:from-primary/5 hover:to-transparent'
+                    }`}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      setDragOver(false)
+                      addPdfSourceFiles(Array.from(e.dataTransfer.files))
+                    }}
+                  >
                     <div className="space-y-2">
                       <div className="flex h-10 w-10 mx-auto items-center justify-center rounded-xl bg-muted">
                         <Upload className="h-5 w-5 text-muted-foreground" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium hidden sm:block">PDF hier ablegen</p>
-                        <p className="text-sm font-medium sm:hidden">PDF auswählen</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">oder klicken zum Auswählen · max. 20 MB</p>
+                        <p className="text-sm font-medium hidden sm:block">PDF(s) hier ablegen</p>
+                        <p className="text-sm font-medium sm:hidden">PDF(s) auswählen</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">oder klicken zum Auswählen · mehrere möglich · max. 20 MB gesamt</p>
                       </div>
                     </div>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] ?? null
-                      if (file && file.size > 20 * 1024 * 1024) {
-                        toast.error('PDF zu groß (max. 20 MB). Bitte in kleinere Abschnitte aufteilen.')
-                        e.target.value = ''
-                        return
-                      }
-                      clearPdfStorage(pdfStoragePath)
-                      setPdfStoragePath(null)
-                      setPdfFile(file)
-                      resetPrescan()
-                    }}
-                  />
-                </div>
+                  </div>
+                ) : (
+                  /* PDF-Liste (1 oder mehrere Dateien) */
+                  <div className="space-y-2">
+                    {pdfSourceFiles.map((f, i) => {
+                      const range = pdfMergeInfo[i]
+                      return (
+                        <div key={`${f.name}-${i}`} className="flex items-center justify-between gap-2.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="flex h-9 w-8 items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-800/40 shrink-0 flex-col gap-0.5">
+                              <FileText className="h-3.5 w-3.5 text-rose-500" />
+                              <span className="text-[7px] font-bold text-rose-500 leading-none">PDF</span>
+                            </div>
+                            <div className="text-left min-w-0">
+                              <p className="font-medium text-sm truncate max-w-[220px]">{f.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {(f.size / 1024 / 1024).toFixed(1)} MB
+                                {range ? ` · Seite${range.pageCount > 1 ? 'n' : ''} ${range.fromPage}${range.toPage > range.fromPage ? `–${range.toPage}` : ''}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => removePdfSourceFile(i)}
+                            className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                            title="PDF entfernen"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )
+                    })}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card hover:bg-muted/50 px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Weitere Datei hinzufügen
+                    </button>
+                    {mergingPdf && (
+                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Dokumente werden zusammengeführt…
+                      </p>
+                    )}
+                    {pdfSourceFiles.length > 1 && !mergingPdf && (
+                      <p className="text-xs text-muted-foreground/70 leading-snug">
+                        Wird als ein durchgehendes Dokument verarbeitet — die Seitenzahlen oben zeigen, welcher Bereich aus welcher Datei stammt.
+                      </p>
+                    )}
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    addPdfSourceFiles(Array.from(e.target.files ?? []))
+                    e.target.value = ''
+                  }}
+                />
                 {pdfFile && (
                   <button
                     onClick={() => setExpandedGenStep(2)}
