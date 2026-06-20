@@ -165,11 +165,6 @@ export default function ThemaPage({ params }: Props) {
   // Generieren-Tab: Schritte-Accordion (1=Dokumente, 2=Kontext, 3=Modus, null=alle eingeklappt)
   const [expandedGenStep, setExpandedGenStep] = useState<1 | 2 | 3 | null>(1)
 
-  // Schritt 1 → 2: sobald ein PDF gewählt wurde, Kontext-Schritt aufklappen
-  useEffect(() => {
-    if (pdfFile && expandedGenStep === 1) setExpandedGenStep(2)
-  }, [pdfFile, expandedGenStep])
-
   // Während Analyse/Generierung: alle Schritte einklappen, Fokus auf Ergebnis/Fortschritt
   useEffect(() => {
     if (scanStep !== 'idle' || generating) setExpandedGenStep(null)
