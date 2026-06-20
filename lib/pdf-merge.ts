@@ -31,6 +31,7 @@ export async function mergePdfFiles(files: File[]): Promise<{ file: File; info: 
     cursor += pages.length
   }
   const mergedBytes = await merged.save()
-  const mergedFile = new File([mergedBytes], 'Zusammengeführt.pdf', { type: 'application/pdf' })
+  const arrayBuffer = mergedBytes.buffer.slice(mergedBytes.byteOffset, mergedBytes.byteOffset + mergedBytes.byteLength) as ArrayBuffer
+  const mergedFile = new File([arrayBuffer], 'Zusammengeführt.pdf', { type: 'application/pdf' })
   return { file: mergedFile, info }
 }
