@@ -55,11 +55,54 @@ function cardToText(k: Karte, includeKontext = true): string {
   if (k.typ === 'cloze' && k.cloze_text) {
     const answer = Array.from(k.cloze_text.matchAll(/\{\{c\d+::([^}]+)\}\}/g)).map(m => m[1]).join('; ')
     const question = k.cloze_text.replace(/\{\{c\d+::([^}]+)\}\}/g, '[...]')
-    return `Lückentext: ${question}\nAntwort: ${answer}`
+    return `Cloze: ${question}\nAnswer: ${answer}`
   }
-  const parts = [`Frage: ${k.frage}`, `Antwort: ${k.antwort}`]
-  if (includeKontext && k.kontext) parts.push(`Kontext: ${k.kontext}`)
+  const parts = [`Q: ${k.frage}`, `A: ${k.antwort}`]
+  if (includeKontext && k.kontext) parts.push(`Context: ${k.kontext}`)
   return parts.join('\n')
+}
+
+// Leichtgewichtige DE/EN-Spracherkennung via Stoppwort-Häufigkeit, analog zu
+// detectDocumentLanguage() in app/api/generieren/route.ts. Dient als expliziter
+// Zusatz-Hinweis für Claude, damit bei englischsprachigen Karten nicht trotzdem
+// ein deutsches Quiz generiert wird (der System-Prompt selbst ist auf Englisch
+// verfasst und die Karten-Labels waren bisher Deutsch, was Claude in Richtung
+// Deutsch verzerrt hat).
+const LANGUAGE_STOPWORDS: Record<'de' | 'en', string[]> = {
+  de: ['der', 'die', 'das', 'und', 'ist', 'nicht', 'mit', 'für', 'von', 'auf', 'eine', 'sich', 'dass', 'werden', 'wird', 'sind', 'oder', 'auch', 'kann', 'wenn', 'aber', 'durch', 'bei', 'nach', 'über', 'zwischen', 'diese', 'dieser', 'dieses', 'wurde', 'wurden', 'können', 'müssen', 'sein', 'einer', 'einem'],
+  en: ['the', 'and', 'is', 'of', 'to', 'in', 'that', 'for', 'with', 'are', 'this', 'as', 'by', 'an', 'or', 'can', 'be', 'on', 'from', 'which', 'these', 'those', 'was', 'were', 'will', 'have', 'has', 'not', 'but', 'when', 'between', 'through', 'their', 'they'],
+}
+
+function detectCardLanguage(karten: Karte[]): 'de' | 'en' | null {
+  const sample = karten
+    .map((k) => [k.frage, k.antwort, k.kontext, k.cloze_text].filter(Boolean).join(' '))
+    .join(' ')
+    .slice(0, 8000)
+    .toLowerCase()
+  if (sample.trim().length < 50) return null
+
+  const counts: Record<'de' | 'en', number> = { de: 0, en: 0 }
+  for (const lang of ['de', 'en'] as const) {
+    for (const word of LANGUAGE_STOPWORDS[lang]) {
+      const matches = sample.match(new RegExp(`\\b${word}\\b`, 'g'))
+      if (matches) counts[lang] += matches.length
+    }
+  }
+
+  if (counts.de === 0 && counts.en === 0) return null
+  if (counts.en > counts.de * 1.5) return 'en'
+  if (counts.de > counts.en * 1.5) return 'de'
+  return null
+}
+
+function languageHint(lang: 'de' | 'en' | null): string {
+  if (lang === 'en') {
+    return '\n\nDETECTED CARD LANGUAGE: English. Write ALL questions, options, and explanations exclusively in English, regardless of the language of this instruction.'
+  }
+  if (lang === 'de') {
+    return '\n\nDETECTED CARD LANGUAGE: German. Write ALL questions, options, and explanations exclusively in German (with correct umlauts ä/ö/ü and ß).'
+  }
+  return ''
 }
 
 export async function POST(req: Request) {
@@ -140,6 +183,7 @@ export async function POST(req: Request) {
     : '(keine weiteren Karten)'
 
   const topicContext = [themaName, kursNameResolved].filter(Boolean).join(' · ')
+  const langHint = languageHint(detectCardLanguage(sourceKarten))
 
   const schwierigkeitInstruktion = {
     leicht: `DIFFICULTY — Leicht: Wrong answers come from a clearly adjacent area of the topic. A student with basic knowledge can rule them out.`,
@@ -157,7 +201,7 @@ export async function POST(req: Request) {
 
   const systemPrompt = `You are an expert exam question designer. Your goal is to create questions that test genuine conceptual understanding — the kind that appears in university exams — not simple recall of flashcard text.
 
-LANGUAGE — READ THIS FIRST: Detect the language used in the SOURCE CARDS below and write your ENTIRE response — every question, every option, and every explanation — in that exact same language. Do not translate, and do not default to German or English unless that is the language of the cards.
+LANGUAGE — READ THIS FIRST: Detect the language used in the SOURCE CARDS below and write your ENTIRE response — every question, every option, and every explanation — in that exact same language. Do not translate, and do not default to German or English unless that is the language of the cards.${langHint}
 
 SPELLING: Pay close attention to correct spelling, grammar and punctuation in that language (for German, this includes umlauts ä/ö/ü and ß). Proofread each string before including it in the output.
 
