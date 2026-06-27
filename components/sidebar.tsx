@@ -23,9 +23,11 @@ import {
   X,
   ShieldCheck,
   UserCog,
+  MessageCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { GeneralFeedbackModal } from '@/components/general-feedback-modal'
 import { toast } from 'sonner'
 
 interface KursWithThemen extends Kurs {
@@ -101,6 +103,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [dueMap, setDueMap] = useState<Record<number, number>>({})
   const [isAdmin, setIsAdmin] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
 
   const [showNewKurs, setShowNewKurs] = useState(false)
   const [newKursName, setNewKursName] = useState('')
@@ -285,6 +288,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
   }
 
   return (
+    <>
     <aside
       className={cn(
         "relative flex h-dvh shrink-0 flex-col border-r border-border/50 bg-card shadow-sm",
@@ -605,6 +609,13 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
 
       {/* Account & Logout */}
       <div className="shrink-0 border-t border-border/50 p-2 space-y-0.5" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+        <button
+          onClick={() => setShowFeedback(true)}
+          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground"
+        >
+          <MessageCircle className="h-4 w-4 shrink-0" />
+          Feedback geben
+        </button>
         <Link
           href="/account"
           data-tour="nav-account"
@@ -634,5 +645,7 @@ export function Sidebar({ open = false, onClose, width = 256, onWidthChange }: S
         aria-hidden
       />
     </aside>
+    <GeneralFeedbackModal open={showFeedback} onClose={() => setShowFeedback(false)} />
+    </>
   )
 }

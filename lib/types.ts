@@ -136,6 +136,16 @@ export interface DeckFeedback {
   created_at?: string
 }
 
+export type FeedbackCategory = 'bug' | 'idee' | 'sonstiges'
+
+export interface GeneralFeedback {
+  id: number
+  user_id: string
+  category: FeedbackCategory
+  message: string
+  created_at: string
+}
+
 export interface PrescanBatch {
   von: number
   bis: number

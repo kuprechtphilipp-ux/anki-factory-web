@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2, Copy, Wallet, Ban, ShieldOff, Trash2, XCircle, MoreHorizontal } from 'lucide-react'
+import { Loader2, Copy, Wallet, Ban, ShieldOff, Trash2, XCircle, MoreHorizontal, Bug, Lightbulb, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -41,7 +41,7 @@ import { CreditDonut } from '@/components/admin/credit-donut'
 import { PlanBadge } from '@/components/plan-badge'
 import { PLAN_ORDER, DEFAULT_PLAN_CONFIG, type PlanConfig } from '@/lib/plans'
 import { getDisplayModelName } from '@/lib/model-names'
-import type { Plan, InviteCode } from '@/lib/types'
+import type { Plan, InviteCode, GeneralFeedback, FeedbackCategory } from '@/lib/types'
 
 interface AdminUser {
   id: string
@@ -58,6 +58,16 @@ interface AdminUser {
 
 interface AdminInviteCode extends InviteCode {
   used_by_email: string | null
+}
+
+interface AdminFeedback extends GeneralFeedback {
+  user_email: string | null
+}
+
+const FEEDBACK_CATEGORY_META: Record<FeedbackCategory, { label: string; icon: typeof Bug }> = {
+  bug: { label: 'Bug', icon: Bug },
+  idee: { label: 'Idee', icon: Lightbulb },
+  sonstiges: { label: 'Sonstiges', icon: MessageCircle },
 }
 
 interface CostOverviewRow {
@@ -138,6 +148,10 @@ export function AdminPanel() {
   const [costOverview, setCostOverview] = useState<CostOverviewData | null>(null)
   const [loadingCostOverview, setLoadingCostOverview] = useState(true)
 
+  // Feedback tab
+  const [feedback, setFeedback] = useState<AdminFeedback[] | null>(null)
+  const [loadingFeedback, setLoadingFeedback] = useState(true)
+
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true)
     try {
@@ -184,10 +198,22 @@ export function AdminPanel() {
     }
   }, [])
 
+  const loadFeedback = useCallback(async () => {
+    setLoadingFeedback(true)
+    try {
+      const res = await fetch('/api/admin/feedback')
+      if (!res.ok) { toast.error('Feedback konnte nicht geladen werden'); return }
+      setFeedback(await res.json())
+    } finally {
+      setLoadingFeedback(false)
+    }
+  }, [])
+
   useEffect(() => { loadUsers() }, [loadUsers])
   useEffect(() => { loadCodes() }, [loadCodes])
   useEffect(() => { loadPlanConfig() }, [loadPlanConfig])
   useEffect(() => { loadCostOverview() }, [loadCostOverview])
+  useEffect(() => { loadFeedback() }, [loadFeedback])
 
   async function handleAddCredits() {
     if (!creditDialogUser) return
@@ -347,6 +373,9 @@ export function AdminPanel() {
         </TabsTrigger>
         <TabsTrigger value="pricing" className="rounded-md px-3 text-xs h-7 data-[state=active]:bg-card data-[state=active]:shadow-sm">
           Pricing
+        </TabsTrigger>
+        <TabsTrigger value="feedback" className="rounded-md px-3 text-xs h-7 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+          Feedback
         </TabsTrigger>
       </TabsList>
 
@@ -727,6 +756,45 @@ export function AdminPanel() {
               </table>
               </div>
             </div>
+          </div>
+        )}
+      </TabsContent>
+
+      {/* ------------------------------ Feedback ------------------------------ */}
+      <TabsContent value="feedback" className="mt-6 space-y-3">
+        {loadingFeedback ? (
+          <div className="flex items-center gap-2.5 text-muted-foreground py-12 justify-center">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Lade Feedback…</span>
+          </div>
+        ) : !feedback || feedback.length === 0 ? (
+          <div className="rounded-2xl border border-border/50 bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+            Noch kein Feedback eingegangen.
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {feedback.map((f) => {
+              const meta = FEEDBACK_CATEGORY_META[f.category]
+              const Icon = meta.icon
+              return (
+                <div
+                  key={f.id}
+                  className="rounded-2xl border border-border/50 bg-card p-4 shadow-card hover:shadow-card-hover transition-shadow duration-200 space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="gap-1">
+                        <Icon className="h-3 w-3" />
+                        {meta.label}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">{f.user_email ?? f.user_id}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{fmtDate(f.created_at)}</span>
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{f.message}</p>
+                </div>
+              )
+            })}
           </div>
         )}
       </TabsContent>
