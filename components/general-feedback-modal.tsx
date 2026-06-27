@@ -85,7 +85,7 @@ export function GeneralFeedbackModal({ open, onClose }: GeneralFeedbackModalProp
         ) : (
           <div className="px-6 py-6 space-y-5 animate-fade-in">
             <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Worum geht's?</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Worum geht&apos;s?</p>
               <div className="grid grid-cols-3 gap-2">
                 {CATEGORIES.map(({ value, label, icon: Icon }) => (
                   <button
